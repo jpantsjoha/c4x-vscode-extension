@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# =============================================================================
+# C4X Public Repo Sync Script
+# =============================================================================
+# This script syncs the "Core Codebase" from this private repo to a 
+# separate public repository folder. It ensures no private history or 
+# internal files are leaked.
+#
+# Usage: ./scripts/publish-to-public.sh ../path-to-public-repo
+# =============================================================================
+
+set -e
+
+SOURCE_DIR=$(pwd)
+DEST_DIR=$1
+
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+if [ -z "$DEST_DIR" ]; then
+    echo -e "${RED}Error: Destination directory required.${NC}"
+    echo "Usage: ./scripts/publish-to-public.sh <path-to-public-repo>"
+    exit 1
+fi
+
+if [ ! -d "$DEST_DIR/.git" ]; then
+    echo -e "${RED}Error: Destination is not a git repository.${NC}"
+    echo "Please clone/init your public repo at $DEST_DIR first."
+    exit 1
+fi
+
+echo -e "${BLUE}🚀 Starting Sync to Public Repo: $DEST_DIR${NC}"
+
+# -----------------------------------------------------------------------------
+# 1. Define the Allowlist (What goes public)
+# -----------------------------------------------------------------------------
+# Using rsync with an include/exclude list is safer than cp
+# We exclude everything by default (*) and only include specific patterns
+
+rsync -avm --delete \
+    --include='src/***' \
+    --include='assets/***' \
+    --exclude='assets/marketplace/images/***' \
+    --include='snippets/***' \
+    --include='syntaxes/***' \
+    --include='samples/***' \
+    --include='test/***' \
+    --include='scripts/***' \
+    --exclude='scripts/publish-to-public.sh' \
+    --include='docs/images/***' \
+    --include='docs/c4x-syntax.md' \
+    --include='docs/USER-GUIDE.md' \
+    --include='docs/ABOUT.md' \
+    --include='GEMINI.md' \
+    --include='package.json' \
+    --include='tsconfig.json' \
+    --include='esbuild.config.js' \
+    --include='playwright.config.ts' \
+    --include='Makefile' \
+    --include='.eslintrc.json' \
+    --include='language-configuration.json' \
+    --include='README.md' \
+    --include='LICENSE' \
+    --include='CHANGELOG.md' \
+    --include='CONTRIBUTING.md' \
+    --include='.gitignore' \
+    --include='.vscodeignore' \
+    --include='.vscode/extensions.json' \
+    --include='.vscode/launch.json' \
+    --include='.vscode/tasks.json' \
+    --exclude='*' \
+    "$SOURCE_DIR/" "$DEST_DIR/"
+
+echo -e "${BLUE}📂 Files synced.${NC}"
+
+# -----------------------------------------------------------------------------
+# 2. Optional: Create/Copy Gemini Context File
+# -----------------------------------------------------------------------------
+# If you want to publish a specific markdown file about the AI generation
+if [ -f "$SOURCE_DIR/GEMINI_CONTEXT.md" ]; then
+    cp "$SOURCE_DIR/GEMINI_CONTEXT.md" "$DEST_DIR/"
+    echo -e "${BLUE}🤖 GEMINI_CONTEXT.md copied.${NC}"
+fi
+
+# -----------------------------------------------------------------------------
+# 3. Git Status in Destination
+# -----------------------------------------------------------------------------
+echo -e "${BLUE}📊 Status of Public Repo:${NC}"
+cd "$DEST_DIR"
+git status
+
+echo -e "${GREEN}✅ Sync Complete!${NC}"
+echo "Review the changes in '$DEST_DIR' and commit/push when ready."

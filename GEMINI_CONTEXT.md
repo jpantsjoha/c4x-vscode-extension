@@ -1,6 +1,6 @@
 # Built with Gemini
 
-**C4X** was architected and built with the assistance of **Google's Gemini 1.5 Pro** model.
+**C4X** was architected and built with the assistance of **Google's Gemini 3 preview** model.
 
 This project represents a collaboration between human architectural vision and AI-driven implementation. The goal was to create a production-grade VS Code extension that adheres to strict software engineering standards while accelerating the development lifecycle.
 
