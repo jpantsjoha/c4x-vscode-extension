@@ -1,0 +1,72 @@
+%%{ c4: container }%%
+graph TB
+    %% People
+    MarketingManager[Marketing Manager<br/>Person]
+    ContentCreator[Content Creator<br/>Person]
+
+    %% Multi-Agent Marketing System Containers
+    %% Frontend
+    WebUI[Web Dashboard<br/>Container<br/>React, TypeScript]
+
+    %% Orchestration Layer
+    OrchestratorAgent[Orchestrator Agent<br/>Container<br/>Python, LangGraph]
+
+    %% Specialized Agents
+    ContentAgent[Content Generation Agent<br/>Container<br/>Python, OpenAI]
+    StrategyAgent[Strategy Planning Agent<br/>Container<br/>Python, Claude]
+    AnalyticsAgent[Analytics Agent<br/>Container<br/>Python, LangChain]
+    PublishingAgent[Publishing Agent<br/>Container<br/>Node.js]
+
+    %% Data & Memory
+    VectorDB[Vector Database<br/>Container<br/>Pinecone]
+    AgentMemory[Agent Memory Store<br/>Container<br/>Redis]
+    CampaignDB[Campaign Database<br/>Container<br/>PostgreSQL]
+
+    %% Message Queue
+    MessageQueue[Task Queue<br/>Container<br/>RabbitMQ]
+
+    %% External Systems
+    LLMProvider[LLM Provider<br/>Software System<br/>External]
+    SocialMedia[Social Media APIs<br/>Software System<br/>External]
+    EmailPlatform[Email Platform<br/>Software System<br/>External]
+
+    %% User to UI
+    MarketingManager -->|Configures campaigns| WebUI
+    ContentCreator -->|Reviews content| WebUI
+
+    %% UI to Backend
+    WebUI -->|Sends tasks| OrchestratorAgent
+    WebUI -->|Queries data| CampaignDB
+
+    %% Orchestrator coordinates agents
+    OrchestratorAgent -->|Delegates content tasks| ContentAgent
+    OrchestratorAgent -->|Requests strategy| StrategyAgent
+    OrchestratorAgent -->|Requests analysis| AnalyticsAgent
+    OrchestratorAgent -->|Requests publishing| PublishingAgent
+
+    %% Agents use shared resources
+    ContentAgent -->|Calls LLM| LLMProvider
+    ContentAgent -->|Stores context| VectorDB
+    ContentAgent -->|Remembers state| AgentMemory
+
+    StrategyAgent -->|Calls LLM| LLMProvider
+    StrategyAgent -->|Queries past campaigns| VectorDB
+    StrategyAgent -->|Saves insights| CampaignDB
+
+    AnalyticsAgent -->|Fetches metrics| SocialMedia
+    AnalyticsAgent -->|Stores results| CampaignDB
+
+    PublishingAgent -->|Posts content| SocialMedia
+    PublishingAgent -->|Sends emails| EmailPlatform
+    PublishingAgent -->|Updates status| CampaignDB
+
+    %% Async communication via message queue
+    OrchestratorAgent -.->|Publishes tasks| MessageQueue
+    MessageQueue -.->|Consumes tasks| ContentAgent
+    MessageQueue -.->|Consumes tasks| StrategyAgent
+    MessageQueue -.->|Consumes tasks| AnalyticsAgent
+    MessageQueue -.->|Consumes tasks| PublishingAgent
+
+    %% Agent collaboration
+    ContentAgent -.->|Requests strategy input| StrategyAgent
+    PublishingAgent -.->|Notifies completion| OrchestratorAgent

@@ -1,0 +1,111 @@
+{
+    "scopeName": "source.c4x",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#directives"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#elements"
+        },
+        {
+            "include": "#relationships"
+        },
+        {
+            "include": "#subgraphs"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "match": "%%.*$",
+                    "name": "comment.line.c4x"
+                }
+            ]
+        },
+        "directives": {
+            "patterns": [
+                {
+                    "match": "%%\\{\\s*c4:\s*(system-context|container|component)\\s*\\}%%",
+                    "name": "keyword.control.directive.c4x"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "match": "\\b(graph|subgraph|end|classDef|class)\\b",
+                    "name": "keyword.control.c4x"
+                },
+                {
+                    "match": "\\b(TB|BT|LR|RL)\\b",
+                    "name": "constant.language.direction.c4x"
+                }
+            ]
+        },
+        "elements": {
+            "patterns": [
+                {
+                    "begin": "([a-zA-Z0-9_\\-]+)(\\[)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.other.object.c4x"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.element.begin.c4x"
+                        }
+                    },
+                    "end": "\\]",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.element.end.c4x"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "match": "<br/>",
+                            "name": "keyword.operator.linebreak.c4x"
+                        },
+                        {
+                            "match": "(Person|Software System|Container|Component|External|Internal)",
+                            "name": "entity.name.type.c4x"
+                        }
+                    ]
+                }
+            ]
+        },
+        "relationships": {
+            "patterns": [
+                {
+                    "match": "-->|-.->|==>",
+                    "name": "keyword.operator.arrow.c4x"
+                },
+                {
+                    "match": "\\|",
+                    "name": "punctuation.definition.string.c4x"
+                },
+                {
+                    "match": "([^|]+)(?=\\|)",
+                    "name": "string.quoted.other.c4x"
+                }
+            ]
+        },
+        "subgraphs": {
+            "patterns": [
+                {
+                    "match": "\\b(subgraph)\\s+([a-zA-Z0-9_\\-]+)",
+                    "captures": {
+                        "1": { "name": "keyword.control.c4x" },
+                        "2": { "name": "entity.name.section.c4x" }
+                    }
+                }
+            ]
+        }
+    }
+}

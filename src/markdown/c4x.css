@@ -1,0 +1,117 @@
+/**
+ * C4X Markdown Diagram Styles
+ * Styles for C4X diagrams rendered in Markdown preview
+ */
+
+/* Container for successfully rendered diagrams */
+.c4x-diagram {
+    margin: 20px 0;
+    padding: 16px;
+    background: var(--vscode-editor-background, #ffffff);
+    border: 1px solid var(--vscode-panel-border, #e5e7eb);
+    border-radius: 8px;
+    text-align: center;
+    overflow-x: auto;
+}
+
+.c4x-diagram svg {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+}
+
+/* Error display */
+.c4x-error {
+    margin: 20px 0;
+    padding: 16px;
+    background: var(--vscode-inputValidation-errorBackground, #fee);
+    border: 2px solid var(--vscode-inputValidation-errorBorder, #dc2626);
+    border-radius: 8px;
+    color: var(--vscode-errorForeground, #dc2626);
+    font-family: var(--vscode-font-family, monospace);
+}
+
+.c4x-error-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.c4x-error-header strong {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.c4x-error-message {
+    margin: 0;
+    padding: 12px;
+    background: var(--vscode-editor-background, #fff);
+    border: 1px solid var(--vscode-inputValidation-errorBorder, #fca5a5);
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Placeholder for async rendering */
+.c4x-diagram-placeholder {
+    margin: 20px 0;
+    padding: 32px 16px;
+    background: var(--vscode-editor-background, #f9fafb);
+    border: 2px dashed var(--vscode-panel-border, #cbd5e0);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.c4x-placeholder-content {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.c4x-placeholder-content svg {
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.c4x-placeholder-content p {
+    margin: 8px 0;
+    color: var(--vscode-foreground, #374151);
+}
+
+.c4x-placeholder-content strong {
+    font-size: 16px;
+}
+
+.c4x-placeholder-stats {
+    font-size: 14px;
+    color: var(--vscode-descriptionForeground, #6b7280);
+}
+
+.c4x-placeholder-note {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--vscode-descriptionForeground, #9ca3af);
+    margin-top: 12px !important;
+}
+
+/* Dark theme adjustments */
+.vscode-dark .c4x-diagram,
+.vscode-high-contrast .c4x-diagram {
+    background: var(--vscode-editor-background, #1e1e1e);
+    border-color: var(--vscode-panel-border, #3e3e42);
+}
+
+.vscode-dark .c4x-error,
+.vscode-high-contrast .c4x-error {
+    background: #3f1f1f;
+    border-color: #dc2626;
+}
+
+.vscode-dark .c4x-error-message,
+.vscode-high-contrast .c4x-error-message {
+    background: var(--vscode-editor-background, #1e1e1e);
+    border-color: #7f1d1d;
+}

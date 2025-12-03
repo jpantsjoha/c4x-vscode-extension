@@ -1,0 +1,70 @@
+# IDE & Version Control
+.vscode/**
+.vscode-test/**
+.git/**
+.gitignore
+.gitattributes
+.claude/**
+
+# Dependencies
+node_modules/**
+
+# Coverage
+coverage/**
+.nyc_output/**
+
+# Source & Build
+src/**
+test/**
+tests/**
+tsconfig.json
+package-lock.json
+*.tsbuildinfo
+*.map
+**/*.map
+
+# Documentation (dev only - keep README.md for marketplace)
+docs/**
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Agent definitions (private)
+multi-agent-devex/**
+.CLAUDE.md
+
+# GitHub workflows (not needed in extension)
+.github/**
+
+# Scripts & Tools
+v6/scripts/**
+v6/raw/**
+scripts/**
+
+# Examples & Test Files
+examples/**
+
+# Development files
+check-functions.js
+test-comprehensive-validator.js
+test-validation.pine
+PRE-RELEASE-CLEANUP-REPORT.md
+
+# Session debugging/testing files (exclude all)
+test-*.js
+test-*.pine
+debug-*.js
+analyze-*.js
+check-*.js
+find-*.js
+.mcp.json
+settings.json
+mcp/**
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.vsix

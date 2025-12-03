@@ -1,0 +1,109 @@
+import { C4XParseError, ParseResult, RawElement, RawRelationship, RawBoundary } from '../parser';
+import { C4Element, C4ElementType, C4Model, C4Rel, C4View, RelType, C4Boundary } from './C4Model';
+
+/* eslint-disable @typescript-eslint/naming-convention */
+const ELEMENT_TYPE_MAP: Record<string, C4ElementType> = {
+    'person': 'Person',
+    'software system': 'SoftwareSystem',
+    'softwaresystem': 'SoftwareSystem',
+    'container': 'Container',
+    'component': 'Component',
+};
+
+const REL_TYPE_MAP: Record<string, RelType> = {
+    '-->': 'uses',
+    '-.->': 'async',
+    '==>': 'sync',
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
+export class C4ModelBuilder {
+    public build(parseResult: ParseResult, workspace: string): C4Model {
+        const elements = this.buildElements(parseResult.elements);
+        const relationships = this.buildRelationships(parseResult.relationships, elements);
+        const boundaries = parseResult.boundaries ? this.buildBoundaries(parseResult.boundaries) : undefined;
+
+        const view: C4View = {
+            type: parseResult.viewType,
+            elements,
+            relationships,
+            boundaries,
+        };
+
+        return {
+            workspace,
+            views: [view],
+        };
+    }
+
+    private buildElements(rawElements: RawElement[]): C4Element[] {
+        const seen = new Set<string>();
+
+        return rawElements.map((element, index) => {
+            const elementType = this.resolveElementType(element, index);
+
+            if (seen.has(element.id)) {
+                throw new C4XParseError(`Duplicate element identifier "${element.id}"`, { line: index + 1, column: 1 });
+            }
+
+            seen.add(element.id);
+
+            return {
+                id: element.id,
+                label: element.label,
+                type: elementType,
+                tags: element.tags.length > 0 ? element.tags : undefined,
+            };
+        });
+    }
+
+    private buildRelationships(rawRelationships: RawRelationship[], elements: C4Element[]): C4Rel[] {
+        const elementIds = new Set(elements.map(e => e.id));
+
+        return rawRelationships.map((rel, index) => {
+            if (!elementIds.has(rel.from)) {
+                throw new C4XParseError(`Relationship references unknown element "${rel.from}"`, { line: index + 1, column: 1 });
+            }
+
+            if (!elementIds.has(rel.to)) {
+                throw new C4XParseError(`Relationship references unknown element "${rel.to}"`, { line: index + 1, column: 1 });
+            }
+
+            const relType = REL_TYPE_MAP[rel.arrow];
+            if (!relType) {
+                throw new C4XParseError(`Unsupported relationship arrow "${rel.arrow}"`, { line: index + 1, column: 1 });
+            }
+
+            return {
+                id: `rel-${index}`,
+                from: rel.from,
+                to: rel.to,
+                label: rel.label,
+                relType,
+            };
+        });
+    }
+
+    private buildBoundaries(rawBoundaries: RawBoundary[]): C4Boundary[] {
+        return rawBoundaries.map((boundary, index) => {
+            return {
+                id: boundary.label.toLowerCase().replace(/\s+/g, '-') + '-boundary-' + index,
+                label: boundary.label,
+                elements: boundary.elements.map(elem => elem.id), // elem is a RawElement with id property
+            };
+        });
+    }
+
+    private resolveElementType(element: RawElement, index: number): C4ElementType {
+        const normalizedKey = element.elementType.toLowerCase().replace(/\s+/g, ' ');
+        const mapped = ELEMENT_TYPE_MAP[normalizedKey] ?? ELEMENT_TYPE_MAP[element.elementType.toLowerCase()];
+
+        if (!mapped) {
+            throw new C4XParseError(`Unsupported element type "${element.elementType}"`, { line: index + 1, column: 1 });
+        }
+
+        return mapped;
+    }
+}
+
+export const c4ModelBuilder = new C4ModelBuilder();

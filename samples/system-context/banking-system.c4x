@@ -1,0 +1,25 @@
+%%{ c4: system-context }%%
+graph TB
+    %% People (Users of the system)
+    Customer[Personal Banking Customer<br/>Person]
+    BackOffice[Back Office Staff<br/>Person<br/>Internal]
+
+    %% Our System (The focus)
+    InternetBanking[Internet Banking System<br/>Software System]
+
+    %% External Systems (Dependencies)
+    EmailSystem[E-mail System<br/>Software System<br/>External]
+    MainframeSystem[Mainframe Banking System<br/>Software System<br/>External]
+
+    %% Relationships (How everything connects)
+    Customer -->|Views account balances<br/>and makes payments using| InternetBanking
+    BackOffice -->|Uses for<br/>administration tasks| InternetBanking
+
+    InternetBanking -->|Sends e-mails using| EmailSystem
+    InternetBanking -->|Gets account information from<br/>and makes transactions using| MainframeSystem
+
+    %% Styling hints (optional)
+    classDef person fill:#08427B
+    classDef external fill:#999999
+    classDef system fill:#1168BD
+

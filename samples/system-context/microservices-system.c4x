@@ -1,0 +1,36 @@
+%%{ c4: system-context }%%
+graph TB
+    %% People
+    EndUser[Mobile/Web User<br/>Person]
+    Developer[DevOps Engineer<br/>Person<br/>Internal]
+    DataAnalyst[Data Analyst<br/>Person<br/>Internal]
+
+    %% Our System (Microservices Platform)
+    MicroservicesPlatform[Cloud-Native Microservices Platform<br/>Software System]
+
+    %% External Systems
+    CDN[Content Delivery Network<br/>Software System<br/>External]
+    AuthProvider[Identity Provider<br/>Software System<br/>External]
+    MessageQueue[Message Broker<br/>Software System<br/>External]
+    Monitoring[APM & Monitoring<br/>Software System<br/>External]
+    CloudStorage[Cloud Storage<br/>Software System<br/>External]
+    Analytics[Analytics Platform<br/>Software System<br/>External]
+
+    %% Relationships
+    EndUser -->|Accesses application via| CDN
+    EndUser -->|Authenticates using| AuthProvider
+    EndUser -->|Uses features from| MicroservicesPlatform
+
+    Developer -->|Monitors & deploys| MicroservicesPlatform
+    DataAnalyst -->|Views dashboards from| Analytics
+
+    MicroservicesPlatform -->|Serves static assets via| CDN
+    MicroservicesPlatform -->|Validates tokens from| AuthProvider
+    MicroservicesPlatform -->|Publishes events to| MessageQueue
+    MicroservicesPlatform -->|Sends metrics to| Monitoring
+    MicroservicesPlatform -->|Stores files in| CloudStorage
+    MicroservicesPlatform -->|Sends events to| Analytics
+
+    %% Async callbacks
+    MessageQueue -.->|Processes async events| MicroservicesPlatform
+    Monitoring -.->|Alerts on errors| Developer

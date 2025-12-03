@@ -1,0 +1,72 @@
+{
+    "C4X System Context": {
+        "prefix": "c4-context",
+        "body": [
+            "%%{ c4: system-context }%%",
+            "graph TB",
+            "    User[${1:User}<br/>Person]",
+            "    System[${2:System}<br/>Software System]",
+            "    User -->|${3:Uses}| System"
+        ],
+        "description": "Basic C4 System Context Diagram"
+    },
+    "C4X Container": {
+        "prefix": "c4-container",
+        "body": [
+            "%%{ c4: container }%%",
+            "graph TB",
+            "    User[${1:User}<br/>Person]",
+            "    ",
+            "    subgraph ${2:SystemName}",
+            "        WebApp[${3:Web App}<br/>Container]",
+            "        DB[${4:Database}<br/>Container]",
+            "    }",
+            "    ",
+            "    User -->|Uses| WebApp",
+            "    WebApp -->|Reads/Writes| DB"
+        ],
+        "description": "Basic C4 Container Diagram"
+    },
+    "C4X Person": {
+        "prefix": "person",
+        "body": [
+            "${1:ID}[${2:Label}<br/>Person]"
+        ],
+        "description": "C4 Person Element"
+    },
+    "C4X System": {
+        "prefix": "system",
+        "body": [
+            "${1:ID}[${2:Label}<br/>Software System]"
+        ],
+        "description": "C4 Software System Element"
+    },
+    "C4X Container Element": {
+        "prefix": "container",
+        "body": [
+            "${1:ID}[${2:Label}<br/>Container]"
+        ],
+        "description": "C4 Container Element"
+    },
+    "C4X Component Element": {
+        "prefix": "component",
+        "body": [
+            "${1:ID}[${2:Label}<br/>Component]"
+        ],
+        "description": "C4 Component Element"
+    },
+    "C4X Relationship": {
+        "prefix": "rel",
+        "body": [
+            "${1:From} -->|${2:Label}| ${3:To}"
+        ],
+        "description": "C4 Relationship (Sync)"
+    },
+    "C4X Async Relationship": {
+        "prefix": "rel-async",
+        "body": [
+            "${1:From} -.->|${2:Label}| ${3:To}"
+        ],
+        "description": "C4 Relationship (Async)"
+    }
+}

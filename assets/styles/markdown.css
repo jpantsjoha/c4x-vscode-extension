@@ -1,0 +1,51 @@
+.c4x-diagram {
+    width: 100%;
+    overflow-x: auto;
+    padding: 16px 0;
+    background-color: white; /* Ensure visibility in dark mode */
+    border-radius: 6px;
+}
+
+.c4x-diagram svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Dark mode adjustments for VS Code */
+body.vscode-dark .c4x-diagram {
+    background-color: #1e1e1e; /* Match dark background */
+}
+
+/* Error styling */
+.c4x-error {
+    padding: 12px;
+    border-left: 4px solid #dc2626;
+    background-color: #fef2f2;
+    color: #991b1b;
+    border-radius: 4px;
+    font-family: sans-serif;
+    margin: 10px 0;
+}
+
+body.vscode-dark .c4x-error {
+    background-color: #450a0a;
+    color: #fecaca;
+    border-left-color: #ef4444;
+}
+
+.c4x-error-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.c4x-error-message {
+    margin: 0;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+}

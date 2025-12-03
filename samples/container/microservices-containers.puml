@@ -1,0 +1,71 @@
+@startuml Microservices Platform - Container Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Container diagram for Cloud-Native Microservices Platform
+
+' External Actors
+Person(endUser, "End User", "Mobile/Web application user")
+Person(developer, "DevOps Engineer", "Platform administrator")
+
+' External Systems
+System_Ext(cdn, "CDN", "Cloudflare - Static assets")
+System_Ext(authProvider, "Identity Provider", "Auth0 - Authentication")
+System_Ext(monitoring, "APM", "Datadog - Monitoring")
+
+' Microservices Platform Boundary
+System_Boundary(platform, "Microservices Platform") {
+    ' Edge Layer
+    Container(apiGateway, "API Gateway", "Kong, Lua", "Routes and authenticates requests")
+    Container(bff, "Backend for Frontend", "Node.js, GraphQL", "Aggregates data for UI")
+
+    ' Service Layer
+    Container(userService, "User Service", "Go, gRPC", "Manages user profiles")
+    Container(productService, "Product Service", "Java, Spring Boot", "Product catalog")
+    Container(orderService, "Order Service", "Python, Flask", "Order processing")
+    Container(notificationService, "Notification Service", "Node.js, Socket.io", "Real-time notifications")
+
+    ' Data Layer
+    ContainerDb(userDB, "User Database", "PostgreSQL", "User data")
+    ContainerDb(productDB, "Product Database", "MongoDB", "Product catalog")
+    ContainerDb(orderDB, "Order Database", "PostgreSQL", "Orders and transactions")
+    Container(cache, "Cache", "Redis", "Session and data cache")
+
+    ' Messaging
+    Container(messageBroker, "Message Broker", "RabbitMQ", "Async events")
+
+    ' Internal Relationships
+    Rel(apiGateway, bff, "Routes UI requests to", "HTTP/2")
+    Rel(apiGateway, userService, "Routes user requests to", "gRPC")
+    Rel(apiGateway, productService, "Routes product requests to", "HTTP/REST")
+    Rel(apiGateway, orderService, "Routes order requests to", "HTTP/REST")
+
+    Rel(bff, userService, "Queries", "gRPC")
+    Rel(bff, productService, "Queries", "HTTP/REST")
+    Rel(bff, orderService, "Queries", "HTTP/REST")
+
+    Rel(userService, userDB, "Reads/writes", "SQL")
+    Rel(userService, cache, "Caches data", "Redis Protocol")
+    Rel(productService, productDB, "Reads/writes", "MongoDB Protocol")
+    Rel(productService, cache, "Caches catalog", "Redis Protocol")
+    Rel(orderService, orderDB, "Reads/writes", "SQL")
+
+    Rel(userService, messageBroker, "Publishes user events", "AMQP")
+    Rel(orderService, messageBroker, "Publishes order events", "AMQP")
+    Rel_Back(messageBroker, notificationService, "Consumes events", "AMQP")
+
+    Rel(notificationService, messageBroker, "Subscribes to events", "AMQP")
+}
+
+' External Relationships
+Rel(endUser, cdn, "Loads static assets from", "HTTPS")
+Rel(endUser, apiGateway, "Makes requests to", "HTTPS")
+Rel(endUser, notificationService, "Receives notifications", "WebSocket")
+
+Rel(apiGateway, authProvider, "Validates tokens with", "OAuth2/OIDC")
+
+Rel(developer, monitoring, "Views dashboards", "HTTPS")
+Rel(platform, monitoring, "Sends metrics to", "StatsD/HTTP")
+
+@enduml

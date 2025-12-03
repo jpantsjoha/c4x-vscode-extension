@@ -1,0 +1,34 @@
+@startuml E-commerce Platform - System Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title System Context diagram for E-commerce Platform
+
+' People
+Person(customer, "Online Shopper", "A customer browsing and purchasing products")
+Person(admin, "Store Administrator", "Manages products, orders, and inventory")
+Person_Ext(supplier, "Product Supplier", "Provides products and manages inventory")
+
+' Systems
+System(ecommerce, "E-commerce Platform", "Allows customers to browse products, place orders, and track shipments. Enables admins to manage inventory and view analytics.")
+
+System_Ext(payment, "Payment Gateway", "Stripe - Processes credit card payments securely")
+System_Ext(email, "Email Service", "SendGrid - Sends transactional emails")
+System_Ext(shipping, "Shipping Provider", "FedEx/UPS - Handles shipping and tracking")
+System_Ext(inventory, "Supplier Inventory System", "External inventory management system")
+
+' Relationships
+Rel(customer, ecommerce, "Browses products, places orders, tracks shipments", "HTTPS")
+Rel(admin, ecommerce, "Manages products, views orders, generates reports", "HTTPS")
+Rel(supplier, ecommerce, "Updates inventory, views purchase orders", "HTTPS/API")
+
+Rel(ecommerce, payment, "Processes payments using", "API/HTTPS")
+Rel(ecommerce, email, "Sends order confirmations and notifications via", "API/SMTP")
+Rel(ecommerce, shipping, "Arranges shipping and tracking via", "API/HTTPS")
+Rel(ecommerce, inventory, "Syncs product availability with", "API/HTTPS")
+
+Rel_Back(payment, ecommerce, "Sends payment status updates", "Webhook")
+Rel_Back(shipping, ecommerce, "Sends tracking updates", "Webhook")
+
+@enduml

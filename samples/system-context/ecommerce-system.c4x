@@ -1,0 +1,29 @@
+%%{ c4: system-context }%%
+graph TB
+    %% People
+    Customer[Online Shopper<br/>Person]
+    Admin[Store Administrator<br/>Person<br/>Internal]
+    Supplier[Product Supplier<br/>Person<br/>External]
+
+    %% Our System
+    EcommerceSystem[E-commerce Platform<br/>Software System]
+
+    %% External Systems
+    PaymentGateway[Payment Gateway<br/>Software System<br/>External]
+    EmailService[Email Service<br/>Software System<br/>External]
+    ShippingProvider[Shipping Provider<br/>Software System<br/>External]
+    InventorySystem[Supplier Inventory System<br/>Software System<br/>External]
+
+    %% Relationships
+    Customer -->|Browses products<br/>Places orders<br/>Tracks shipments| EcommerceSystem
+    Admin -->|Manages products<br/>Views orders<br/>Generates reports| EcommerceSystem
+    Supplier -->|Updates inventory<br/>Views purchase orders| EcommerceSystem
+
+    EcommerceSystem -->|Processes payments using| PaymentGateway
+    EcommerceSystem -->|Sends order confirmations<br/>and shipping notifications via| EmailService
+    EcommerceSystem -->|Arranges shipping<br/>and tracking via| ShippingProvider
+    EcommerceSystem -->|Syncs product availability<br/>with| InventorySystem
+
+    %% Two-way relationships
+    PaymentGateway -.->|Payment status updates| EcommerceSystem
+    ShippingProvider -.->|Tracking updates| EcommerceSystem

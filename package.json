@@ -1,0 +1,191 @@
+{
+  "name": "c4x",
+  "displayName": "C4X - AI Agent Diagrams",
+  "description": "Make C4 diagrams as easy as Mermaid in VS Code - ideal for AI/Agentic Visuals",
+  "icon": "assets/marketplace/icon.png",
+  "version": "0.1.2",
+  "publisher": "c4x-contributors",
+  "author": {
+    "name": "Jaroslav Pantsjoha",
+    "email": "jpantsjoha@gmail.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpantsjoha/c4model-vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/jpantsjoha/c4model-vscode-extension/issues"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "keywords": [
+    "c4",
+    "c4model",
+    "architecture",
+    "diagrams",
+    "visualization",
+    "mermaid"
+  ],
+  "activationEvents": [
+    "onCommand:c4x.openPreview",
+    "onCommand:c4x.exportPng",
+    "onCommand:c4x.exportSvg",
+    "onCommand:c4x.copySvg",
+    "onCommand:c4x.changeTheme",
+    "onLanguage:c4x",
+    "onLanguage:structurizr-dsl",
+    "onLanguage:plantuml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "markdown.markdownItPlugins": true,
+    "markdown.styles": [
+      "./assets/styles/markdown.css"
+    ],
+    "commands": [
+      {
+        "command": "c4x.openPreview",
+        "title": "C4X: Open Preview",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.exportPng",
+        "title": "C4X: Export PNG",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.exportSvg",
+        "title": "C4X: Export SVG",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.copySvg",
+        "title": "C4X: Copy SVG To Clipboard",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.changeTheme",
+        "title": "C4X: Change Theme",
+        "category": "C4X"
+      }
+    ],
+    "languages": [
+      {
+        "id": "c4x",
+        "aliases": [
+          "C4X",
+          "c4x"
+        ],
+        "extensions": [
+          ".c4x"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "structurizr-dsl",
+        "aliases": [
+          "Structurizr DSL",
+          "structurizr"
+        ],
+        "extensions": [
+          ".dsl"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "plantuml",
+        "aliases": [
+          "PlantUML C4",
+          "plantuml"
+        ],
+        "extensions": [
+          ".puml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "c4x",
+        "path": "./snippets/c4x.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "c4x",
+        "scopeName": "source.c4x",
+        "path": "./syntaxes/c4x.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "C4X",
+      "properties": {
+        "c4x.theme": {
+          "type": "string",
+          "default": "classic",
+          "enum": [
+            "classic",
+            "modern",
+            "muted",
+            "high-contrast",
+            "auto"
+          ],
+          "enumDescriptions": [
+            "Official C4 Model colors (Simon Brown specification)",
+            "Vibrant colors with rounded corners",
+            "Grayscale minimalist for professional documentation",
+            "WCAG AAA compliant (7:1 contrast ratio)",
+            "Adapts to VS Code light/dark theme automatically"
+          ],
+          "description": "C4 diagram theme"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "node esbuild.config.js",
+    "watch": "node esbuild.config.js --watch",
+    "lint": "eslint src --ext ts",
+    "test:compile": "tsc -p ./",
+    "pretest": "pnpm run test:compile && pnpm run build",
+    "test": "node ./out/test/runTest.js",
+    "test:unit": "echo \"(stub) No unit tests defined yet\"",
+    "test:integration": "echo \"(stub) No integration tests defined yet\"",
+    "test:e2e": "echo \"(stub) No end-to-end tests defined yet\"",
+    "coverage": "echo \"(stub) Coverage not configured yet\"",
+    "bench": "echo \"(stub) Performance benchmarks not set up yet\"",
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/glob": "^9.0.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vscode/test-electron": "^2.3.0",
+    "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.19.0",
+    "eslint": "^8.0.0",
+    "glob": "^11.0.3",
+    "mocha": "^10.2.0",
+    "pegjs": "^0.10.0",
+    "playwright": "^1.56.1",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/dagre": "^0.7.53",
+    "@types/markdown-it": "^14.1.2",
+    "dagre": "^0.8.5",
+    "elkjs": "^0.11.0",
+    "markdown-it": "^14.1.0"
+  }
+}
