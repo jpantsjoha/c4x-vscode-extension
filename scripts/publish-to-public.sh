@@ -72,6 +72,7 @@ rsync -avm --delete \
     --include='LICENSE' \
     --include='CHANGELOG.md' \
     --include='CONTRIBUTING.md' \
+    --exclude='publish-vsce.md' \
     --include='.gitignore' \
     --include='.vscodeignore' \
     --include='.vscode/extensions.json' \
