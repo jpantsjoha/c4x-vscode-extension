@@ -122,6 +122,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify Tag matches Package Version
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Error: Git tag ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)."
+            echo "Please ensure you bumped the version in package.json before tagging."
+            exit 1
+          fi
+          echo "✅ Version verified: $PACKAGE_VERSION"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
