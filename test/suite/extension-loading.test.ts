@@ -124,6 +124,8 @@ describe('Automated Extension Loading Tests', () => {
       console.log('✅ c4x language registered');
     });
 
+    // Tests disabled for v1.0 (Features deferred to v1.2)
+    /*
     it('should register plantuml language', async () => {
       const languages = await vscode.languages.getLanguages();
       assert.ok(languages.includes('plantuml'), 'plantuml language not registered');
@@ -135,6 +137,7 @@ describe('Automated Extension Loading Tests', () => {
       assert.ok(languages.includes('structurizr-dsl'), 'structurizr-dsl language not registered');
       console.log('✅ structurizr-dsl language registered');
     });
+    */
   });
 
   describe('Configuration', () => {
