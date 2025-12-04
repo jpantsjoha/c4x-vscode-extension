@@ -90,7 +90,23 @@ if [ -f "$SOURCE_DIR/GEMINI_CONTEXT.md" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 3. Git Status in Destination
+# 3. Public-ify README.md (Replace private repo URLs)
+# -----------------------------------------------------------------------------
+if [ -f "$DEST_DIR/README.md" ]; then
+    echo -e "${BLUE}🔄 Updating README.md URLs for public repo...${NC}"
+    # Replace private repo name with public repo name
+    # c4model-vscode-extension -> c4x-vscode-extension
+    perl -i -pe 's/c4model-vscode-extension/c4x-vscode-extension/g' "$DEST_DIR/README.md"
+    
+    # Replace publisher ID if present
+    # c4x-contributors -> jpantsjoha
+    perl -i -pe 's/c4x-contributors/jpantsjoha/g' "$DEST_DIR/README.md"
+    
+    echo -e "${BLUE}✅ README.md updated.${NC}"
+fi
+
+# -----------------------------------------------------------------------------
+# 4. Git Status in Destination
 # -----------------------------------------------------------------------------
 echo -e "${BLUE}📊 Status of Public Repo:${NC}"
 cd "$DEST_DIR"

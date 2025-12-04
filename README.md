@@ -37,7 +37,7 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 **From Command Line**:
 
 ```bash
-code --install-extension c4x-contributors.c4x
+code --install-extension jpantsjoha.c4x
 ```
 
 ### Usage
@@ -342,7 +342,7 @@ Contributions welcome! We'd love your help to make C4X even better.
 
 **Ways to contribute**:
 
-- 🐛 Report bugs or suggest features via [GitHub Issues](https://github.com/jpantsjoha/c4model-vscode-extension/issues)
+- 🐛 Report bugs or suggest features via [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues)
 - 📝 Improve documentation or examples
 - 🎨 Design new themes or icons
 - 🧪 Write tests for edge cases
