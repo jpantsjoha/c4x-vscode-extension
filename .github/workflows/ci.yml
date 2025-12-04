@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, phase-*]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint code
+        run: pnpm run lint
+
+      - name: Build extension
+        run: pnpm run build
+
+      - name: Compile TypeScript
+        run: pnpm run test:compile
+
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Validate Documentation
+        run: pnpm run validate:docs
+
+  package:
+    name: Package VSIX
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build extension
+        run: pnpm run build
+
+      - name: Package VSIX
+        run: pnpm run package
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: c4x-vsix
+          path: "*.vsix"
+          retention-days: 7
