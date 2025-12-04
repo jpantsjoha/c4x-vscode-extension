@@ -13,7 +13,7 @@ import * as fs from 'fs';
  */
 describe('Automated Extension Loading Tests', () => {
 
-  const EXTENSION_ID = 'c4x-contributors.c4x';
+  const EXTENSION_ID = 'jpantsjoha.c4x';
 
   describe('Extension Presence', () => {
     it('should find the extension in VS Code', () => {

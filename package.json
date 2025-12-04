@@ -30,7 +30,14 @@
     "architecture",
     "diagrams",
     "visualization",
-    "mermaid"
+    "mermaid",
+    "markdown",
+    "schematics",
+    "system design",
+    "modeling",
+    "documentation",
+    "uml",
+    "drawing"
   ],
   "activationEvents": [
     "onCommand:c4x.openPreview",

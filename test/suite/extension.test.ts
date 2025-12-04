@@ -5,14 +5,14 @@ describe('Extension Activation Tests', () => {
   vscode.window.showInformationMessage('Running C4X extension tests...');
 
   it('Extension should be present', () => {
-    const extension = vscode.extensions.getExtension('c4x-contributors.c4x');
+    const extension = vscode.extensions.getExtension('jpantsjoha.c4x');
     assert.ok(extension, 'Extension not found');
   });
 
   it('Extension should activate', async function () {
     this.timeout(10000); // Allow 10 seconds for activation
 
-    const extension = vscode.extensions.getExtension('c4x-contributors.c4x');
+    const extension = vscode.extensions.getExtension('jpantsjoha.c4x');
     assert.ok(extension, 'Extension not found');
 
     await extension.activate();
@@ -41,7 +41,7 @@ describe('Extension Activation Tests', () => {
   it('activate() should return extendMarkdownIt for VS Code markdown integration', async function () {
     this.timeout(10000);
 
-    const extension = vscode.extensions.getExtension('c4x-contributors.c4x');
+    const extension = vscode.extensions.getExtension('jpantsjoha.c4x');
     assert.ok(extension, 'Extension not found');
 
     // Activate and get the exported API
@@ -59,7 +59,7 @@ describe('Extension Activation Tests', () => {
   it('extendMarkdownIt should work with MarkdownIt instance', async function () {
     this.timeout(10000);
 
-    const extension = vscode.extensions.getExtension('c4x-contributors.c4x');
+    const extension = vscode.extensions.getExtension('jpantsjoha.c4x');
     assert.ok(extension, 'Extension not found');
 
     const api = await extension.activate();
