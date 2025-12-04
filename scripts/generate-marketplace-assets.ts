@@ -29,6 +29,18 @@ const TASKS = [
         output: 'components.png',
         width: 1000,
         height: 800
+    },
+    {
+        input: path.join(SAMPLES_DIR, 'system-context/multi-agent-system.c4x'),
+        output: 'multi-agent-context.png',
+        width: 1000,
+        height: 800
+    },
+    {
+        input: path.join(SAMPLES_DIR, 'container/multi-agent-orchestrator.c4x'),
+        output: 'multi-agent-container.png',
+        width: 1200,
+        height: 900
     }
 ];
 

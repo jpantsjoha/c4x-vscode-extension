@@ -1,0 +1,12 @@
+%%{ c4: system-context }%%
+graph TB
+    MarketingManager[Marketing Manager<br/>Person]
+    ContentCreator[Content Creator<br/>Person]
+    MultiAgentSystem[Multi-Agent Marketing System<br/>Software System]
+    LLMProvider[LLM Provider<br/>Software System<br/>External]
+    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
+
+    MarketingManager -->|Defines campaigns<br/>Reviews performance| MultiAgentSystem
+    ContentCreator -->|Approves AI-generated content| MultiAgentSystem
+    MultiAgentSystem -->|Generates content using| LLMProvider
+    MultiAgentSystem -->|Publishes content to| SocialMedia

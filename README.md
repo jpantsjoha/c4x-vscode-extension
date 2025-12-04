@@ -90,47 +90,13 @@ C4X makes it easy to visualize complex architectures, from traditional web apps 
 
 This diagram visualizes the high-level interactions for an AI-powered marketing system, featuring human roles, the multi-agent platform, and external AI services.
 
-```c4x
-%%{ c4: system-context }%%
-graph TB
-    MarketingManager[Marketing Manager<br/>Person]
-    ContentCreator[Content Creator<br/>Person]
-    MultiAgentSystem[Multi-Agent Marketing System<br/>Software System]
-    LLMProvider[LLM Provider<br/>Software System<br/>External]
-    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
-
-    MarketingManager -->|Defines campaigns<br/>Reviews performance| MultiAgentSystem
-    ContentCreator -->|Approves AI-generated content| MultiAgentSystem
-    MultiAgentSystem -->|Generates content using| LLMProvider
-    MultiAgentSystem -->|Publishes content to| SocialMedia
-```
+![Multi-Agent System Context](assets/marketplace/images/multi-agent-context.png)
 
 ### C2: Multi-Agent Orchestrator (Container Diagram)
 
 A container-level view of the Multi-Agent Marketing System, detailing the main building blocks within the Multi-Agent System.
 
-```c4x
-%%{ c4: container }%%
-graph TB
-    MarketingManager[Marketing Manager<br/>Person]
-
-    subgraph MultiAgentMarketingSystem {
-        Orchestrator[Agent Orchestrator<br/>Container<br/>Python/LangChain]
-        ContentAgent[Content Generation Agent<br/>Container<br/>Python/GPT-4]
-        SchedulingAgent[Content Scheduling Agent<br/>Container<br/>Python/Temporal]
-        VectorDB[Knowledge Base<br/>Container<br/>Pinecone/Faiss]
-    }
-
-    LLMProvider[LLM Provider<br/>Software System<br/>External]
-    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
-
-    MarketingManager -->|Manages campaigns| Orchestrator
-    Orchestrator -->|Delegates to| ContentAgent
-    Orchestrator -->|Delegates to| SchedulingAgent
-    ContentAgent -->|Accesses| VectorDB
-    ContentAgent -->|Uses| LLMProvider
-    SchedulingAgent -->|Publishes to| SocialMedia
-```
+![Multi-Agent Orchestrator](assets/marketplace/images/multi-agent-container.png)
 
 For more examples, including theme showcases and other system architectures, refer to the full [C4X Examples Gallery](./EXAMPLES.md).
 
