@@ -143,6 +143,7 @@
     "publish": "vsce publish"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/glob": "^9.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.0.0",
