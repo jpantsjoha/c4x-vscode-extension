@@ -79,18 +79,59 @@ graph TB
 
 The extension will automatically render this code block as a visual SVG diagram in the VS Code Markdown Preview.
 
-### Example: System Context Diagram
+## 📚 Examples & Use Cases
+
+C4X makes it easy to visualize complex architectures, from traditional web apps to advanced AI agent systems.
+
+### Featured Example: Multi-Agent Marketing System (C1 - System Context)
+
+This diagram visualizes the high-level interactions for an AI-powered marketing system, featuring human roles, the multi-agent platform, and external AI services.
 
 ```c4x
 %%{ c4: system-context }%%
 graph TB
-    Customer[Customer<br/>Person]
-    Banking[Internet Banking System<br/>Software System]
-    Email[Email System<br/>Software System<br/>External]
+    MarketingManager[Marketing Manager<br/>Person]
+    ContentCreator[Content Creator<br/>Person]
+    MultiAgentSystem[Multi-Agent Marketing System<br/>Software System]
+    LLMProvider[LLM Provider<br/>Software System<br/>External]
+    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
 
-    Customer -->|Uses| Banking
-    Banking -->|Sends emails using| Email
+    MarketingManager -->|Defines campaigns<br/>Reviews performance| MultiAgentSystem
+    ContentCreator -->|Approves AI-generated content| MultiAgentSystem
+    MultiAgentSystem -->|Generates content using| LLMProvider
+    MultiAgentSystem -->|Publishes content to| SocialMedia
 ```
+
+### C2: Multi-Agent Orchestrator (Container Diagram)
+
+A container-level view of the Multi-Agent Marketing System, detailing the main building blocks within the Multi-Agent System.
+
+```c4x
+%%{ c4: container }%%
+graph TB
+    MarketingManager[Marketing Manager<br/>Person]
+
+    subgraph MultiAgentMarketingSystem {
+        Orchestrator[Agent Orchestrator<br/>Container<br/>Python/LangChain]
+        ContentAgent[Content Generation Agent<br/>Container<br/>Python/GPT-4]
+        SchedulingAgent[Content Scheduling Agent<br/>Container<br/>Python/Temporal]
+        VectorDB[Knowledge Base<br/>Container<br/>Pinecone/Faiss]
+    }
+
+    LLMProvider[LLM Provider<br/>Software System<br/>External]
+    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
+
+    MarketingManager -->|Manages campaigns| Orchestrator
+    Orchestrator -->|Delegates to| ContentAgent
+    Orchestrator -->|Delegates to| SchedulingAgent
+    ContentAgent -->|Accesses| VectorDB
+    ContentAgent -->|Uses| LLMProvider
+    SchedulingAgent -->|Publishes to| SocialMedia
+```
+
+For more examples, including theme showcases and other system architectures, refer to the full [C4X Examples Gallery](./EXAMPLES.md).
+
+---
 
 ## 📖 C4X-DSL Syntax Guide
 

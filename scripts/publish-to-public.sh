@@ -56,6 +56,7 @@ rsync -avm --delete \
     --include='docs/USER-GUIDE.md' \
     --include='ABOUT.md' \
     --include='GEMINI.md' \
+    --include='EXAMPLES.md' \
     --include='package.json' \
     --include='tsconfig.json' \
     --include='esbuild.config.js' \
