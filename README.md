@@ -2,9 +2,9 @@
 >
 > **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards.
 
-![CI](https://github.com/jpantsjoha/c4model-vscode-extension/workflows/CI/badge.svg)
+![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-![License](https://img.shields.io/github/license/jpantsjoha/c4model-vscode-extension)
+![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
 
 > **Make C4 architectural diagrams as easy as Mermaid in VS Code** - Jaroslav
 
@@ -371,4 +371,4 @@ Read more about the [Story Behind C4X](./ABOUT.md).
 
 ---
 
-**Made with ❤️ for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4model-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4model-vscode-extension)
+**Made with ❤️ for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)
