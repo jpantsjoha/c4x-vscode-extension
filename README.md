@@ -5,7 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 ![License](https://img.shields.io/github/license/jpantsjoha/c4model-vscode-extension)
 
-> **Make C4 architectural diagrams as easy as Mermaid in VS Code**
+> **Make C4 architectural diagrams as easy as Mermaid in VS Code** - Jaroslav
 
 Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats.
 
