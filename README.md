@@ -454,6 +454,13 @@ Contributions welcome! We'd love your help to make C4X even better.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
+## 👤 More from the Author
+
+Check out my other VS Code extension:
+
+*   **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
+    *   [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
+
 ## 📄 License
 
 MIT License - see [LICENSE](./LICENSE) for details.
