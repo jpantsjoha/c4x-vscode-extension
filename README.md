@@ -466,6 +466,8 @@ MIT License - see [LICENSE](./LICENSE) for details.
 - [PlantUML C4](https://github.com/plantuml-stdlib/C4-PlantUML) - PlantUML C4 macros
 - [Structurizr](https://structurizr.com/) - DSL for software architecture models
 
+Read more about the [Story Behind C4X](./docs/ABOUT.md).
+
 ---
 
 **Made with ❤️ for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4model-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4model-vscode-extension)
