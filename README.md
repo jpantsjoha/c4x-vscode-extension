@@ -1,5 +1,5 @@
 # C4X - C4 Model Diagrams for VS Code
-> **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards (hollow arrows, correct colors, person icons).
+> **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards.
 
 ![CI](https://github.com/jpantsjoha/c4model-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -15,17 +15,12 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 - 🔍 **Real-time Validation** - Syntax highlighting and error reporting as you type
 - 📝 **Markdown Integration** - Render ` ```c4x ` blocks directly in your README files
 - 🎨 **5 built-in themes** - Classic, Modern, Muted, High Contrast, Auto
-- 📝 **3 DSL formats** - C4X, PlantUML C4, Structurizr DSL
+- 📝 **Simple DSL** - Mermaid-inspired C4X syntax
 - 🚀 **Zero dependencies** - No Java, no Graphviz, no external servers
 - 📦 **Tiny bundle** - 386KB (63% under 1MB target)
 - 🔒 **Secure** - CSP-compliant, no external CDN dependencies
 - 📤 **Export** - SVG/PNG with theme preservation
 - ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
-
-### Additional References
-
-- Updated visual guide is now showcased in the c4model.com and in the `./examples` folder.
-- Relevant updates for Archimate are available for review [here](https://www.archimatetool.com/blog/2020/04/18/c4-model-architecture-viewpoint-and-archi-4-7/) (albeit outdated graphics).
 
 ## 🚀 Quick Start
 
@@ -279,20 +274,9 @@ C4X automatically recognizes these file extensions:
 
 **Phase 1 (M0 - Scaffolding)**: ✅ Complete (v0.1.0)
 **Phase 2 (M1 - C4X-DSL MVP)**: ✅ Complete (v0.2.0)
-**Phase 3 (M2 - Themes & Export)**: ✅ Complete (v0.3.0) - *Markdown rendering coming in v1.1*
-**Phase 4 (M3 - Structurizr DSL)**: ⚠️ Experimental (v0.4.0) - *58% test coverage, basic features work*
-**Phase 5 (M4 - PlantUML C4)**: ✅ Complete (v0.5.0)
-
-### Supported DSL Formats
-
-| Format | Status | Support Level | Test Coverage |
-|--------|--------|---------------|---------------|
-| **C4X-DSL** (.c4x) | ✅ Production | 100% | 122/122 (100%) |
-| **PlantUML C4** (.puml) | ✅ Production | ~75% | 58/58 (100%) |
-| **Structurizr DSL** (.dsl) | ⚠️ Experimental | ~58% | 57/99 (58%) |
-
-**v1.0 Focus**: C4X and PlantUML C4 are production-ready with 100% test pass rates.
-**v1.1 Plan**: Full Markdown rendering (```c4x blocks) and Structurizr DSL fixes.
+**Phase 3 (M2 - Themes & Export)**: ✅ Complete (v0.3.0)
+**Phase 4 (M3 - Structurizr DSL)**: ⏳ Deferred to v1.2
+**Phase 5 (M4 - PlantUML C4)**: ⏳ Deferred to v1.2
 
 See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 
