@@ -8,6 +8,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added automated release pipeline via GitHub Actions.
 - Optimized package size.
 
+## [1.0.3] - 2025-12-04
+- Fixed README documentation images on Marketplace.
+
 ## [1.0.0] - 2025-12-03
 
 ### 🚀 v1.0 Stable Release
