@@ -213,27 +213,6 @@ graph TB
 %%{ c4: component }%%
 ```
 
-### Complete Example
-
-```c4x
-%%{ c4: system-context }%%
-graph TB
-    %% Actors
-    Customer[Customer<br/>Person]
-    Admin[Administrator<br/>Person]
-
-    %% Systems
-    WebApp[E-commerce Website<br/>Software System]
-    PaymentGateway[Payment Gateway<br/>Software System<br/>External]
-    EmailService[Email Service<br/>Software System<br/>External]
-
-    %% Relationships
-    Customer -->|Browses products, makes purchases| WebApp
-    Admin -->|Manages products and orders| WebApp
-    WebApp -->|Processes payments using| PaymentGateway
-    WebApp -.->|Sends order confirmations via| EmailService
-```
-
 ## 🎨 Themes
 
 Choose from 5 built-in themes to match your documentation style:
@@ -284,7 +263,6 @@ Exceeds all targets by 72-99%:
 | **Activation Time** | < 200ms | **0.15ms** | ✅ 99.9% faster |
 | **Bundle Size** | < 1MB | **386KB** | ✅ 63% under target |
 | **C4X Parse** | < 50ms | **10ms avg** | ✅ 80% faster |
-| **PlantUML Parse** | < 50ms | **6.5ms avg** | ✅ 87% faster |
 | **Preview Render** | < 250ms | **55ms avg** | ✅ 78% faster |
 | **Full Pipeline** | < 300ms | **55ms avg** | ✅ 82% faster |
 
@@ -308,8 +286,6 @@ Configure C4X in your VS Code settings (`Ctrl+,` or `Cmd+,`):
 
 C4X automatically recognizes these file extensions:
 - `.c4x` - C4X-DSL (Mermaid-inspired syntax)
-- `.puml` - PlantUML C4 diagrams
-- `.dsl` - Structurizr DSL files (experimental)
 
 ## 🏗️ Project Status
 
@@ -326,20 +302,19 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 ### v1.0.0 (October 2025) ✅ Ready to Ship
 
 - ✅ C4X-DSL with Mermaid-inspired syntax (100% working)
-- ✅ PlantUML C4 support - No Java required! (100% working)
 - ✅ 5 built-in themes with instant switching
 - ✅ SVG/PNG export with theme preservation
 - ✅ Sub-50ms rendering for 30-node diagrams
-- ⚠️ Structurizr DSL (experimental - 58% support)
 
 ### v1.1.0 (Within 1 Month Post-Launch) 🚧 Planned
 
 - 🔨 **Markdown rendering** - Render ```c4x fenced code blocks inline (6-8h)
-- 🔨 **Structurizr DSL fixes** - 100% compatibility, grammar overhaul (8-12h)
 - 🔨 **Diagnostics panel** - Error highlighting and quick fixes (4.5h)
 - 🔨 **Built-in templates** - C1/C2/C3/C4 boilerplate generators (3.5h)
 
-**Total v1.1 effort**: 22-28 hours (focus on Markdown + Structurizr first)
+### v1.2.0 (Q2 2026)
+- **PlantUML C4 Support**
+- **Structurizr DSL Support**
 
 ## 📚 Documentation
 
@@ -348,7 +323,6 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 - [Technical Decisions](./docs/adrs/) - Architecture Decision Records (11 TDRs)
 - [Phase Documentation](./docs/phases/) - Development phase reports
 - [Performance Report](./docs/PERFORMANCE-REPORT.md) - Detailed benchmarks
-- [PlantUML Compatibility](./docs/PLANTUML-C4-COMPATIBILITY.md) - 500+ line compatibility matrix
 
 ## 🤝 Contributing
 
@@ -379,8 +353,6 @@ MIT License - see [LICENSE](./LICENSE) for details.
 - [C4 Model](https://c4model.com/) by Simon Brown - The architectural modeling standard
 - [Mermaid.js](https://mermaid.js.org/) - Inspiration for C4X-DSL syntax
 - [Dagre.js](https://github.com/dagrejs/dagre) - Hierarchical graph layout engine
-- [PlantUML C4](https://github.com/plantuml-stdlib/C4-PlantUML) - PlantUML C4 macros
-- [Structurizr](https://structurizr.com/) - DSL for software architecture models
 
 Read more about the [Story Behind C4X](./ABOUT.md).
 
