@@ -39,8 +39,7 @@
     "onCommand:c4x.copySvg",
     "onCommand:c4x.changeTheme",
     "onLanguage:c4x",
-    "onLanguage:structurizr-dsl",
-    "onLanguage:plantuml"
+    "onLanguage:structurizr-dsl"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -95,17 +94,6 @@
         ],
         "extensions": [
           ".dsl"
-        ],
-        "configuration": "./language-configuration.json"
-      },
-      {
-        "id": "plantuml",
-        "aliases": [
-          "PlantUML C4",
-          "plantuml"
-        ],
-        "extensions": [
-          ".puml"
         ],
         "configuration": "./language-configuration.json"
       }
