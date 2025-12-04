@@ -40,14 +40,6 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 code --install-extension jpantsjoha.c4x
 ```
 
-**Manual Installation (VSIX)**:
-
-Download the latest `.vsix` release and run:
-
-```bash
-code --install-extension c4x-1.0.4.vsix
-```
-
 ### Usage
 
 1. **Create a C4X file**: `banking-system.c4x`
