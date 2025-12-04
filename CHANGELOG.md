@@ -4,6 +4,9 @@ All notable changes to the "C4X" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.5] - 2025-12-04
+- Refreshed extension icon with bold, monochrome design.
+
 ## [1.0.4] - 2025-12-04
 - Updated extension icon for better transparency support.
 
