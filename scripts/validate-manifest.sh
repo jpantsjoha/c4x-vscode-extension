@@ -13,7 +13,7 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
 const required = {
   'name': pkg.name === 'c4x',
-  'displayName': pkg.displayName === 'C4X - C4 Model Diagrams',
+  'displayName': pkg.displayName === 'C4X - AI Agent Diagrams',
   'version': pkg.version === '0.1.2',
   'engines.vscode': pkg.engines?.vscode === '^1.80.0',
   'main': pkg.main === './dist/extension.js',
