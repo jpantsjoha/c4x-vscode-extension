@@ -1,9 +1,13 @@
 {
   "name": "c4x",
   "displayName": "C4X - AI Agent Diagrams",
-  "description": "Make C4 diagrams as easy as Mermaid in VS Code - ideal for AI/Agentic Visuals",
+  "description": "Create C4 architecture diagrams as easy as Mermaid in VS Code. Supports C4X-DSL, Markdown integration, and themes. Ideal for AI Agent & Microservices design.",
+  "galleryBanner": {
+    "color": "#08427B",
+    "theme": "dark"
+  },
   "icon": "assets/marketplace/icon.png",
-  "version": "0.1.2",
+  "version": "1.0.1",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -37,7 +41,12 @@
     "modeling",
     "documentation",
     "uml",
-    "drawing"
+    "drawing",
+    "diagrams-as-code",
+    "architecture-as-code",
+    "puml",
+    "plantuml",
+    "structurizr"
   ],
   "activationEvents": [
     "onCommand:c4x.openPreview",
