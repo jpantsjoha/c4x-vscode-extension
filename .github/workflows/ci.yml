@@ -37,7 +37,12 @@ jobs:
       - name: Compile TypeScript
         run: pnpm run test:compile
 
-      - name: Run Tests
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test
+
+      - name: Run tests (macOS/Windows)
+        if: runner.os != 'Linux'
         run: pnpm test
 
   validate-docs:
