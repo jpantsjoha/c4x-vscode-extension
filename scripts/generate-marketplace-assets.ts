@@ -57,18 +57,20 @@ async function generateAssets() {
 
             // 2. Layout and Render
             const view = model.views[0];
-            // Use layoutSync if available, or wait for async layout
-            // The previous script used layoutSync, assuming it exists on DagreLayoutEngine
             const layout = dagreLayoutEngine.layoutSync(view); 
-            const svg = svgBuilder.build(layout, { theme: ModernTheme });
+            let svg = svgBuilder.build(layout, { theme: ModernTheme });
+
+            // Fix: Replace 100% width/height with actual pixel values for tight crop
+            svg = svg.replace('width="100%"', `width="${layout.width}px"`);
+            svg = svg.replace('height="100%"', `height="${layout.height}px"`);
 
             // 3. Render to PNG using Playwright
             const page = await browser.newPage({
-                viewport: { width: task.width, height: task.height },
+                viewport: { width: Math.max(task.width, layout.width), height: Math.max(task.height, layout.height) },
                 deviceScaleFactor: 2 // Retina quality
             });
 
-            // Wrap SVG in a nice container for the screenshot
+            // Wrap SVG in a minimal container
             const html = `
             <!DOCTYPE html>
             <html>
@@ -76,19 +78,11 @@ async function generateAssets() {
                 <style>
                     body { 
                         margin: 0; 
-                        padding: 40px; 
-                        background: #1e1e1e; /* Dark background for contrast */
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        height: 100vh;
-                        box-sizing: border-box;
+                        padding: 0;
+                        display: inline-block; /* Shrink wrap */
                     }
-                    /* Ensure SVG fits and centers */
                     svg {
-                        max-width: 100%;
-                        max-height: 100%;
-                        overflow: visible;
+                        display: block; /* Remove descender space */
                     }
                 </style>
             </head>
@@ -99,27 +93,16 @@ async function generateAssets() {
 
             await page.setContent(html);
             
-            // Take screenshot of the SVG element or the whole page?
-            // Let's take the whole viewport but cropped to content if possible, 
-            // or just the viewport size we set.
-            // Actually, let's select the SVG element to get tight bounds + padding from body
             const svgElement = await page.$('svg');
             
             if (svgElement) {
                 await svgElement.screenshot({
                     path: path.join(ASSETS_DIR, task.output),
-                    omitBackground: false // Keep the dark background or make it transparent?
-                    // VS Code marketplace images often look good on dark or transparent.
-                    // Let's stick to transparent background for the screenshot itself 
-                    // but our HTML body has background. 
-                    // Actually, let's make the body transparent and let the screenshot handle it.
+                    omitBackground: true
                 });
-            } else {
-                // Fallback to full page
-                await page.screenshot({ path: path.join(ASSETS_DIR, task.output) });
             }
             
-            console.log(`✅ Generated ${task.output}`);
+            console.log(`✅ Generated ${task.output} (${layout.width}x${layout.height})`);
             await page.close();
 
         } catch (error) {
