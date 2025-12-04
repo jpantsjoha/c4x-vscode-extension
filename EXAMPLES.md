@@ -1,247 +1,168 @@
 # C4X Examples Gallery
 
-This gallery showcases the versatility of C4X, demonstrating various diagram levels, theme applications, and core functionalities like icon usage and multi-agent visualization.
+This gallery demonstrates the flexibility of C4X for visualizing diverse software architectures, from cloud-native microservices to IoT and AI systems.
 
-## 🎨 Theme Showcase (System Context Diagram)
+## 🎨 Theme & Diagram Variety
 
-This example uses a simple System Context diagram to illustrate each of the 5 built-in themes.
+### Classic Theme: System Context (C1)
+The standard C4 model look. Ideal for high-level overviews.
 
 ```c4x
 %%{ c4: system-context }%%
 graph TB
-    User[Customer<br/>Person]
-    Banking[Internet Banking System<br/>Software System]
-    Email[Email System<br/>Software System<br/>External]
-
-    User -->|Uses| Banking
-    Banking -->|Sends notifications| Email
+    User[Homeowner<br/>Person]
+    SmartHome[Smart Home Hub<br/>Software System]
+    Cloud[Cloud Backend<br/>Software System<br/>External]
+    
+    User -->|Controls| SmartHome
+    SmartHome -->|Syncs state| Cloud
 ```
 
-### Classic Theme
+### Modern Theme: Data Pipeline (C2)
+Vibrant colors and rounded corners. Shows a linear data processing flow.
 
 ```c4x
+%%{ c4: container }%%
+graph LR
+    Source[IoT Device<br/>Container<br/>External]
+    
+    subgraph DataPlatform {
+        Ingest[Ingestion API<br/>Container<br/>Go]
+        Queue[Message Bus<br/>Container<br/>Kafka]
+        Processor[Stream Processor<br/>Container<br/>Flink]
+        DataLake[Data Lake<br/>Container<br/>S3]
+    }
 
-%%{ c4: system-context }%%
-
-graph TB
-
-    User[Customer<br/>Person]
-
-    Banking[Internet Banking System<br/>Software System]
-
-    Email[Email System<br/>Software System<br/>External]
-
-
-
-    User -->|Uses| Banking
-
-    Banking -->|Sends notifications| Email
-
+    Source -->|Sends telemetry| Ingest
+    Ingest -->|Publishes| Queue
+    Queue -->|Consumes| Processor
+    Processor -->|Persists| DataLake
 ```
 
-### Modern Theme
+### Muted Theme: Corporate Banking (C3)
+Minimalist grayscale for professional reports. Shows internal component structure.
 
 ```c4x
-
-%%{ c4: system-context }%%
-
+%%{ c4: component }%%
 graph TB
+    API[API Gateway<br/>Container<br/>External]
 
-    User[Customer<br/>Person]
+    subgraph PaymentService {
+        Controller[Payment Controller<br/>Component<br/>Spring MVC]
+        Service[Payment Logic<br/>Component<br/>Java]
+        Repo[Transaction Repo<br/>Component<br/>JPA]
+        FraudClient[Fraud Check Client<br/>Component<br/>HTTP Client]
+    }
 
-    Banking[Internet Banking System<br/>Software System]
+    DB[Payment DB<br/>Container<br/>External]
 
-    Email[Email System<br/>Software System<br/>External]
-
-
-
-    User -->|Uses| Banking
-
-    Banking -->|Sends notifications| Email
-
+    API -->|POST /pay| Controller
+    Controller -->|Execute| Service
+    Service -->|Verify| FraudClient
+    Service -->|Save| Repo
+    Repo -->|SQL| DB
 ```
 
-### Muted Theme
+---
 
-```c4x
+## 🏗️ Advanced Architectures
 
-%%{ c4: system-context }%%
-
-graph TB
-
-    User[Customer<br/>Person]
-
-    Banking[Internet Banking System<br/>Software System]
-
-    Email[Email System<br/>Software System<br/>External]
-
-
-
-    User -->|Uses| Banking
-
-    Banking -->|Sends notifications| Email
-
-```
-
-### High Contrast Theme
-
-```c4x
-
-%%{ c4: system-context }%%
-
-graph TB
-
-    User[Customer<br/>Person]
-
-    Banking[Internet Banking System<br/>Software System]
-
-    Email[Email System<br/>Software System<br/>External]
-
-
-
-    User -->|Uses| Banking
-
-    Banking -->|Sends notifications| Email
-
-```
-
-### Auto Theme
-
-```c4x
-
-%%{ c4: system-context }%%
-
-graph TB
-
-    User[Customer<br/>Person]
-
-    Banking[Internet Banking System<br/>Software System]
-
-    Email[Email System<br/>Software System<br/>External]
-
-
-
-    User -->|Uses| Banking
-
-    Banking -->|Sends notifications| Email
-
-```
-
-## 🤖 Multi-Agent Architecture Examples
-
-### C1: Multi-Agent Marketing System (System Context)
-
-This diagram visualizes the high-level interactions for an AI-powered marketing system, featuring human roles, the multi-agent platform, and external AI services.
-
-```c4x
-%%{ c4: system-context }%%
-graph TB
-    MarketingManager[Marketing Manager<br/>Person]
-    ContentCreator[Content Creator<br/>Person]
-    MultiAgentSystem[Multi-Agent Marketing System<br/>Software System]
-    LLMProvider[LLM Provider<br/>Software System<br/>External]
-    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
-
-    MarketingManager -->|Defines campaigns<br/>Reviews performance| MultiAgentSystem
-    ContentCreator -->|Approves AI-generated content| MultiAgentSystem
-    MultiAgentSystem -->|Generates content using| LLMProvider
-    MultiAgentSystem -->|Publishes content to| SocialMedia
-```
-
-### C2: Multi-Agent Orchestrator (Container Diagram)
-
-A container-level view of the Multi-Agent Marketing System, detailing the main building blocks within the Multi-Agent System.
+### 1. FinTech NeoBank (Container Level)
+A complex microservices architecture with multiple external integrations and internal services.
 
 ```c4x
 %%{ c4: container }%%
 graph TB
-    MarketingManager[Marketing Manager<br/>Person]
+    Customer[Customer<br/>Person]
 
-    subgraph MultiAgentMarketingSystem {
-        Orchestrator[Agent Orchestrator<br/>Container<br/>Python/LangChain]
-        ContentAgent[Content Generation Agent<br/>Container<br/>Python/GPT-4]
-        SchedulingAgent[Content Scheduling Agent<br/>Container<br/>Python/Temporal]
-        VectorDB[Knowledge Base<br/>Container<br/>Pinecone/Faiss]
+    subgraph NeoBankPlatform {
+        MobileApp[Mobile App<br/>Container<br/>Flutter]
+        APIGateway[API Gateway<br/>Container<br/>Kong]
+        
+        AuthSvc[Auth Service<br/>Container<br/>OAuth2]
+        AccountSvc[Account Service<br/>Container<br/>Go]
+        CardSvc[Card Service<br/>Container<br/>Java]
+        NotificationSvc[Notification Service<br/>Container<br/>Node.js]
+        
+        CoreDB[Core Ledger<br/>Container<br/>PostgreSQL]
     }
 
-    LLMProvider[LLM Provider<br/>Software System<br/>External]
-    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
+    KYCProvider[KYC Provider<br/>Software System<br/>External]
+    CardNetwork[Visa/Mastercard<br/>Software System<br/>External]
+    PushService[FCM/APNS<br/>Software System<br/>External]
 
-    MarketingManager -->|Manages campaigns| Orchestrator
-    Orchestrator -->|Delegates to| ContentAgent
-    Orchestrator -->|Delegates to| SchedulingAgent
-    ContentAgent -->|Accesses| VectorDB
-    ContentAgent -->|Uses| LLMProvider
-    SchedulingAgent -->|Publishes to| SocialMedia
+    Customer -->|Uses| MobileApp
+    MobileApp -->|HTTPS/JSON| APIGateway
+    
+    APIGateway -->|Routes| AuthSvc
+    APIGateway -->|Routes| AccountSvc
+    APIGateway -->|Routes| CardSvc
+    
+    AccountSvc -->|Verifies Identity| KYCProvider
+    AccountSvc -->|Records Transactions| CoreDB
+    
+    CardSvc -->|Authorizes| CardNetwork
+    CardSvc -.->|Payment Event| NotificationSvc
+    
+    NotificationSvc -->|Sends Alert| PushService
 ```
 
-## 🏦 Banking System Examples
-
-### C1: Internet Banking System (System Context)
+### 2. Smart Home IoT System (System Context)
+Demonstrates a central system interacting with multiple diverse external entities (Fan-out pattern).
 
 ```c4x
 %%{ c4: system-context }%%
 graph TB
-    Customer[Personal Banking Customer<br/>Person]
-    InternetBanking[Internet Banking System<br/>Software System]
-    MainframeSystem[Mainframe Banking System<br/>Software System<br/>External]
+    Homeowner[Homeowner<br/>Person]
+    
+    SmartHub[Smart Home Hub<br/>Software System]
+    
+    LightBulb[Smart Lights<br/>Software System<br/>External]
+    Thermostat[Thermostat<br/>Software System<br/>External]
+    SecurityCam[Security Camera<br/>Software System<br/>External]
+    VoiceAssistant[Alexa/Siri<br/>Software System<br/>External]
+    WeatherSvc[Weather Service<br/>Software System<br/>External]
 
-    Customer -->|Uses| InternetBanking
-    InternetBanking -->|Gets account info from| MainframeSystem
+    Homeowner -->|Configures| SmartHub
+    VoiceAssistant -->|Voice Commands| SmartHub
+    
+    SmartHub -->|Controls| LightBulb
+    SmartHub -->|Sets temp| Thermostat
+    SmartHub -->|Streams feed| SecurityCam
+    SmartHub -->|Polls data| WeatherSvc
 ```
 
-### C2: Internet Banking System (Container Diagram)
+### 3. AI Agent Swarm (Container Level)
+Visualizing a complex multi-agent workflow with shared memory and specialized roles.
 
 ```c4x
 %%{ c4: container }%%
-graph TB
-    Customer[Personal Banking Customer<br/>Person]
+graph LR
+    User[User<br/>Person]
 
-    subgraph InternetBankingSystem {
-        WebApp[Web Application<br/>Container<br/>React]
-        APIService[API Service<br/>Container<br/>Spring Boot]
-        Database[Database<br/>Container<br/>PostgreSQL]
+    subgraph "Agent Swarm" {
+        Orchestrator[Master Orchestrator<br/>Container<br/>LangGraph]
+        
+        ResearchAgent[Researcher<br/>Container<br/>Agent]
+        CoderAgent[Coder<br/>Container<br/>Agent]
+        ReviewerAgent[Reviewer<br/>Container<br/>Agent]
+        
+        SharedMem[Shared Memory<br/>Container<br/>Redis]
     }
 
-    Customer -->|Uses| WebApp
-    WebApp -->|Calls| APIService
-    APIService -->|Reads/Writes| Database
-```
+    LLM[LLM API<br/>Software System<br/>External]
+    GitHub[GitHub API<br/>Software System<br/>External]
 
-## 🛒 E-commerce System Examples
-
-### C1: E-commerce Platform (System Context)
-
-```c4x
-%%{ c4: system-context }%%
-graph TB
-    Buyer[Online Buyer<br/>Person]
-    Seller[Merchant Seller<br/>Person]
-    EcommerceSystem[E-commerce Platform<br/>Software System]
-    PaymentGateway[Payment Gateway<br/>Software System<br/>External]
-
-    Buyer -->|Browses & Buys| EcommerceSystem
-    Seller -->|Manages Products| EcommerceSystem
-    EcommerceSystem -->|Processes payments via| PaymentGateway
-```
-
-### C2: E-commerce Platform (Container Diagram)
-
-```c4x
-%%{ c4: container }%%
-graph TB
-    Buyer[Online Buyer<br/>Person]
-
-    subgraph EcommercePlatform {
-        Storefront[Storefront Web App<br/>Container<br/>Next.js]
-        ProductAPI[Product Service API<br/>Container<br/>Node.js]
-        OrderDB[Order Database<br/>Container<br/>MongoDB]
-    }
-
-    PaymentGateway[Payment Gateway<br/>Software System<br/>External]
-
-    Buyer -->|Uses| Storefront
-    Storefront -->|Calls| ProductAPI
-    ProductAPI -->|Manages orders in| OrderDB
-    ProductAPI -->|Integrates with| PaymentGateway
+    User -->|Task| Orchestrator
+    
+    Orchestrator -->|Plan| ResearchAgent
+    Orchestrator -->|Code| CoderAgent
+    Orchestrator -->|Review| ReviewerAgent
+    
+    ResearchAgent <-->|Context| SharedMem
+    CoderAgent <-->|Context| SharedMem
+    
+    ResearchAgent -->|Query| LLM
+    CoderAgent -->|Generate| LLM
+    CoderAgent -->|Push| GitHub
 ```
