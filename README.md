@@ -473,7 +473,7 @@ MIT License - see [LICENSE](./LICENSE) for details.
 - [PlantUML C4](https://github.com/plantuml-stdlib/C4-PlantUML) - PlantUML C4 macros
 - [Structurizr](https://structurizr.com/) - DSL for software architecture models
 
-Read more about the [Story Behind C4X](./docs/ABOUT.md).
+Read more about the [Story Behind C4X](./ABOUT.md).
 
 ---
 

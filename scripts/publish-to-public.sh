@@ -54,7 +54,7 @@ rsync -avm --delete \
     --include='docs/images/***' \
     --include='docs/c4x-syntax.md' \
     --include='docs/USER-GUIDE.md' \
-    --include='docs/ABOUT.md' \
+    --include='ABOUT.md' \
     --include='GEMINI.md' \
     --include='package.json' \
     --include='tsconfig.json' \
