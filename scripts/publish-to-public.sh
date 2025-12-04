@@ -44,7 +44,6 @@ echo -e "${BLUE}🚀 Starting Sync to Public Repo: $DEST_DIR${NC}"
 rsync -avm --delete \
     --include='src/***' \
     --include='assets/***' \
-    --exclude='assets/marketplace/images/***' \
     --include='snippets/***' \
     --include='syntaxes/***' \
     --include='samples/***' \

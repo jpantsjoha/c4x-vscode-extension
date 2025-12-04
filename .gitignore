@@ -8,7 +8,6 @@ pnpm-debug.log*
 # Claude Code configuration (private)
 .claude/
 CLAUDE.md
-GEMINI.md
 
 # Build output
 dist/
