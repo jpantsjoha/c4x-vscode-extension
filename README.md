@@ -296,11 +296,10 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 
 ## 📚 Documentation
 
-- [Architecture](./ARCHITECTURE.md) - Technical architecture and design decisions
+- [Architecture](./docs/architecture/README.md) - Technical architecture and design decisions
 - [Contributing](./CONTRIBUTING.md) - Contribution guidelines
 - [Technical Decisions](./docs/adrs/) - Architecture Decision Records (11 TDRs)
 - [Phase Documentation](./docs/phases/) - Development phase reports
-- [Performance Report](./docs/PERFORMANCE-REPORT.md) - Detailed benchmarks
 
 ## 🤝 Contributing
 

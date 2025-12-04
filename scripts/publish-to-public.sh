@@ -50,7 +50,11 @@ rsync -avm --delete \
     --include='test/***' \
     --include='scripts/***' \
     --exclude='scripts/publish-to-public.sh' \
+    --include='docs/' \
     --include='docs/images/***' \
+    --include='docs/architecture/***' \
+    --include='docs/adrs/***' \
+    --include='docs/phases/***' \
     --include='docs/c4x-syntax.md' \
     --include='docs/USER-GUIDE.md' \
     --include='ABOUT.md' \
