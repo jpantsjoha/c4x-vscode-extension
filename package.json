@@ -38,8 +38,7 @@
     "onCommand:c4x.exportSvg",
     "onCommand:c4x.copySvg",
     "onCommand:c4x.changeTheme",
-    "onLanguage:c4x",
-    "onLanguage:structurizr-dsl"
+    "onLanguage:c4x"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -83,17 +82,6 @@
         ],
         "extensions": [
           ".c4x"
-        ],
-        "configuration": "./language-configuration.json"
-      },
-      {
-        "id": "structurizr-dsl",
-        "aliases": [
-          "Structurizr DSL",
-          "structurizr"
-        ],
-        "extensions": [
-          ".dsl"
         ],
         "configuration": "./language-configuration.json"
       }
