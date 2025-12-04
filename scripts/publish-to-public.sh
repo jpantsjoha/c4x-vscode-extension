@@ -63,6 +63,7 @@ rsync -avm --delete \
     --include='playwright.config.ts' \
     --include='Makefile' \
     --include='.eslintrc.json' \
+    --include='.markdownlint.json' \
     --include='language-configuration.json' \
     --include='README.md' \
     --include='LICENSE' \

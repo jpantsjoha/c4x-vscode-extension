@@ -20,66 +20,111 @@ graph TB
 ### Classic Theme
 
 ```c4x
-%%{ c4: system-context, theme: classic }%%
+
+%%{ c4: system-context }%%
+
 graph TB
+
     User[Customer<br/>Person]
+
     Banking[Internet Banking System<br/>Software System]
+
     Email[Email System<br/>Software System<br/>External]
 
+
+
     User -->|Uses| Banking
+
     Banking -->|Sends notifications| Email
+
 ```
 
 ### Modern Theme
 
 ```c4x
-%%{ c4: system-context, theme: modern }%%
+
+%%{ c4: system-context }%%
+
 graph TB
+
     User[Customer<br/>Person]
+
     Banking[Internet Banking System<br/>Software System]
+
     Email[Email System<br/>Software System<br/>External]
 
+
+
     User -->|Uses| Banking
+
     Banking -->|Sends notifications| Email
+
 ```
 
 ### Muted Theme
 
 ```c4x
-%%{ c4: system-context, theme: muted }%%
+
+%%{ c4: system-context }%%
+
 graph TB
+
     User[Customer<br/>Person]
+
     Banking[Internet Banking System<br/>Software System]
+
     Email[Email System<br/>Software System<br/>External]
 
+
+
     User -->|Uses| Banking
+
     Banking -->|Sends notifications| Email
+
 ```
 
 ### High Contrast Theme
 
 ```c4x
-%%{ c4: system-context, theme: high-contrast }%%
+
+%%{ c4: system-context }%%
+
 graph TB
+
     User[Customer<br/>Person]
+
     Banking[Internet Banking System<br/>Software System]
+
     Email[Email System<br/>Software System<br/>External]
 
+
+
     User -->|Uses| Banking
+
     Banking -->|Sends notifications| Email
+
 ```
 
 ### Auto Theme
 
 ```c4x
-%%{ c4: system-context, theme: auto }%%
+
+%%{ c4: system-context }%%
+
 graph TB
+
     User[Customer<br/>Person]
+
     Banking[Internet Banking System<br/>Software System]
+
     Email[Email System<br/>Software System<br/>External]
 
+
+
     User -->|Uses| Banking
+
     Banking -->|Sends notifications| Email
+
 ```
 
 ## 🤖 Multi-Agent Architecture Examples

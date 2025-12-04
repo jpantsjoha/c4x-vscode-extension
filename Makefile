@@ -63,6 +63,11 @@ lint:
 	@echo "🔍 Linting code..."
 	pnpm run lint
 
+# Verify documentation (Markdown lint + C4X syntax check)
+verify-docs:
+	@echo "📝 Verifying documentation..."
+	pnpm run validate:docs
+
 # Clean build artifacts
 clean:
 	@echo "🧹 Cleaning build artifacts..."
@@ -78,7 +83,7 @@ package: build
 vsix: package
 
 # Pre-commit checks (3m pattern: make, measure, monitor)
-pre-commit: lint build test
+pre-commit: lint verify-docs build test
 	@echo "✅ Pre-commit checks passed!"
 
 # Help target
@@ -99,6 +104,7 @@ help:
 	@echo "  make test-all   - Run unit + integration + e2e + perf"
 	@echo "  make coverage   - Generate coverage report"
 	@echo "  make lint       - Run ESLint"
+	@echo "  make verify-docs - Verify documentation (markdown lint + C4X syntax)"
 	@echo ""
 	@echo "Publishing:"
 	@echo "  make package    - Create VSIX file for marketplace"
