@@ -140,7 +140,7 @@ Visualizing a complex multi-agent workflow with shared memory and specialized ro
 graph LR
     User[User<br/>Person]
 
-    subgraph "Agent Swarm" {
+    subgraph AgentSwarm {
         Orchestrator[Master Orchestrator<br/>Container<br/>LangGraph]
         
         ResearchAgent[Researcher<br/>Container<br/>Agent]
@@ -159,8 +159,8 @@ graph LR
     Orchestrator -->|Code| CoderAgent
     Orchestrator -->|Review| ReviewerAgent
     
-    ResearchAgent <-->|Context| SharedMem
-    CoderAgent <-->|Context| SharedMem
+    ResearchAgent -->|Context| SharedMem
+    CoderAgent -->|Context| SharedMem
     
     ResearchAgent -->|Query| LLM
     CoderAgent -->|Generate| LLM
