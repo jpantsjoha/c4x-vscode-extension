@@ -4,7 +4,7 @@
   "description": "Make C4 diagrams as easy as Mermaid in VS Code - ideal for AI/Agentic Visuals",
   "icon": "assets/marketplace/icon.png",
   "version": "0.1.2",
-  "publisher": "c4x-contributors",
+  "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
     "email": "jpantsjoha@gmail.com"
