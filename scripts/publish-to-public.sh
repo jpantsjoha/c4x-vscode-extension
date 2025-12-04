@@ -78,7 +78,6 @@ rsync -avm --delete \
     --include='.vscode/launch.json' \
     --include='.vscode/tasks.json' \
     --include='.github/***' \
-    --include='*.vsix' \
     --exclude='*' \
     "$SOURCE_DIR/" "$DEST_DIR/"
 

@@ -4,6 +4,10 @@ All notable changes to the "C4X" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.2] - 2025-12-04
+- Added automated release pipeline via GitHub Actions.
+- Optimized package size.
+
 ## [1.0.0] - 2025-12-03
 
 ### 🚀 v1.0 Stable Release
