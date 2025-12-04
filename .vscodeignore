@@ -69,4 +69,4 @@ mcp/**
 Thumbs.db
 
 # Build artifacts
-
+*.vsix
