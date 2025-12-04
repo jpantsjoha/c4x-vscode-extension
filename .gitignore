@@ -12,7 +12,6 @@ CLAUDE.md
 # Build output
 dist/
 out/
-*.vsix
 .vscode-test/
 test-output*
 *.svg

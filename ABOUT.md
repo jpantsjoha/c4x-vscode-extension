@@ -45,10 +45,12 @@ I am a technologist focused on building scalable, intelligent systems. My work c
 
 - **LinkedIn**: [linkedin.com/in/johas](https://www.linkedin.com/in/johas/)
 - **GitHub**: [github.com/jpantsjoha](https://github.com/jpantsjoha)
+- **Google Developer Expert Profile**: [https://g.dev/jpantsjoha](https://developers.google.com/profile/u/114843008278116355376)
+- **Blog Posts**: [https://www.linkedin.com/in/johas/recent-activity/articles/](https://www.linkedin.com/in/johas/recent-activity/articles/)
 
 ### Other Projects
 
-- **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
+- **[Pine Script™ (v6)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
   - [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
 
 ---
