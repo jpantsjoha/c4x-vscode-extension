@@ -29,6 +29,8 @@ docs/**
 !README.md
 !CHANGELOG.md
 !LICENSE
+!ABOUT.md
+!EXAMPLES.md
 
 # Agent definitions (private)
 multi-agent-devex/**
