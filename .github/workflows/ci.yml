@@ -45,6 +45,15 @@ jobs:
         if: runner.os != 'Linux'
         run: pnpm test
 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.node-version }}
+          path: |
+            test-results/
+            coverage/
+
   validate-docs:
     name: Validate Documentation
     runs-on: ubuntu-latest
@@ -97,7 +106,7 @@ jobs:
         run: pnpm run package
 
       - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: c4x-vsix
           path: "*.vsix"
