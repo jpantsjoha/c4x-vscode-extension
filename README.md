@@ -276,23 +276,30 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 
 ## 🗺️ Roadmap
 
-### v1.0.0 (October 2025) ✅ Ready to Ship
+### v1.0.0 (December 2025) ✅ Shipping Release
 
 - ✅ C4X-DSL with Mermaid-inspired syntax (100% working)
 - ✅ 5 built-in themes with instant switching
 - ✅ SVG/PNG export with theme preservation
 - ✅ Sub-50ms rendering for 30-node diagrams
 
-### v1.1.0 (Within 1 Month Post-Launch) 🚧 Planned
+### v1.1.0 (Q1 2026) 🚧 UX & Tooling
 
-- 🔨 **Markdown rendering** - Render ```c4x fenced code blocks inline (6-8h)
-- 🔨 **Diagnostics panel** - Error highlighting and quick fixes (4.5h)
-- 🔨 **Built-in templates** - C1/C2/C3/C4 boilerplate generators (3.5h)
+- 🔨 **Markdown Inline Rendering** - Render ```c4x code blocks anywhere
+- 🔨 **Diagnostics Panel** - Live error highlighting and quick fixes
+- 🔨 **Smart Templates** - Boilerplate generators for C1-C4 views
 
-### v1.2.0 (Q2 2026)
+### v1.2.0 (Q2 2026) 🏗️ Advanced Visuals & Compatibility
 
-- **PlantUML C4 Support**
-- **Structurizr DSL Support**
+- 🔮 **Deployment Diagrams** - Visualize infrastructure (Nodes, Pods, Regions)
+- 🔄 **Dynamic Diagrams** - Visualize runtime message flows (Sequence-like)
+- 🔌 **Compatibility** - Support for PlantUML C4 and Structurizr DSL
+
+### v2.0.0 (Q3 2026) 🤖 AI & Agents
+
+- 🧠 **Agent Syntax** - First-class support for `AI_Agent`, `Memory`, `Tool`
+- ✨ **Generative Architecture** - Text-to-Diagram via LLM integration
+- 🛡️ **Architecture Analysis** - Automated detection of bottlenecks and security risks
 
 ## 📚 Documentation
 
@@ -336,4 +343,4 @@ Read more about the [Story Behind C4X](./ABOUT.md).
 
 ---
 
-**Made with ❤️ for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)
+**Made with [Gemini](https://blog.google/products/gemini/gemini-3/) ❤️ for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)

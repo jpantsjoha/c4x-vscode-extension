@@ -4,6 +4,9 @@ All notable changes to the "C4X" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.4] - 2025-12-04
+- Updated extension icon for better transparency support.
+
 ## [1.0.3] - 2025-12-04
 - Fixed README documentation images on Marketplace.
 
