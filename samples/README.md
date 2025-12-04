@@ -97,11 +97,13 @@ All sample diagrams now showcase the new **static box sizing** feature that main
 ### 🔤 Text Auto-Scaling Demonstrations
 
 **📋 Best Examples for Testing**:
+
 - **[`text-scaling-showcase.c4x`](./system-context/text-scaling-showcase.c4x)** - Extreme test cases with very long names
 - **[`multi-agent-marketing.c4x`](./system-context/multi-agent-marketing.c4x)** - AI system names of varying complexity
 - **[`ecommerce-containers.c4x`](./container/ecommerce-containers.c4x)** - Technology stack labels that auto-scale
 
 **🎯 Features Demonstrated**:
+
 - Text scales down automatically when labels are too long
 - Minimum 70% readability threshold maintained
 - Multi-line relationship labels handled gracefully
@@ -117,16 +119,19 @@ All sample diagrams now showcase the new **static box sizing** feature that main
 ### Quick Reference for Agents
 
 **When user requests**:
+
 - "Show system overview" → Use System Context examples
 - "Show architecture" → Use Container examples
 - "Show component structure" → Use Component examples
 
 **DSL Format Selection**:
+
 - New diagram → C4X-DSL (`.c4x`) - Fastest, simplest
 - Existing PlantUML → PlantUML C4 (`.puml`) - 100% compatible, no Java
 - User prefers Structurizr → `.dsl` - Experimental (58% support)
 
 **Prompting Pattern**:
+
 ```
 "I'll create a [Level] diagram similar to samples/[category]/[example-file].
 This shows [what it demonstrates].
@@ -153,17 +158,20 @@ ElementID[Label<br/>Type<br/>Tags]
 ### PlantUML C4 Syntax
 
 **Macros**:
+
 - `Person(id, "Label", "Description")`
 - `System(id, "Label", "Description")`
 - `Container(id, "Label", "Tech", "Description")`
 - `Component(id, "Label", "Tech", "Description")`
 
 **Relationships**:
+
 - `Rel(from, to, "Label", "Technology")`
 - `Rel_Back(to, from, "Label")`
 - `Rel_Neighbor(from, to, "Label")`
 
 **Boundaries**:
+
 - `System_Boundary(id, "Label") { ... }`
 - `Container_Boundary(id, "Label") { ... }`
 
@@ -191,6 +199,7 @@ All samples can be exported to:
 - **PNG** - Raster format for documentation and presentations
 
 **Export commands**:
+
 - `C4X: Export SVG`
 - `C4X: Export PNG`
 - `C4X: Copy SVG to Clipboard`

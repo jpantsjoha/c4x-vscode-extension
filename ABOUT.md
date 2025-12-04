@@ -11,6 +11,7 @@ As an architect designing cloud-agnostic **multi-agent architectures**, I found 
 ### The Challenge
 
 In the rapidly evolving landscape of AI solutions:
+
 - **Standard icons don't exist yet**: Concepts are fluid and interchangeable.
 - **Traditional notation feels rigid**: Classic Data Flow Diagrams (DFDs) are respectable but often fail to capture the *narrative* of an intelligent workflow.
 - **The "Detail Trap"**: It is too easy to lose a non-technical audience in the weeds of implementation details when what they really need is to understand the *flow* and *value*.
@@ -18,8 +19,9 @@ In the rapidly evolving landscape of AI solutions:
 ### Why C4 Model?
 
 I have no personal affiliation with the C4 Model, but I believe it is the perfect tool for this era of "Workflow Optimism." It shines at bridging the gap between code and concept. It allows us to:
-1.  **Zoom Out (Context)**: Show how agents interact with humans and external systems.
-2.  **Zoom In (Containers)**: Define the boundaries of logic without getting lost in code.
+
+1. **Zoom Out (Context)**: Show how agents interact with humans and external systems.
+2. **Zoom In (Containers)**: Define the boundaries of logic without getting lost in code.
 
 It provides the structure needed to explain **Agentic Workflows** without the overhead of heavy enterprise architecture tools.
 
@@ -41,13 +43,13 @@ I needed a tool that lived where I worked (VS Code), didn't require a complex Ja
 
 I am a technologist focused on building scalable, intelligent systems. My work centers on bridging the gap between complex technical implementations and business value, particularly in the space of AI and multi-agent systems.
 
-*   **LinkedIn**: [linkedin.com/in/johas](https://www.linkedin.com/in/johas/)
-*   **GitHub**: [github.com/jpantsjoha](https://github.com/jpantsjoha)
+- **LinkedIn**: [linkedin.com/in/johas](https://www.linkedin.com/in/johas/)
+- **GitHub**: [github.com/jpantsjoha](https://github.com/jpantsjoha)
 
 ### Other Projects
 
-*   **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
-    *   [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
+- **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
+  - [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
 
 ---
 

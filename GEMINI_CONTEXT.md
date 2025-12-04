@@ -6,10 +6,10 @@ This project represents a collaboration between human architectural vision and A
 
 ## Development Philosophy
 
--   **Agentic Workflow**: The project was broken down into phases (Scaffolding, Parsing, Rendering, Polish), with the AI acting as a "Lead Architect" and "Implementation Engineer" for specific tasks.
--   **Technical Decision Records (TDRs)**: All major architectural choices (e.g., using PEG.js for parsing, Dagre.js for layout, avoiding Java dependencies) were documented and justified via ADRs/TDRs.
--   **Test-Driven Development**: A rigorous testing strategy was employed, resulting in 100% pass rate across 400+ unit and integration tests.
--   **Visual Validation**: Automated scripts were used to generate galleries of C4 diagrams to ensure visual regression testing without manual intervention.
+- **Agentic Workflow**: The project was broken down into phases (Scaffolding, Parsing, Rendering, Polish), with the AI acting as a "Lead Architect" and "Implementation Engineer" for specific tasks.
+- **Technical Decision Records (TDRs)**: All major architectural choices (e.g., using PEG.js for parsing, Dagre.js for layout, avoiding Java dependencies) were documented and justified via ADRs/TDRs.
+- **Test-Driven Development**: A rigorous testing strategy was employed, resulting in 100% pass rate across 400+ unit and integration tests.
+- **Visual Validation**: Automated scripts were used to generate galleries of C4 diagrams to ensure visual regression testing without manual intervention.
 
 ## Why Share This?
 

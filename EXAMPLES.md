@@ -18,6 +18,7 @@ graph TB
 ```
 
 ### Classic Theme
+
 ```c4x
 %%{ c4: system-context, theme: classic }%%
 graph TB
@@ -30,6 +31,7 @@ graph TB
 ```
 
 ### Modern Theme
+
 ```c4x
 %%{ c4: system-context, theme: modern }%%
 graph TB
@@ -42,6 +44,7 @@ graph TB
 ```
 
 ### Muted Theme
+
 ```c4x
 %%{ c4: system-context, theme: muted }%%
 graph TB
@@ -54,6 +57,7 @@ graph TB
 ```
 
 ### High Contrast Theme
+
 ```c4x
 %%{ c4: system-context, theme: high-contrast }%%
 graph TB
@@ -66,6 +70,7 @@ graph TB
 ```
 
 ### Auto Theme
+
 ```c4x
 %%{ c4: system-context, theme: auto }%%
 graph TB

@@ -1,4 +1,5 @@
 # C4X - C4 Model Diagrams for VS Code
+>
 > **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards.
 
 ![CI](https://github.com/jpantsjoha/c4model-vscode-extension/workflows/CI/badge.svg)
@@ -43,6 +44,7 @@ code --install-extension c4x-contributors.c4x
 
 1. **Create a C4X file**: `banking-system.c4x`
 2. **Write your diagram**:
+
    ```c4x
    %%{ c4: system-context }%%
    graph TB
@@ -54,6 +56,7 @@ code --install-extension c4x-contributors.c4x
    Customer -->|Uses| Banking
    Banking -->|Sends notifications| Email
    ```
+
 3. **Open preview**: Press `Ctrl+K V` (or `Cmd+K V` on Mac)
 4. **See instant results**: Your diagram renders in < 50ms!
 
@@ -142,12 +145,14 @@ ElementID[Label<br/>Type<br/>Tags]
 ```
 
 **Supported Types**:
+
 - `Person` - Users of the system
 - `Software System` - High-level software systems
 - `Container` - Applications, services, databases
 - `Component` - Code-level components
 
 **Example**:
+
 ```c4x
 Admin[Administrator<br/>Person]
 API[Payment API<br/>Software System]
@@ -166,6 +171,7 @@ FromID ==>|Label| ToID
 ```
 
 **Example**:
+
 ```c4x
 User[User<br/>Person]
 Dashboard[Reporting Dashboard<br/>Container]
@@ -189,6 +195,7 @@ subgraph BoundaryId {
 ```
 
 **Example**:
+
 ```c4x
 graph TB
     User[User<br/>Person]
@@ -226,6 +233,7 @@ Choose from 5 built-in themes to match your documentation style:
 | **Auto** | Adapts to VS Code light/dark theme | Match your editor theme |
 
 **Change Theme**:
+
 - Command Palette: `C4X: Change Theme`
 - Settings: `"c4x.theme": "modern"`
 
@@ -234,11 +242,13 @@ Choose from 5 built-in themes to match your documentation style:
 Export your diagrams to SVG or PNG with theme preservation:
 
 **Export Commands**:
+
 - `C4X: Export SVG` - Vector format for editing (Figma, Sketch, Adobe Illustrator)
 - `C4X: Export PNG` - Raster format for documentation and presentations
 - `C4X: Copy SVG to Clipboard` - Quick paste into other applications
 
 **Features**:
+
 - ✅ Theme preservation (exported diagrams match your selected theme)
 - ✅ High-quality rendering (no pixelation in SVG)
 - ✅ Design tool compatibility (Figma, Sketch tested)
@@ -285,6 +295,7 @@ Configure C4X in your VS Code settings (`Ctrl+,` or `Cmd+,`):
 ### File Associations
 
 C4X automatically recognizes these file extensions:
+
 - `.c4x` - C4X-DSL (Mermaid-inspired syntax)
 
 ## 🏗️ Project Status
@@ -313,6 +324,7 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 - 🔨 **Built-in templates** - C1/C2/C3/C4 boilerplate generators (3.5h)
 
 ### v1.2.0 (Q2 2026)
+
 - **PlantUML C4 Support**
 - **Structurizr DSL Support**
 
@@ -329,6 +341,7 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 Contributions welcome! We'd love your help to make C4X even better.
 
 **Ways to contribute**:
+
 - 🐛 Report bugs or suggest features via [GitHub Issues](https://github.com/jpantsjoha/c4model-vscode-extension/issues)
 - 📝 Improve documentation or examples
 - 🎨 Design new themes or icons
@@ -341,8 +354,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
 Check out my other VS Code extension:
 
-*   **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
-    *   [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
+- **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
+  - [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
 
 ## 📄 License
 

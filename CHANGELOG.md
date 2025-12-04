@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2025-10-20
 
 ### Added
+
 - **PlantUML C4 Support**: Parse and render PlantUML C4 files (`.puml` extension)
   - Regex-based parser for PlantUML C4 macro extraction
   - Support for 10 element types: Person, Person_Ext, System, System_Ext, SystemDb, SystemDb_Ext, Container, ContainerDb, Component, ComponentDb
@@ -33,11 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed boundary child duplication issue (line tracking synchronization)
 
 ### Performance
+
 - Parsing: < 50ms for typical PlantUML C4 files
 - Full render pipeline: < 200ms (parse + adapt + layout + render)
 - Build performance: 80-92ms with esbuild
 
 ### Technical
+
 - Adapter pattern: PlantUML macros → C4Model IR for unified rendering
 - Type-safe implementation with TypeScript strict mode
 - ESLint clean: 0 errors, 84 warnings (naming conventions - acceptable)
@@ -46,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2025-10-20
 
 ### Added
+
 - **Structurizr DSL Support** (⚠️ Experimental - 58% test coverage): Parse and render Structurizr DSL files (`.dsl` extension)
   - **Status**: Basic features work, complex files may fail
   - **Test Results**: 57/99 tests passing (58% pass rate)
@@ -77,12 +81,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Example transformations from full Structurizr to C4Model extension
 
 ### Performance
+
 - Lexing: < 100ms for typical workspaces
 - Parsing: < 100ms for typical workspaces
 - Full render pipeline: < 300ms (lex + parse + layout + render)
 - Tested with workspaces containing 50 elements, 100 relationships, 10 views
 
 ### Technical
+
 - Hand-rolled lexer with line/column tracking for error reporting
 - Recursive descent parser with token stream filtering
 - Adapter pattern for AST to IR conversion
@@ -91,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build performance: 68-107ms with esbuild
 
 ### Compatibility
+
 - ✅ Basic workspace structure (workspace, model, views, styles)
 - ✅ Core element types (person, softwareSystem, container, component)
 - ✅ Simple relationships with descriptions and technology
@@ -102,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2025-10-19
 
 ### Added
+
 - **Markdown Integration** (⚠️ Partial - Placeholder Only):
   - MarkdownIt plugin registered for ```c4x fenced code blocks
   - Automatic registration via VS Code Markdown API (`markdown.markdownItPlugins`)
@@ -135,11 +143,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command: `C4X: Change Theme`
 
 ### Fixed
+
 - Test infrastructure: Changed Mocha UI from TDD to BDD for compatibility with existing tests
 - MarkdownIt plugin types: Fixed type imports for VS Code Markdown API compatibility
 - ESLint violations: Removed unused imports from Markdown plugin
 
 ### Technical
+
 - TypeScript strict mode: All Phase 3 code passes strict type checking
 - ESLint clean: 0 errors, 15 warnings (external API naming conventions)
 - Build time: ~180ms (82% under 1000ms target)
@@ -150,6 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2025-10-19
 
 ### Added
+
 - **C4X-DSL Parser**: Hand-written TypeScript parser for Mermaid-inspired C4 syntax
   - Supports Person, Software System, Container, Component element types
   - Three relationship arrow types: `-->` (sync), `-.->` (async), `==>` (strong)
@@ -177,12 +188,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Command**: `C4X: Open Preview` (Ctrl+K V / Cmd+K V)
 
 ### Performance
+
 - Bundle size: 26KB (96% under 600KB target)
 - Build time: 30ms (97% under 1000ms target)
 - Preview render: < 50ms for typical diagrams (target: < 250ms)
 - Live update latency: < 250ms (target: < 500ms)
 
 ### Technical
+
 - Zero production dependencies (hand-written parser and custom layout)
 - TypeScript strict mode enabled
 - ESLint clean with zero errors
@@ -192,6 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-10-19
 
 ### Added
+
 - **Extension Scaffolding**: VS Code extension skeleton with webview support
   - Extension activation in < 37ms (target: < 200ms)
   - Bundle size: 7.5KB (target: < 1MB)
@@ -218,11 +232,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Phase 1 activity documentation
 
 ### Performance
+
 - Activation time: 37ms (81.5% under target)
 - Bundle size: 7.5KB (99.3% under target)
 - Build time: 28ms (97.2% under target)
 
 ### Infrastructure
+
 - Git branch workflow (feature branches, never commit to main)
 - Pre-commit hooks for automated quality checks
 - GitHub Actions CI/CD
@@ -231,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Completed in v0.3.0 (Phase 3 - Markdown Integration)
+
 - ✅ Fenced code blocks: ` ```c4x ` in Markdown files
 - ✅ Markdown preview integration
 - ✅ Multiple themes (Classic, Modern, Muted, High-Contrast, Auto)
@@ -239,16 +256,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ⏳ PNG export (scaffolded, pending full implementation)
 
 ### Planned for Phase 4 (M3 - Structurizr DSL)
+
 - Structurizr DSL parser
 - Multi-dialect support (C4X + Structurizr)
 - Workspace and model validation
 
 ### Planned for Phase 5 (M4 - PlantUML C4)
+
 - PlantUML C4 syntax support
 - Syntax highlighting for all dialects
 - Auto-completion
 
 ### Planned for Phase 6 (M5 - Polish & Publish)
+
 - VS Code Marketplace publishing
 - Extension icon (128x128 PNG)
 - LICENSE file
