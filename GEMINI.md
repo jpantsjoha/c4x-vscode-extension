@@ -1,78 +1,107 @@
-# C4X: Expert Guidelines for AI Assistants
+# C4X: Expert AI Architect Guidelines
 
-> **Role**: You are an expert C4 Model architect. Use this guide to generate valid, high-quality C4X diagrams.
+> **Role**: You are an expert Software Architect specializing in the C4 Model. Your goal is to design clear, hierarchical, and visually effective architecture diagrams using the C4X VS Code extension.
 
-## 🎯 Best Practices
+## 🧠 Core Design Principles
 
-1.  **View Directive**: ALWAYS start with `%%{ c4: system-context }%%` (or `container/component`).
-2.  **Layout**: Default to `graph TB` (Top-Bottom) for hierarchy. Use `graph LR` (Left-Right) for flows.
-3.  **Labels**: Use `<br/>` to break long lines in labels. Keep text concise.
-4.  **Icons**: To use Cloud/Tech icons, you **MUST** use PlantUML C4 macro syntax (e.g. `Container(..., $sprite="aws-s3")`). The native `Element[...]` syntax does not support sprites yet.
-5.  **Themes**: Mention themes but default to `classic` unless requested otherwise.
+1.  **Hierarchy is King**: Always respect the C4 abstraction levels.
+    *   **Level 1: System Context** (Big Picture, Users, External Systems)
+    *   **Level 2: Container** (Apps, Databases, Microservices)
+    *   **Level 3: Component** (Internal structural blocks, Controllers, Services)
+2.  **Clarity over Complexity**: Prefer multiple simpler diagrams over one giant "spiderweb".
+3.  **Direction matters**:
+    *   Use `graph TB` (Top-Bottom) for structural hierarchy.
+    *   Use `graph LR` (Left-Right) for data flows or sequences.
+4.  **Labels**: Always label relationships. An empty arrow is ambiguous. Use `<br/>` for line breaks.
 
 ## 📝 Syntax Reference
 
-### 1. Native C4X DSL (Simple, Fast)
-Best for quick sketches and simple structural diagrams.
+### 1. The C4X DSL (Preferred)
+Best for native, fast rendering and strict C4 compliance.
+
+#### Structure
+```c4x
+%%{ c4: container }%%  <-- REQUIRED: view directive (system-context, container, component)
+graph TB
+  %% Elements: ID[Label<br/>Type]
+  User[Internet Banking User<br/>Person]
+  App[Mobile App<br/>Container]
+  
+  %% Relationships: From -->|Label| To
+  User -->|Views account balances| App
+```
+
+#### Element Syntax
+*   **Person**: `Id[Name<br/>Person]`
+*   **System**: `Id[Name<br/>System]`
+*   **Container**: `Id[Name<br/>Container]`
+*   **Database**: `Id[Name<br/>Container Db]`
+*   **Component**: `Id[Name<br/>Component]`
+*   **Boundary**: `subgraph Id[Label] ... end`
+
+### 2. PlantUML C4 (Advanced/Icons)
+Use when specific Cloud Icons (AWS/Azure/GCP) are required.
+**Rules**:
+*   Always use the `plantuml` fenced block.
+*   Do NOT import the C4 library URL manually; the extension handles it, but for portability, you can include `!include <C4/C4_Container>`.
+*   Use macros: `Person()`, `Container()`, `Rel()`.
+
+```plantuml
+%%{ c4: container }%%
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(admin, "Admin")
+System_Boundary(c1, "Cluster") {
+    Container(web, "Web App", "Java", $sprite="java")
+    ContainerDb(db, "DB", "PostgreSQL", $sprite="postgresql")
+}
+
+Rel(admin, web, "Uses", "HTTPS")
+Rel(web, db, "Reads", "JDBC")
+@enduml
+```
+
+## 🎨 Best Practices & Examples
+
+### System Context Diagram (Level 1)
+Scope: Users and Software Systems.
+```c4x
+%%{ c4: system-context }%%
+graph TB
+  User[Customer<br/>Person]
+  Bank[Banking System<br/>System]
+  Mail[Email System<br/>System]
+
+  User -->|Uses| Bank
+  Bank -->|Sends emails| Mail
+```
+
+### Container Diagram (Level 2)
+Scope: Applications and Data Stores.
 ```c4x
 %%{ c4: container }%%
 graph TB
   User[User<br/>Person]
-  App[App<br/>Container]
-  User -->|Uses| App
-```
-
-### 2. PlantUML C4 Macros (Advanced, Icons)
-Use this for **Cloud Architectures** or when **Icons** are needed.
-```plantuml
-%%{ c4: container }%%
-graph TB
-  Person(user, "User", "Description")
-  Container(app, "App Server", "Java", "Handles API", $sprite="java")
-  ContainerDb(db, "Database", "PostgreSQL", "Stores Data", $sprite="postgresql")
   
-  Rel(user, app, "Uses", "HTTPS")
-  Rel(app, db, "Reads/Writes", "JDBC")
+  subgraph Cluster[Banking System]
+    SPA[Single Page App<br/>Container]
+    API[API Application<br/>Container]
+    DB[Main Database<br/>Container Db]
+  end
+
+  User -->|Uses| SPA
+  SPA -->|JSON/HTTPS| API
+  API -->|Reads/Writes| DB
 ```
 
-### 3. Icons Library (Partial List)
-- **AWS**: `aws-s3`, `aws-lambda`, `aws-ec2`, ...
-- **Azure**: `azure-blob-storage`, `azure-functions`, ...
-- **GCP**: `gcp-cloud-storage`, `gcp-compute-engine`, ...
-- **Tech**: `java`, `python`, `react`, `postgresql`, `docker`, `kubernetes`...
+### Dynamic/Style Tips
+*   **Stroke Types**:
+    *   Solid: `-->` (Synchronous/Standard)
+    *   Dotted: `..>` (Asynchronous/Optional)
+*   **Styling**: The extension automatically applies themes (Classic, Modern, etc.). Do not hardcode colors unless absolutely necessary.
 
-## 🔍 Validation Grounding
-- **Syntax**: If the preview is blank, check for missing `}` in subgraphs or invalid arrow types.
-- **Preview**: Use `C4X: Open Preview` to verify. Real-time feedback (<50ms).
-
----
-
-## Repository Management
-
-### 🔄 Public Repository Synchronization
-
-The project maintains a split repository structure:
-1.  **Private Source**: `c4model-vscode-extension` (Development, full history, private docs).
-2.  **Public Mirror**: `c4x-vscode-extension` (Clean history, release artifacts, public docs).
-
-#### Sync Script (`scripts/publish-to-public.sh`)
-- **Mechanism**: Uses `rsync` with an allowlist (`--include`) to copy only specific files/folders.
-- **Transformation**: Automatically replaces private repo URLs (`c4model-vscode-extension`) with public ones (`c4x-vscode-extension`) in `README.md` using Perl regex.
-- **Artifacts**: Copies the latest `.vsix` file and generated marketplace assets.
-
-#### Release Workflow (Automated)
-1.  **Bump Version**: Update `package.json` and `CHANGELOG.md` in Private Repo.
-2.  **Sync Source**: Run `./scripts/publish-to-public.sh ../c4x-vscode-extension`.
-    *   *Note*: Do NOT build the VSIX manually. Let CI do it.
-3.  **Commit Public**: Commit and push changes in the public repo.
-4.  **Tag Release**: Create and push a git tag in the public repo.
-    ```bash
-    git tag v1.0.2
-    git push origin v1.0.2
-    ```
-5.  **CI/CD**: GitHub Actions will automatically build, test, and publish to Marketplace.
-### ⚠️ Caveats & Known Issues
-1.  **Secrets**: The public repo must have `VSCE_PAT` configured in Settings > Secrets > Actions.
-2.  **README Links**: `README.md` in the private repo should point to `docs/architecture/` relative paths.
-3.  **CI/CD**: Tests on Linux require `xvfb-run`. `actions/upload-artifact` must be v4.
-4.  **Marketplace Assets**: Images in `assets/marketplace/images` are auto-generated.
+## 🚫 Common Mistakes to Avoid
+1.  **Missing Directive**: Forgetting `%%{ c4: ... }%%` at the start.
+2.  **Wrong Arrows**: Using Mermaid `->` (thin) instead of `-->` (standard) or `==>` (thick). C4X prefers `-->`.
+3.  **Overloading**: Putting too many boxes in one view. Use Boundaries `subgraph` to group them.
