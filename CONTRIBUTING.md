@@ -18,8 +18,8 @@ There are many ways to contribute, from writing documentation to submitting bug 
 
 ### Reporting Bugs
 
-- **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/jpantsjoha/c4model-vscode-extension/issues).
-- If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/jpantsjoha/c4model-vscode-extension/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+- **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/jpantsjoha/c4x-vscode-extension.gitissues).
+- If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/jpantsjoha/c4x-vscode-extension.gitissues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
 
 ### Suggesting Enhancements
 
@@ -34,8 +34,8 @@ To get the project running locally, follow these steps:
 1. **Fork and Clone**: Fork the repository on GitHub and clone your fork locally.
 
     ```bash
-    git clone https://github.com/<your-username>/c4model-vscode-extension.git
-    cd c4model-vscode-extension
+    git clone https://github.com/jpantsjoha/c4x-vscode-extension.git
+    cd c4x-vscode-extension
     ```
 
 2. **Install Dependencies**: We use `pnpm` for package management.

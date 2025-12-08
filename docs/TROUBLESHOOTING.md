@@ -84,7 +84,7 @@ This guide helps you resolve common issues with the C4X extension.
 
 1. **Check Diagram Size**: For diagrams with over 200 elements, expect a minor delay (over 500ms).
 2. **Break Down Diagrams**: Very large diagrams can be difficult for anyone to read. Consider breaking them down into smaller, more focused diagrams (e.g., separate C2 diagrams for different parts of a system).
-3. **File an Issue**: If you believe performance is slow for a reasonably sized diagram, please [file an issue on GitHub](https://github.com/jpantsjoha/c4model-vscode-extension/issues) with an example file.
+3. **File an Issue**: If you believe performance is slow for a reasonably sized diagram, please [file an issue on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension.gitissues) with an example file.
 
 ---
 
@@ -119,7 +119,7 @@ make build
 
 1. **Open Developer Tools**: Use the **Help > Toggle Developer Tools** menu in VS Code to open the console.
 2. **Check for Errors**: Look for any red error messages in the console that might indicate what went wrong.
-3. **Report the Issue**: Please [file an issue on GitHub](https://github.com/jpantsjoha/c4model-vscode-extension/issues) and include the error message and steps to reproduce it.
+3. **Report the Issue**: Please [file an issue on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension/issues) and include the error message and steps to reproduce it.
 
 ---
 
@@ -127,4 +127,4 @@ make build
 
 If your issue is not listed here, please reach out:
 
-- **GitHub Issues**: [Create a new issue](https://github.com/jpantsjoha/c4model-vscode-extension/issues)
+- **GitHub Issues**: [Create a new issue](https://github.com/jpantsjoha/c4x-vscode-extension/issues)

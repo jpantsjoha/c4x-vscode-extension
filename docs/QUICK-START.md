@@ -14,13 +14,13 @@ Welcome to C4X! This guide will get you creating your first C4 diagram in VS Cod
 1. **Clone the repository**:
 
     ```bash
-    git clone https://github.com/jpantsjoha/c4model-vscode-extension.git
+    git clone git@github.com:jpantsjoha/c4x-vscode-extension.git
     ```
 
 2. **Navigate to the directory**:
 
     ```bash
-    cd c4model-vscode-extension
+    cd c4x-vscode-extension
     ```
 
 3. **Install and build**:
@@ -37,7 +37,7 @@ Welcome to C4X! This guide will get you creating your first C4 diagram in VS Cod
 
 ## Step 2: Launch the Extension
 
-1. Open the `c4model-vscode-extension` folder in VS Code.
+1. Open the `c4x-vscode-extension` folder in VS Code.
 2. Press `F5` (or run the debug task “Run C4X Extension”) to open an **Extension Development Host** window with C4X enabled.
 
 ---
