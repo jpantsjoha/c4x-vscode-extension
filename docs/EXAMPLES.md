@@ -6,6 +6,7 @@
 This document provides a comprehensive gallery of C4 diagrams created with C4X. These examples demonstrate the full capabilities of the extension, including the new visual style (white fill, colored borders, hollow/filled arrows), auto-scaling text, and support for complex architectures.
 
 All examples use the `.c4x` DSL format unless otherwise noted.
+For PlantUML equivalents, see [Examples - PlantUML](./EXAMPLES-PLANTUML.md).
 
 ---
 
@@ -232,4 +233,78 @@ Rel(spa, api, "Uses", "JSON/HTTPS")
 Rel(api, db, "Reads/Writes", "JDBC")
 Rel(api, email, "Sends e-mail", "SMTP")
 @enduml
+```
+
+---
+
+## 5. Marketing Multi-Agent System (Swarm Architecture)
+
+A collaborative team of AI agents working together to plan, create, and distribute marketing content.
+
+### System Context (C1)
+
+Visualizing the high-level interactions between the Marketing Director (User) and the Agent Swarm.
+
+```c4x
+%%{ c4: system-context }%%
+graph TB
+    Director[Marketing Director<br/>Person]
+
+    MarketingSwarm[Marketing Agent Swarm<br/>Software System]
+
+    LLM[LLM Model<br/>Software System<br/>External]
+    Search[Search Engine<br/>Software System<br/>External]
+    SocialMedia[Social Media Platforms<br/>Software System<br/>External]
+    CMS[Content Management System<br/>Software System<br/>External]
+
+    Director -->|Provides campaign brief| MarketingSwarm
+    
+    MarketingSwarm -->|Uses for reasoning| LLM
+    MarketingSwarm -->|Research trends| Search
+    MarketingSwarm -->|Publishes posts| SocialMedia
+    MarketingSwarm -->|Publishes articles| CMS
+```
+
+### Container (C2) - Agent Workflow
+
+Internal collaboration between specialized agents.
+
+```c4x
+%%{ c4: container }%%
+graph TB
+    Director[Marketing Director<br/>Person]
+
+    subgraph MarketingSwarm {
+        Manager[Campaign Manager<br/>Container<br/>Orchestrator]
+        
+        Researcher[Market Researcher<br/>Container<br/>Web Surfer]
+        Writer[Content Copywriter<br/>Container<br/>Creative Agent]
+        Reviewer[Content Editor<br/>Container<br/>Critique Agent]
+        SocialAgent[Social Media Specialist<br/>Container<br/>Platform Expert]
+        
+        SharedMem[Shared Memory<br/>Container<br/>Vector DB]
+    }
+
+    LLM[LLM API<br/>Software System<br/>External]
+    Internet[Internet<br/>Software System<br/>External]
+
+    Director -->|Brief| Manager
+
+    %% Orchestration Flow
+    Manager ==>|1. Assigns tasks| Researcher
+    Manager ==>|2. Assigns tasks| Writer
+    
+    %% Agent Actions
+    Researcher -->|Searches web| Internet
+    Researcher -.->|Saves insights| SharedMem
+    
+    Writer -.->|Reads insights| SharedMem
+    Writer -->|Generates draft| LLM
+    Writer -->|Submits draft| Reviewer
+    
+    Reviewer -->|Validates| LLM
+    Reviewer -.->|Approve/Reject| Writer
+    
+    Reviewer -->|Approved content| SocialAgent
+    SocialAgent ==>|Publish| Internet
 ```

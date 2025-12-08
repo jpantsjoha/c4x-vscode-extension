@@ -41,6 +41,11 @@ const DarkTheme: C4Theme = {
             stroke: '#D16969',
             text: '#D4D4D4',
         },
+        deploymentNode: {
+            fill: '#252526',      // VS Code dark gray
+            stroke: '#858585',
+            text: '#D4D4D4',
+        },
         relationship: {
             stroke: '#858585',
             text: '#D4D4D4',
@@ -89,6 +94,11 @@ const LightTheme: C4Theme = {
             fill: '#800080',      // Purple
             stroke: '#660066',
             text: '#FFFFFF',
+        },
+        deploymentNode: {
+            fill: '#F3F3F3',
+            stroke: '#A9A9A9',
+            text: '#000000',
         },
         relationship: {
             stroke: '#666666',

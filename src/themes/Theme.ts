@@ -13,6 +13,7 @@ export interface C4Theme {
         externalSystem: C4ElementColors;
         container: C4ElementColors;
         component: C4ElementColors;
+        deploymentNode: C4ElementColors;
         // External variants for C4-PlantUML compatibility
         externalPerson?: C4ElementColors;
         externalContainer?: C4ElementColors;

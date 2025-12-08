@@ -1,6 +1,7 @@
 # C4X Examples Gallery
 
-This gallery demonstrates the flexibility of C4X for visualizing diverse software architectures, from cloud-native microservices to IoT and AI systems.
+This gallery demonstrates the flexibility of C4X for visualizing diverse software architectures.
+For PlantUML equivalents, see [Examples - PlantUML](./EXAMPLES-PLANTUML.md).
 
 ## 🎨 Theme & Diagram Variety
 
@@ -165,4 +166,42 @@ graph LR
     ResearchAgent -->|Query| LLM
     CoderAgent -->|Generate| LLM
     CoderAgent -->|Push| GitHub
+```
+
+### 4. Marketing Multi-Agent System (Swarm Architecture)
+Visualizing a collaborative team of AI agents for content creation.
+
+```c4x
+%%{ c4: container }%%
+graph TB
+    Director[Marketing Director<br/>Person]
+
+    subgraph MarketingSwarm {
+        Manager[Campaign Manager<br/>Container<br/>Orchestrator]
+        Researcher[Market Researcher<br/>Container<br/>Web Surfer]
+        Writer[Content Copywriter<br/>Container<br/>Creative Agent]
+        Reviewer[Content Editor<br/>Container<br/>Critique Agent]
+        SocialAgent[Social Media Specialist<br/>Container<br/>Platform Expert]
+        SharedMem[Shared Memory<br/>Container<br/>Vector DB]
+    }
+
+    LLM[LLM API<br/>Software System<br/>External]
+    Internet[Internet<br/>Software System<br/>External]
+
+    Director -->|Brief| Manager
+    Manager ==>|Assigns| Researcher
+    Manager ==>|Assigns| Writer
+    
+    Researcher -->|Searches| Internet
+    Researcher -.->|Saves| SharedMem
+    
+    Writer -.->|Reads| SharedMem
+    Writer -->|Drafts| LLM
+    Writer -->|Submits| Reviewer
+    
+    Reviewer -->|Validates| LLM
+    Reviewer -.->|Feedback| Writer
+    
+    Reviewer -->|Approved| SocialAgent
+    SocialAgent ==>|Publish| Internet
 ```

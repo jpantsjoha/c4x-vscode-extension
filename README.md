@@ -20,7 +20,9 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 - 🚀 **Zero dependencies** - No Java, no Graphviz, no external servers
 - 📦 **Tiny bundle** - 386KB (63% under 1MB target)
 - 🔒 **Secure** - CSP-compliant, no external CDN dependencies
-- 📤 **Export** - SVG/PNG with theme preservation
+- 📤 **Export** - Save as SVG/PNG or Print to PDF
+- ☁️ **Cloud Icons** - AWS, Azure, GCP & Tech Stack icons (via PlantUML syntax)
+- 🔄 **PlantUML Support** - Use standard PlantUML C4 syntax directly
 - ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
 
 ## 🚀 Quick Start
@@ -282,18 +284,22 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 - ✅ 5 built-in themes with instant switching
 - ✅ SVG/PNG export with theme preservation
 - ✅ Sub-50ms rendering for 30-node diagrams
+- ✅ Markdown Integration (Render ```c4x code blocks)
+- ✅ Live Error Highlighting (Diagnostics)
+- ✅ C4 Snippets & Templates
 
 ### v1.1.0 (Q1 2026) 🚧 UX & Tooling
-
-- 🔨 **Markdown Inline Rendering** - Render ```c4x code blocks anywhere
-- 🔨 **Diagnostics Panel** - Live error highlighting and quick fixes
-- 🔨 **Smart Templates** - Boilerplate generators for C1-C4 views
+- 📐 **Advanced Layout Control** - Manual positioning, mixed TB/LR direction, and grid alignment
+- 🔨 **Quick Fixes** - Automated solutions for syntax errors
+- 🔨 **Interactive Preview** - Zoom, pan, and click-to-navigate
+- 🔨 **Diagnostics View** - Dedicated panel for workspace-wide issues
 
 ### v1.2.0 (Q2 2026) 🏗️ Advanced Visuals & Compatibility
 
 - 🔮 **Deployment Diagrams** - Visualize infrastructure (Nodes, Pods, Regions)
 - 🔄 **Dynamic Diagrams** - Visualize runtime message flows (Sequence-like)
-- 🔌 **Compatibility** - Support for PlantUML C4 and Structurizr DSL
+- ✅ **Compatibility** - Support for PlantUML C4 (Shipped in v1.0.9)
+- ⏳ **Structurizr DSL** - Deferred to v1.3
 
 ### v2.0.0 (Q3 2026) 🤖 AI & Agents
 

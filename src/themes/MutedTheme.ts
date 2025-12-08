@@ -36,6 +36,11 @@ export const MutedTheme: C4Theme = {
             stroke: '#A0AEC0',    // Lighter gray border
             text: '#A0AEC0',      // Matching text
         },
+        deploymentNode: {
+            fill: '#FFFFFF',
+            stroke: '#718096',
+            text: '#718096',
+        },
         relationship: {
             stroke: '#4A5568',    // Dark gray arrows
             text: '#4A5568',

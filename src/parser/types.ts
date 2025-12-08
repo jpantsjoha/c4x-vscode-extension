@@ -1,4 +1,4 @@
-export type C4ViewType = 'system-context' | 'container' | 'component';
+export type C4ViewType = 'system-context' | 'container' | 'component' | 'deployment' | 'dynamic';
 
 export type RelationshipArrow = '-->' | '-.->' | '==>';
 
@@ -8,6 +8,10 @@ export interface RawElement {
     label: string;
     elementType: string;
     tags: string[];
+    sprite?: string;
+    children?: RawElement[];
+    technology?: string;
+    description?: string;
 }
 
 export interface RawRelationship {

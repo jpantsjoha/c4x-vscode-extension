@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { c4xParser, C4XParseError } from '../parser';
+import { C4XParseError, c4xParser } from '../parser';
 import { parseStructurizrDSL, StructurizrLexerError, StructurizrParserError } from '../parser/structurizr';
 import { parsePlantUMLtoC4Model } from '../parser/plantuml';
 import { c4ModelBuilder } from '../model/C4ModelBuilder';

@@ -111,11 +111,36 @@ The C4X extension includes a `MarkdownIt` plugin that detects `c4x` fenced code 
 
 ---
 
+## 📤 Export Documents
+
+C4X allows you to export your Markdown documents with valid diagrams to standard formats.
+
+### Markdown to HTML
+- **Command**: `C4X: Export Markdown to HTML`
+- **Action**: Converts the current markdown file to a standalone HTML file with all diagrams rendered as inline SVGs.
+- **Use Case**: Offline sharing, static hosting.
+
+### Markdown to PDF (Preview)
+- **Command**: `C4X: Export - Preview`
+- **Action**: Opens a print-optimized version of your document in the default browser.
+- **Workflow**:
+  1. Run the command (or right-click file → "C4X: Export - Preview").
+  2. Browser opens with a blue banner.
+  3. Press `Cmd+P` (Mac) or `Ctrl+P` (Windows/Linux).
+  4. Select **"Save as PDF"** as the destination.
+
+---
+
 ## ⌨️ Commands
 
 The C4X extension provides the following commands, which can be accessed from the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`):
 
 - **`C4X: Open Preview`**: Opens the live preview panel for the active `.c4x` file.
+- **`C4X: Export Markdown to HTML`**: Exports current markdown file to HTML.
+- **`C4X: Export - Preview`**: Opens print-optimized preview in browser.
+- **`C4X: Export SVG`**: Exports diagram to SVG file.
+- **`C4X: Copy SVG to Clipboard`**: Copies SVG source to clipboard.
+- **`C4X: Change Theme`**: Switches the visual theme.
 
 ---
 

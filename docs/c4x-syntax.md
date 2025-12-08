@@ -60,6 +60,7 @@ The view declaration is a processing instruction that tells the C4X renderer wha
 | `system-context` | C1 | Shows the system and its interactions with users and other systems. | ✅ **Production** |
 | `container` | C2 | Zooms into a system to show its containers (applications, databases, etc.). | ✅ **Production** |
 | `component` | C3 | Zooms into a container to show its components. | ✅ **Production** |
+| `deployment` | C4 | Shows how software maps to infrastructure. | 🚧 **Preview** |
 
 ### Example
 
@@ -212,6 +213,43 @@ graph TB
     WebApp -->|Calls| API
     API -->|Queries| Database
 ```
+
+---
+
+## Advanced Syntax (v1.2 Preview)
+
+### Deployment Diagrams (Nodes)
+
+Deployment diagrams visualize the mapping of software containers to infrastructure nodes. C4X introduces a `Node` block syntax for recursive nesting.
+
+**Syntax**: `Node(ID, "Label", "Technology") { ... }`
+
+```c4x
+%%{ c4: deployment }%%
+graph TB
+    Node(aws, "AWS", "Cloud") {
+        Node(region, "US East", "Region") {
+             Container(api, "API", "Java")
+        }
+    }
+```
+
+### Functional Element Definitions
+
+You can also define elements using a functional syntax, similar to other C4 tools.
+
+**Syntax**: `Type(ID, "Label", "Technology", "Description", $tags="...", $sprite="...")`
+
+```c4x
+Container(webApp, "Web App", "React", "User Interface", $tags="frontend", $sprite="react")
+```
+
+### Key-Value Arguments
+
+Elements now support optional key-value arguments for advanced customization.
+
+- `$tags="tag1, tag2"`: Comma-separated tags.
+- `$sprite="icon-name"`: Icon identifier (for future icon support).
 
 ---
 

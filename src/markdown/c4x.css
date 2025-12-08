@@ -115,3 +115,39 @@
     background: var(--vscode-editor-background, #1e1e1e);
     border-color: #7f1d1d;
 }
+
+/* Print styles for PDF/Print Preview */
+@media print {
+    .c4x-diagram {
+        page-break-inside: avoid;
+        background: white !important;
+        border: 1px solid #000 !important;
+        padding: 16px;
+        margin: 20px 0;
+    }
+    
+    .c4x-diagram svg {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+    }
+    
+    /* Hide error displays in print */
+    .c4x-error {
+        background: #fee !important;
+        border: 2px solid #dc2626 !important;
+        color: #000 !important;
+        page-break-inside: avoid;
+    }
+    
+    /* Hide placeholders in print */
+    .c4x-diagram-placeholder {
+        display: none;
+    }
+    
+    /* Ensure text is readable */
+    .c4x-error-message {
+        color: #000 !important;
+        background: #fff !important;
+    }
+}

@@ -31,6 +31,11 @@ export const ModernTheme: C4Theme = {
             stroke: '#8B5CF6',    // Purple border
             text: '#8B5CF6',      // Matching text
         },
+        deploymentNode: {
+            fill: '#F3F4F6',      // Very light gray background
+            stroke: '#4B5563',    // Dark gray border
+            text: '#4B5563',
+        },
         externalSystem: {
             fill: '#FFFFFF',      // White background
             stroke: '#9CA3AF',    // Gray border

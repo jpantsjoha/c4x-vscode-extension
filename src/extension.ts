@@ -1,32 +1,30 @@
 import * as vscode from 'vscode';
-import { C4XPreviewPanel } from './webview/panel';
 import { c4xPlugin } from './markdown/c4xPlugin';
 import { DiagnosticsManager } from './diagnostics/DiagnosticsManager';
-
-let previewPanel: C4XPreviewPanel | undefined;
+import { HtmlExporter } from './export/HtmlExporter';
+import { PdfExporter } from './export/PdfExporter';
 
 /**
  * Activate the C4X extension
  * @returns Object with extendMarkdownIt for VS Code's markdown preview integration
  */
 export function activate(context: vscode.ExtensionContext) {
-  const getPanel = () => {
-    if (!previewPanel) {previewPanel = new C4XPreviewPanel();}
-    return previewPanel;
-  };
 
   // Initialize Diagnostics
   new DiagnosticsManager(context);
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('c4x.openPreview', async () => {
-      const activeDoc = vscode.window.activeTextEditor?.document;
-      getPanel().open(activeDoc);
-    })
-  );
+  // Initialize Exporters
+  const htmlExporter = new HtmlExporter();
+  const pdfExporter = new PdfExporter();
 
-  // Stubs for future milestones
+  // Register commands
   context.subscriptions.push(
+    vscode.commands.registerCommand('c4x.exportHtml', async (uri?: vscode.Uri) => {
+      await htmlExporter.export(uri);
+    }),
+    vscode.commands.registerCommand('c4x.exportPdf', async (uri?: vscode.Uri) => {
+      await pdfExporter.export(uri);
+    }),
     vscode.commands.registerCommand('c4x.exportPng', async () => {
       vscode.window.showInformationMessage('C4X: Export PNG (coming soon)');
     }),
@@ -40,15 +38,6 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showQuickPick(['classic', 'modern', 'muted', 'high-contrast', 'auto'], {
         placeHolder: 'Select C4X theme'
       });
-    })
-  );
-
-  // Optional: auto-open preview when supported language opens (activation events already configured)
-  context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument((doc) => {
-      if (['c4x', 'structurizr-dsl', 'plantuml'].includes(doc.languageId)) {
-        // Debounced/guarded in future milestones
-      }
     })
   );
 

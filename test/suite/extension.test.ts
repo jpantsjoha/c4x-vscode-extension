@@ -21,22 +21,7 @@ describe('Extension Activation Tests', () => {
     console.log('Extension activated successfully');
   });
 
-  it('c4x.openPreview command should be registered', async () => {
-    const commands = await vscode.commands.getCommands(true);
-    const hasCommand = commands.includes('c4x.openPreview');
 
-    assert.ok(hasCommand, 'c4x.openPreview command not registered');
-    console.log('c4x.openPreview command registered');
-  });
-
-  it('c4x.openPreview command should execute without errors', async () => {
-    // Execute command
-    await vscode.commands.executeCommand('c4x.openPreview');
-
-    // If no error thrown, test passes
-    assert.ok(true, 'Command executed successfully');
-    console.log('c4x.openPreview executed successfully');
-  });
 
   it('activate() should return extendMarkdownIt for VS Code markdown integration', async function () {
     this.timeout(10000);
