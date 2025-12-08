@@ -4,10 +4,22 @@ import { C4Element, C4ElementType, C4Model, C4Rel, C4View, RelType, C4Boundary }
 /* eslint-disable @typescript-eslint/naming-convention */
 const ELEMENT_TYPE_MAP: Record<string, C4ElementType> = {
     'person': 'Person',
+    'person_ext': 'Person',
     'software system': 'SoftwareSystem',
     'softwaresystem': 'SoftwareSystem',
+    'system': 'SoftwareSystem',
+    'system_ext': 'SoftwareSystem',
+    'systemdb': 'SoftwareSystem',
+    'systemdb_ext': 'SoftwareSystem',
     'container': 'Container',
+    'container_ext': 'Container',
+    'containerdb': 'Container',
+    'containerdb_ext': 'Container',
     'component': 'Component',
+    'component_ext': 'Component',
+    'componentdb': 'Component',
+    'componentdb_ext': 'Component',
+    'node': 'DeploymentNode',
 };
 
 const REL_TYPE_MAP: Record<string, RelType> = {
@@ -20,7 +32,7 @@ const REL_TYPE_MAP: Record<string, RelType> = {
 export class C4ModelBuilder {
     public build(parseResult: ParseResult, workspace: string): C4Model {
         const elements = this.buildElements(parseResult.elements);
-        const relationships = this.buildRelationships(parseResult.relationships, elements);
+        const relationships = this.buildRelationships(parseResult.relationships, elements, parseResult.viewType);
         const boundaries = parseResult.boundaries ? this.buildBoundaries(parseResult.boundaries) : undefined;
 
         const view: C4View = {
@@ -36,9 +48,7 @@ export class C4ModelBuilder {
         };
     }
 
-    private buildElements(rawElements: RawElement[]): C4Element[] {
-        const seen = new Set<string>();
-
+    private buildElements(rawElements: RawElement[], seen: Set<string> = new Set()): C4Element[] {
         return rawElements.map((element, index) => {
             const elementType = this.resolveElementType(element, index);
 
@@ -48,17 +58,46 @@ export class C4ModelBuilder {
 
             seen.add(element.id);
 
-            return {
+            // Auto-inject tags for specific element types (Ext, Db)
+            const tags = element.tags ? [...element.tags] : [];
+            const rawType = element.elementType.toLowerCase();
+            
+            if (rawType.includes('_ext')) {
+                if (!tags.includes('External')) {tags.push('External');}
+            }
+            if (rawType.includes('db')) {
+                if (!tags.includes('Database')) {tags.push('Database');}
+            }
+
+            const c4Element: C4Element = {
                 id: element.id,
                 label: element.label,
                 type: elementType,
-                tags: element.tags.length > 0 ? element.tags : undefined,
+                tags: tags.length > 0 ? tags : undefined,
+                sprite: element.sprite,
+                technology: element.technology,
+                description: element.description,
             };
+
+            if (element.children && element.children.length > 0) {
+                c4Element.children = this.buildElements(element.children, seen);
+            }
+
+            return c4Element;
         });
     }
 
-    private buildRelationships(rawRelationships: RawRelationship[], elements: C4Element[]): C4Rel[] {
-        const elementIds = new Set(elements.map(e => e.id));
+    private buildRelationships(rawRelationships: RawRelationship[], elements: C4Element[], viewType: string): C4Rel[] {
+        const elementIds = new Set<string>();
+        
+        // Helper to collect all IDs including nested ones
+        const collectIds = (elems: C4Element[]) => {
+            elems.forEach(e => {
+                elementIds.add(e.id);
+                if (e.children) { collectIds(e.children); }
+            });
+        };
+        collectIds(elements);
 
         return rawRelationships.map((rel, index) => {
             if (!elementIds.has(rel.from)) {
@@ -80,6 +119,7 @@ export class C4ModelBuilder {
                 to: rel.to,
                 label: rel.label,
                 relType,
+                order: viewType === 'dynamic' ? index + 1 : undefined,
             };
         });
     }

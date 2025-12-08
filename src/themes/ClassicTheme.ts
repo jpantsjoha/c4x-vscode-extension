@@ -43,6 +43,12 @@ export const ClassicTheme: C4Theme = {
             stroke: '#85BBF0',    // Light blue border
             text: '#85BBF0',      // Text matches border color
         },
+        // Deployment Node - Light gray
+        deploymentNode: {
+            fill: '#FFFFFF',
+            stroke: '#666666',
+            text: '#666666',
+        },
         // External variants
         externalPerson: {
             fill: '#FFFFFF',      // White background

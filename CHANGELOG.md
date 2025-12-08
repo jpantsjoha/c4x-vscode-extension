@@ -1,11 +1,33 @@
 # Change Log
 
-All notable changes to the "C4X" extension will be documented in this file.
+All notable changes to the "c4x" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## [1.0.9] - 2025-12-08
+### 🚀 New Features
+- **PlantUML Support**: Native rendering of standard PlantUML C4 syntax in markdown.
+- **PDF Export**: Browser-based print preview for high-fidelity PDF generation (`C4X: Export - Preview`).
+- **Marketing Example**: New multi-agent system example added to gallery.
 
-## [1.0.5] - 2025-12-04
-- Refreshed extension icon with bold, monochrome design.
+### 📝 Documentation
+- Added `EXAMPLES-PLANTUML.md` to showcase PlantUML compatibility.
+
+## [1.0.8] - 2025-12-06
+
+### 🧹 Refocus & Cleanup
+- **Markdown-First Strategy**: Removed standalone `.c4x` file preview and context menus to focus entirely on seamless Markdown integration.
+- **Removed**: Standalone Preview Panel command (`c4x.openPreview`).
+- **Cleaned**: Removed sample clutter from the package.
+
+### 🎨 Visual Improvements
+- **Label Legibility**: Added smart "halo" background to relationship labels so arrows don't cross through text.
+- **Layout Padding**: Increased padding for Boundaries and Deployment Nodes to prevent overlapping labels.
+
+### 🐛 Fixed
+- **Parser**: Fixed support for `System_Ext`, `System_Boundary`, and `title` keywords.
+- **Stability**: Fixed parsing errors for standard PlantUML C4 macros.
+
+## [1.0.6] - 2025-12-05
+- **Feat**: Added 'Open Preview' context menu for .c4x files
 
 ## [1.0.4] - 2025-12-04
 - Updated extension icon for better transparency support.

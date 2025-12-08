@@ -44,16 +44,20 @@ export class DagreLayoutEngine {
    * Increased sizes for better visual appearance matching official C4 diagrams
    * @see examples/SystemContext.png for reference sizing
    */
-  private getStandardElementSize(elementType: string): { width: number; height: number } {
-    switch (elementType) {
+  private getStandardElementSize(element: C4Element): { width: number; height: number } {
+    switch (element.type) {
       case 'Person':
         return { width: 200, height: 160 }; // Taller for person icon + text
-      case 'Software System':
+      case 'SoftwareSystem':
         return { width: 260, height: 140 }; // Wider for longer labels
       case 'Container':
         return { width: 240, height: 130 }; // Slightly smaller than systems
       case 'Component':
         return { width: 220, height: 120 }; // Smallest for components
+      case 'DeploymentNode':
+        // Nodes are containers/clusters, size determined by children usually.
+        // But if empty, give it a default size.
+        return { width: 300, height: 200 };
       default:
         return { width: 260, height: 140 }; // Default to Software System size
     }
@@ -80,70 +84,114 @@ export class DagreLayoutEngine {
     // Default node configuration
     g.setDefaultEdgeLabel(() => ({}));
 
-    // 1. Add Boundaries (Clusters) first
+    // Map to store all elements (including nested ones) for lookup
+    const elementMap = new Map<string, C4Element>();
+
+    // Helper to recursively add elements to graph
+    const processElement = (elem: C4Element, parentId?: string) => {
+      elementMap.set(elem.id, elem);
+
+      // Determine if this is a cluster (has children)
+      const isCluster = elem.children && elem.children.length > 0;
+
+      if (isCluster) {
+        g.setNode(elem.id, {
+          label: elem.label,
+          clusterLabelPos: 'top',
+          style: 'fill: none; stroke: #333; stroke-width: 1.5px;',
+          paddingTop: 80,     // Increased padding for better label separation
+          paddingBottom: 50,
+          paddingLeft: 40,
+          paddingRight: 40
+        });
+
+        // Recursively process children
+        elem.children!.forEach(child => processElement(child, elem.id));
+      } else {
+        const { width, height } = this.getStandardElementSize(elem);
+        g.setNode(elem.id, {
+          label: elem.label,
+          width,
+          height,
+        });
+      }
+
+      // Set parent relationship
+      if (parentId) {
+        g.setParent(elem.id, parentId);
+      }
+    };
+
+    // 1. Process all elements (recursive)
+    view.elements.forEach(elem => processElement(elem));
+
+    // 2. Add Legacy Boundaries (Clusters) 
+    // Note: Legacy boundaries overlap with the "parent" concept. 
+    // If an element is already parented by a Node, it shouldn't be parented by a Boundary?
+    // We assume boundaries are at the top level or compatible.
     if (view.boundaries) {
       view.boundaries.forEach(boundary => {
         g.setNode(boundary.id, {
           label: boundary.label,
           clusterLabelPos: 'bottom',
           style: 'fill: none; stroke: #333; stroke-width: 1.5px; stroke-dasharray: 5, 5;',
-          // Add padding for the cluster
-          paddingTop: 40,
-          paddingBottom: 40,
-          paddingLeft: 30,
-          paddingRight: 30
+          paddingTop: 60,
+          paddingBottom: 50,
+          paddingLeft: 40,
+          paddingRight: 40
+        });
+
+        // Set parent for elements inside this boundary
+        // Only if they don't already have a parent (from nesting)
+        boundary.elements.forEach(elemId => {
+          if (!g.parent(elemId)) {
+            g.setParent(elemId, boundary.id);
+          }
         });
       });
     }
 
-    // 2. Add Nodes and set Parents
-    view.elements.forEach(elem => {
-      const { width, height } = this.getStandardElementSize(elem.type);
-
-      g.setNode(elem.id, {
-        label: elem.label,
-        width,
-        height,
-      });
-
-      // If element belongs to a boundary, set it as parent
-      if (view.boundaries) {
-        const parentBoundary = view.boundaries.find(b => b.elements.includes(elem.id));
-        if (parentBoundary) {
-          g.setParent(elem.id, parentBoundary.id);
-        }
-      }
-    });
-
     // 3. Add Edges
     view.relationships.forEach(rel => {
-      g.setEdge(rel.from, rel.to, {
-        label: rel.label || '',
-      });
+      // Ensure both ends exist in the graph (safety check)
+      if (g.node(rel.from) && g.node(rel.to)) {
+        g.setEdge(rel.from, rel.to, {
+          label: rel.label || '',
+        });
+      }
     });
 
     // Run layout algorithm (synchronous)
     dagre.layout(g);
 
-    // Extract positioned elements
-    const elements: PositionedElement[] = view.elements.map(elem => {
+    // Flatten elements list for rendering (Parents first)
+    const flattenedElements: PositionedElement[] = [];
+    const flattenAndPosition = (elem: C4Element) => {
       const node = g.node(elem.id);
-      return {
-        id: elem.id,
-        element: elem,
-        x: node.x - node.width / 2,
-        y: node.y - node.height / 2,
-        width: node.width,
-        height: node.height,
-      };
-    });
+      // Safety check: node might not exist if filtered out?
+      if (node) {
+        flattenedElements.push({
+          id: elem.id,
+          element: elem,
+          x: node.x - node.width / 2,
+          y: node.y - node.height / 2,
+          width: node.width,
+          height: node.height,
+        });
+      }
+      
+      if (elem.children) {
+        elem.children.forEach(child => flattenAndPosition(child));
+      }
+    };
+
+    view.elements.forEach(elem => flattenAndPosition(elem));
 
     // Extract positioned boundaries (clusters)
     let boundaries: PositionedBoundary[] | undefined;
     if (view.boundaries && view.boundaries.length > 0) {
       boundaries = view.boundaries.map(boundary => {
         const node = g.node(boundary.id);
-        // Dagre gives center x,y for clusters too, need to convert to top-left
         return {
           id: boundary.id,
           boundary,
@@ -157,9 +205,11 @@ export class DagreLayoutEngine {
 
     // Extract routed relationships
     const relationships: RoutedRelationship[] = view.relationships.map(rel => {
+      // Check existence
+      if (!g.hasEdge(rel.from, rel.to)) {
+          return { id: rel.id, points: [], relationship: rel };
+      }
       const edge = g.edge(rel.from, rel.to);
-
-      // Dagre provides edge points as {x, y} coordinates
       const points: Point[] = edge.points || [];
 
       return {
@@ -175,7 +225,7 @@ export class DagreLayoutEngine {
     const height = (graphAttrs.height || 0) + 160; // Add margins
 
     return {
-      elements,
+      elements: flattenedElements,
       relationships,
       boundaries,
       width,

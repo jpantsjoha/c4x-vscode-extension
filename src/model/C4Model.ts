@@ -1,6 +1,6 @@
 import { C4ViewType } from '../parser';
 
-export type C4ElementType = 'Person' | 'SoftwareSystem' | 'Container' | 'Component';
+export type C4ElementType = 'Person' | 'SoftwareSystem' | 'Container' | 'Component' | 'DeploymentNode';
 
 export type RelType = 'uses' | 'async' | 'sync';
 
@@ -11,6 +11,8 @@ export interface C4Element {
     tags?: string[];
     technology?: string;
     description?: string;
+    sprite?: string;
+    children?: C4Element[];
 }
 
 export interface C4Rel {
@@ -20,6 +22,7 @@ export interface C4Rel {
     label: string;
     technology?: string;
     relType: RelType;
+    order?: number; // Sequence order for dynamic diagrams
 }
 
 export interface C4Boundary {

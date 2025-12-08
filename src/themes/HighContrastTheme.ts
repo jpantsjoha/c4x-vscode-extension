@@ -37,6 +37,11 @@ export const HighContrastTheme: C4Theme = {
             stroke: '#CC0000',    // Dark red border
             text: '#CC0000',      // Matching text
         },
+        deploymentNode: {
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            text: '#000000',
+        },
         relationship: {
             stroke: '#000000',    // Black arrows
             text: '#000000',      // Black text

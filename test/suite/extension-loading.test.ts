@@ -70,7 +70,6 @@ describe('Automated Extension Loading Tests', () => {
 
   describe('Command Registration', () => {
     const expectedCommands = [
-      'c4x.openPreview',
       'c4x.exportPng',
       'c4x.exportSvg',
       'c4x.copySvg',
@@ -95,25 +94,6 @@ describe('Automated Extension Loading Tests', () => {
       }
 
       console.log(`✅ All ${expectedCommands.length} commands registered`);
-    });
-
-    it('c4x.openPreview command should execute without throwing', async function() {
-      this.timeout(5000);
-
-      try {
-        await vscode.commands.executeCommand('c4x.openPreview');
-        console.log('✅ c4x.openPreview command executed successfully');
-      } catch (err) {
-        // Command may fail if no document is open, but should not throw unexpected errors
-        const errorMessage = (err as Error).message || '';
-        assert.ok(
-          errorMessage.includes('No active editor') ||
-          errorMessage.includes('document') ||
-          errorMessage === '',
-          `Unexpected error: ${errorMessage}`
-        );
-        console.log('✅ c4x.openPreview handled gracefully (no active document)');
-      }
     });
   });
 

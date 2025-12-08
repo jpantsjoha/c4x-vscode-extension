@@ -82,6 +82,12 @@ package: build
 # Alias for package (create VSIX)
 vsix: package
 
+# Sync to public repo
+sync:
+	@if [ -z "$(DEST)" ]; then echo "Usage: make sync DEST=../path-to-public-repo"; exit 1; fi
+	@echo "🚀 Syncing to public repo: $(DEST)"
+	@./scripts/publish-to-public.sh "$(DEST)"
+
 # Pre-commit checks (3m pattern: make, measure, monitor)
 pre-commit: lint verify-docs build test
 	@echo "✅ Pre-commit checks passed!"
@@ -109,6 +115,7 @@ help:
 	@echo "Publishing:"
 	@echo "  make package    - Create VSIX file for marketplace"
 	@echo "  make vsix       - Alias for 'make package'"
+	@echo "  make sync DEST=../public-repo - Sync to public repo"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean      - Remove build artifacts (dist, out, node_modules)"

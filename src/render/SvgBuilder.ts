@@ -1,6 +1,7 @@
 import { PositionedElement, RoutedRelationship, LayoutResult, Point, PositionedBoundary } from '../layout/DagreLayoutEngine';
 import { C4Theme } from '../themes/Theme';
 import { themeManager } from '../themes/ThemeManager';
+import { getSprite } from '../assets/icons';
 
 interface SvgBuildOptions {
     theme?: C4Theme;
@@ -54,6 +55,8 @@ function getStrokeColor(node: PositionedElement, theme: C4Theme): string {
             return isExternal ? (theme.colors.externalContainer?.stroke ?? theme.colors.externalSystem.stroke) : theme.colors.container.stroke;
         case 'Component':
             return isExternal ? (theme.colors.externalComponent?.stroke ?? theme.colors.externalSystem.stroke) : theme.colors.component.stroke;
+        case 'DeploymentNode':
+            return theme.colors.deploymentNode.stroke;
         case 'SoftwareSystem':
         default:
             return isExternal ? theme.colors.externalSystem.stroke : theme.colors.softwareSystem.stroke;
@@ -70,6 +73,8 @@ function getTextColor(node: PositionedElement, theme: C4Theme): string {
             return isExternal ? (theme.colors.externalContainer?.text ?? theme.colors.externalSystem.text) : theme.colors.container.text;
         case 'Component':
             return isExternal ? (theme.colors.externalComponent?.text ?? theme.colors.externalSystem.text) : theme.colors.component.text;
+        case 'DeploymentNode':
+            return theme.colors.deploymentNode.text;
         case 'SoftwareSystem':
         default:
             return isExternal ? theme.colors.externalSystem.text : theme.colors.softwareSystem.text;
@@ -353,9 +358,11 @@ ${nodeSvg}
 
         const filter = theme.styles.shadowEnabled ? 'filter="url(#drop-shadow)"' : '';
 
-        // Check if this is a Person element - render with stick figure icon
-        if (node.element.type === 'Person') {
-            return this.renderPersonNode(node, x, y, width, height, fill, stroke, textColor, theme, filter);
+        // Check if this is a Person element or has a custom sprite - render with icon
+        const spriteName = node.element.sprite ?? (node.element.type === 'Person' ? 'person' : undefined);
+        
+        if (spriteName) {
+            return this.renderIconNode(node, x, y, width, height, fill, stroke, textColor, theme, filter, spriteName);
         }
 
         // Render C4-PlantUML style element structure for non-Person elements
@@ -368,10 +375,9 @@ ${textContent}
     }
 
     /**
-     * Render a Person element with stick-figure icon (official C4 Model style)
-     * The person shape consists of a circle (head) and a body shape above a rounded rectangle
+     * Render an element with an icon/sprite (Standard C4 Person or Custom Sprite)
      */
-    private renderPersonNode(
+    private renderIconNode(
         node: PositionedElement,
         x: number,
         y: number,
@@ -381,40 +387,58 @@ ${textContent}
         stroke: string,
         textColor: string,
         theme: C4Theme,
-        filter: string
+        filter: string,
+        spriteName: string
     ): string {
-        // Person icon dimensions (proportional to box)
-        const iconHeight = 40;  // Height of the person icon area
-        const headRadius = 12;  // Radius of the head circle
-        const bodyWidth = 32;   // Width of the body/shoulders
-        const bodyHeight = 18;  // Height of the body (shoulder area)
-
+        // Icon dimensions
+        const iconSize = 40;  // Size of the icon area
+        
         // Position the icon at the top center of the element
         const iconCenterX = x + width / 2;
-        const headCenterY = y + headRadius + 8;  // 8px padding from top
-        const bodyCenterY = headCenterY + headRadius + bodyHeight / 2 - 2;
+        const iconY = y + 10; // 10px padding from top
 
         // Adjust text area to account for icon
-        const textAreaY = y + iconHeight;
-        const textAreaHeight = height - iconHeight;
+        const textAreaY = y + iconSize + 10;
+        const textAreaHeight = height - iconSize - 10;
 
         // Render text content in the adjusted area
         const textContent = this.renderC4ElementStructureForPerson(node, x, textAreaY, width, textAreaHeight, textColor, theme);
 
-        // Create the person icon SVG - filled with the stroke color
-        // Head (circle)
-        const head = `<circle cx="${iconCenterX.toFixed(2)}" cy="${headCenterY.toFixed(2)}" r="${headRadius}" fill="${stroke}" />`;
+        // Get SVG path for sprite
+        const spriteDef = getSprite(spriteName);
+        
+        let iconSvg = '';
+        if (spriteDef) {
+            let body: string;
+            let viewBox = '0 0 100 100';
+            let preserveColor = false;
 
-        // Body (rounded shoulders shape using a path)
-        const bodyTop = bodyCenterY - bodyHeight / 2;
-        const bodyPath = `M ${(iconCenterX - bodyWidth / 2).toFixed(2)} ${(bodyTop + bodyHeight).toFixed(2)} Q ${(iconCenterX - bodyWidth / 2).toFixed(2)} ${bodyTop.toFixed(2)} ${iconCenterX.toFixed(2)} ${bodyTop.toFixed(2)} Q ${(iconCenterX + bodyWidth / 2).toFixed(2)} ${bodyTop.toFixed(2)} ${(iconCenterX + bodyWidth / 2).toFixed(2)} ${(bodyTop + bodyHeight).toFixed(2)} Z`;
-        const body = `<path d="${bodyPath}" fill="${stroke}" />`;
+            if (typeof spriteDef === 'string') {
+                body = spriteDef;
+            } else {
+                body = spriteDef.body;
+                viewBox = spriteDef.viewBox || '0 0 100 100';
+                preserveColor = spriteDef.preserveColor || false;
+            }
+
+            // Parse viewBox to calculate scale
+            const parts = viewBox.split(' ').map(Number);
+            const vbWidth = parts.length === 4 ? parts[2] : 100;
+            const scale = iconSize / vbWidth;
+            
+            const translateX = iconCenterX - (vbWidth * scale) / 2;
+            const translateY = iconY;
+
+            // Apply fill color only if not preserving original colors
+            const fillAttr = preserveColor ? '' : `fill="${stroke}"`;
+            
+            iconSvg = `<g transform="translate(${translateX.toFixed(2)}, ${translateY.toFixed(2)}) scale(${scale.toFixed(4)})" ${fillAttr} stroke="none">${body}</g>`;
+        }
 
         return `<g class="node person" data-id="${node.id}" ${filter}>
     <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${theme.styles.borderRadius}" ry="${theme.styles.borderRadius}" fill="${fill}" stroke="${stroke}" stroke-width="${theme.styles.borderWidth}" />
-    <g class="person-icon">
-      ${head}
-      ${body}
+    <g class="element-icon">
+      ${iconSvg}
     </g>
 ${textContent}
   </g>`;
@@ -548,9 +572,12 @@ ${textContent}
 
         // Render relationship label with C4 model styling
         let labelElement = '';
-        if (edge.relationship.label) {
+        if (edge.relationship.label || edge.relationship.order) {
             // C4 model relationship labels: simple, clean, positioned along arrow
-            const labelText = edge.relationship.label.trim();
+            // Prefix with sequence number for dynamic diagrams
+            const prefix = edge.relationship.order ? `${edge.relationship.order}: ` : '';
+            const labelText = prefix + (edge.relationship.label || '').trim();
+            
             const fontSize = 12; // Standard C4 relationship label size
             const lineHeight = 14;
 
@@ -571,7 +598,8 @@ ${textContent}
             this.registerLabelPosition(adjustedPosition.x, adjustedPosition.y, labelWidth, labelHeight);
 
             // Create clean, single-line label (C4 model standard)
-            labelElement = `<text x="${adjustedPosition.x.toFixed(2)}" y="${adjustedPosition.y.toFixed(2)}" fill="${theme.colors.relationship.text}" text-anchor="middle" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(labelText)}</text>`;
+            // Use paint-order: stroke fill to create a halo effect for legibility over lines
+            labelElement = `<text x="${adjustedPosition.x.toFixed(2)}" y="${adjustedPosition.y.toFixed(2)}" fill="${theme.colors.relationship.text}" stroke="${theme.colors.background}" stroke-width="3" paint-order="stroke" text-anchor="middle" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(labelText)}</text>`;
         }
 
         return `<g class="edge" data-id="${edge.id}">

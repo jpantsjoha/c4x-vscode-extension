@@ -33,9 +33,10 @@ async function main() {
       // Adjust tests path relative to the symlink
       effectiveTestsPath = path.join(extLink, 'out', 'test', 'suite', 'index');
 
-      // Download VS Code to temp directory (avoids spaces in path)
-      const vscodeTestDir = path.join(tempDir, 'vscode-test');
-      console.log(`   Downloading VS Code to: ${vscodeTestDir}`);
+      // Download VS Code to a stable temp directory to avoid re-downloading every time
+      // We use a fixed name 'c4x-vscode-test-cache' in the system temp dir
+      const vscodeTestDir = path.join(os.tmpdir(), 'c4x-vscode-test-cache');
+      console.log(`   Using VS Code cache at: ${vscodeTestDir}`);
       vscodeExecutablePath = await downloadAndUnzipVSCode({
         cachePath: vscodeTestDir
       });

@@ -9,6 +9,8 @@ import { c4ModelBuilder } from '../model/C4ModelBuilder';
 import { dagreLayoutEngine } from '../layout/DagreLayoutEngine';
 import { svgBuilder } from '../render/SvgBuilder';
 
+import { parsePlantUMLtoC4Model } from '../parser/plantuml/PlantUMLAdapter';
+
 /**
  * C4X MarkdownIt plugin
  * Registers a custom renderer for ```c4x fenced code blocks
@@ -25,13 +27,13 @@ export function c4xPlugin(md: MarkdownIt): MarkdownIt {
         const info = token.info.trim();
         const lang = info.split(/\s+/)[0];
 
-        // Only process c4x blocks
-        if (lang !== 'c4x') {
+        // Only process c4x or plantuml blocks
+        if (lang !== 'c4x' && lang !== 'plantuml') {
             return defaultFence(tokens, idx, options, env, self);
         }
 
         // Render C4X diagram
-        return renderC4XBlock(token.content);
+        return renderC4XBlock(token.content, lang);
     };
 
     return md;
@@ -40,15 +42,22 @@ export function c4xPlugin(md: MarkdownIt): MarkdownIt {
 /**
  * Render a C4X code block as inline SVG
  * @param source C4X-DSL source code
+ * @param lang Language identifier (c4x or plantuml)
  * @returns HTML string with inline SVG or error message
  */
-function renderC4XBlock(source: string): string {
+function renderC4XBlock(source: string, lang: string): string {
     try {
-        // 1. Parse C4X syntax
-        const parseResult = c4xParser.parse(source);
+        let model;
 
-        // 2. Build C4 Model IR
-        const model = c4ModelBuilder.build(parseResult, 'markdown-block');
+        if (lang === 'plantuml') {
+            // Parse PlantUML source
+            model = parsePlantUMLtoC4Model(source);
+        } else {
+            // 1. Parse C4X syntax
+            const parseResult = c4xParser.parse(source);
+            // 2. Build C4 Model IR
+            model = c4ModelBuilder.build(parseResult, 'markdown-block');
+        }
 
         // 3. Check if model has any views
         if (!model.views || model.views.length === 0) {

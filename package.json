@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.0.5",
+  "version": "1.0.9",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -49,11 +49,6 @@
     "structurizr"
   ],
   "activationEvents": [
-    "onCommand:c4x.openPreview",
-    "onCommand:c4x.exportPng",
-    "onCommand:c4x.exportSvg",
-    "onCommand:c4x.copySvg",
-    "onCommand:c4x.changeTheme",
     "onLanguage:c4x"
   ],
   "main": "./dist/extension.js",
@@ -64,8 +59,13 @@
     ],
     "commands": [
       {
-        "command": "c4x.openPreview",
-        "title": "C4X: Open Preview",
+        "command": "c4x.exportHtml",
+        "title": "C4X: Export Markdown to HTML",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.exportPdf",
+        "title": "C4X: Export - Preview",
         "category": "C4X"
       },
       {
@@ -89,6 +89,22 @@
         "category": "C4X"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceLangId == markdown",
+          "command": "c4x.exportPdf",
+          "group": "2_workspace@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "when": "resourceLangId == markdown",
+          "command": "c4x.exportPdf",
+          "group": "3_export@1"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "c4x",
