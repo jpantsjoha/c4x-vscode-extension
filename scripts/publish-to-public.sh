@@ -78,6 +78,7 @@ rsync -avm --delete \
     --include='LICENSE' \
     --include='CHANGELOG.md' \
     --include='CONTRIBUTING.md' \
+    --include='c4x-*.vsix' \
     --exclude='publish-vsce.md' \
     --include='.gitignore' \
     --include='.vscodeignore' \

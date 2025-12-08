@@ -44,6 +44,22 @@ This guide helps you resolve common issues with the C4X extension.
 
 ---
 
+## Conflicting Extensions
+
+### Issue: Markdown preview shows "!No PlantUML server" error
+
+**Cause**: The **PlantUML (jebbs.plantuml)** extension is installed and trying to render `plantuml` code blocks inside Markdown files, but conflicts with C4X or lacks a configured server.
+
+**Solution**:
+
+1. **Option A (Recommended)**: Disable or uninstall the `jebbs.plantuml` extension for this workspace if you only need C4X rendering.
+2. **Option B**: Configure the PlantUML extension to use the public server in your `.vscode/settings.json`:
+    ```json
+    "plantuml.server": "https://www.plantuml.com/plantuml"
+    ```
+
+---
+
 ## Markdown Integration Issues (Deferred to v1.1)
 
 ### Issue: The C4X diagram is not rendering in the Markdown preview; it just shows the code block
