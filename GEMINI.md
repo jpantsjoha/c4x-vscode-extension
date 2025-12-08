@@ -21,7 +21,7 @@ Best for native, fast rendering and strict C4 compliance.
 
 #### Structure
 ```c4x
-%%{ c4: container }%%  <-- REQUIRED: view directive (system-context, container, component)
+%%{ c4: container }%%
 graph TB
   %% Elements: ID[Label<br/>Type]
   User[Internet Banking User<br/>Person]
@@ -37,7 +37,7 @@ graph TB
 *   **Container**: `Id[Name<br/>Container]`
 *   **Database**: `Id[Name<br/>Container Db]`
 *   **Component**: `Id[Name<br/>Component]`
-*   **Boundary**: `subgraph Id[Label] ... end`
+*   **Boundary**: `subgraph Id { ... }`
 
 ### 2. PlantUML C4 (Advanced/Icons)
 Use when specific Cloud Icons (AWS/Azure/GCP) are required.
@@ -107,9 +107,13 @@ graph TB
 3.  **Overloading**: Putting too many boxes in one view. Use Boundaries `subgraph` to group them.
 4.  **Bad Subgraph Syntax**: `subgraph ID[Label]` is INVALID. Use `subgraph ID { ... }`.
 
-## 🛠️ Self-Correction / Verification
-Before outputting code, verify:
-1.  **Directive Check**: Does the block start with `%%{ c4: ... }%%`?
-2.  **Brace Check**: Are all `{` matching `}`? (Especially for `subgraph`).
-3.  **Arrow Check**: Are you using `-->`? (Not `->`).
-4.  **Label Check**: Did you use `<br/>` for multiline labels?
+## 🛡️ Syntax Verification Protocol (REQUIRED)
+You **MUST** verify your code against these rules before outputting:
+
+1.  **Directive Check**: Start with `%%{ c4: ... }%%`. No trailing comments on this line.
+2.  **Brace Check**: `subgraph ID {` must end with `}`. (Do NOT use `end`).
+    -   ❌ `subgraph ID[Label]` -> **INVALID**
+    -   ✅ `subgraph ID {` -> **VALID**
+3.  **Arrow Check**: Use `-->` (two dashes). `->` is invalid.
+4.  **Label Check**: Use `<br/>` for multiline labels.
+5.  **Structure**: Ensure `graph TB` or `graph LR` is present immediately after the directive.
