@@ -84,11 +84,11 @@ Scope: Applications and Data Stores.
 graph TB
   User[User<br/>Person]
   
-  subgraph Cluster[Banking System]
+  subgraph BankingSystem {
     SPA[Single Page App<br/>Container]
     API[API Application<br/>Container]
     DB[Main Database<br/>Container Db]
-  end
+  }
 
   User -->|Uses| SPA
   SPA -->|JSON/HTTPS| API
@@ -105,3 +105,11 @@ graph TB
 1.  **Missing Directive**: Forgetting `%%{ c4: ... }%%` at the start.
 2.  **Wrong Arrows**: Using Mermaid `->` (thin) instead of `-->` (standard) or `==>` (thick). C4X prefers `-->`.
 3.  **Overloading**: Putting too many boxes in one view. Use Boundaries `subgraph` to group them.
+4.  **Bad Subgraph Syntax**: `subgraph ID[Label]` is INVALID. Use `subgraph ID { ... }`.
+
+## 🛠️ Self-Correction / Verification
+Before outputting code, verify:
+1.  **Directive Check**: Does the block start with `%%{ c4: ... }%%`?
+2.  **Brace Check**: Are all `{` matching `}`? (Especially for `subgraph`).
+3.  **Arrow Check**: Are you using `-->`? (Not `->`).
+4.  **Label Check**: Did you use `<br/>` for multiline labels?
