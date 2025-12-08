@@ -35,7 +35,7 @@ graph TB
 *   **Person**: `Id[Name<br/>Person]`
 *   **System**: `Id[Name<br/>System]`
 *   **Container**: `Id[Name<br/>Container]`
-*   **Database**: `Id[Name<br/>Container Db]`
+*   **Database**: `Id[Name<br/>Container]` (Use `Container` for Databases)
 *   **Component**: `Id[Name<br/>Component]`
 *   **Boundary**: `subgraph Id { ... }`
 
@@ -87,7 +87,7 @@ graph TB
   subgraph BankingSystem {
     SPA[Single Page App<br/>Container]
     API[API Application<br/>Container]
-    DB[Main Database<br/>Container Db]
+    DB[Main Database<br/>Container]
   }
 
   User -->|Uses| SPA
@@ -116,4 +116,4 @@ You **MUST** verify your code against these rules before outputting:
     -   ✅ `subgraph ID {` -> **VALID**
 3.  **Arrow Check**: Use `-->` (two dashes). `->` is invalid.
 4.  **Label Check**: Use `<br/>` for multiline labels.
-5.  **Structure**: Ensure `graph TB` or `graph LR` is present immediately after the directive.
+6.  **Element Type Check**: Use ONLY: `Person`, `System`, `Container`, `Component`. Do NOT use `Container Db`.
