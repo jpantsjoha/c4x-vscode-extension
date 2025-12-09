@@ -117,7 +117,23 @@ if [ -f "$DEST_DIR/README.md" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 4. Git Status in Destination
+# 4. Global Scrub: Replace private repo references in ALL Markdown files
+# -----------------------------------------------------------------------------
+echo -e "${BLUE}🧹 Scrubbing private repo references from Markdown files...${NC}"
+
+# Find all Markdown files in the destination
+find "$DEST_DIR" -type f -name "*.md" | while read -r file; do
+    # Replace references to the private repo name
+    if grep -q "c4model-vscode-extension" "$file"; then
+        echo "  - Cleaning: $(basename "$file")"
+        perl -i -pe 's/c4model-vscode-extension/c4x-vscode-extension/g' "$file"
+    fi
+done
+
+echo -e "${BLUE}✅ Scrub complete.${NC}"
+
+# -----------------------------------------------------------------------------
+# 5. Git Status in Destination
 # -----------------------------------------------------------------------------
 echo -e "${BLUE}📊 Status of Public Repo:${NC}"
 cd "$DEST_DIR"

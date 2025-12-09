@@ -116,4 +116,5 @@ You **MUST** verify your code against these rules before outputting:
     -   ✅ `subgraph ID {` -> **VALID**
 3.  **Arrow Check**: Use `-->` (two dashes). `->` is invalid.
 4.  **Label Check**: Use `<br/>` for multiline labels.
+5.  **Structure**: Ensure `graph TB` or `graph LR` is present immediately after the directive.
 6.  **Element Type Check**: Use ONLY: `Person`, `System`, `Container`, `Component`. Do NOT use `Container Db`.
