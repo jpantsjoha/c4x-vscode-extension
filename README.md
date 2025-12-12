@@ -35,7 +35,7 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 <br/>
 
 ### 🎥 Watch 30s Demo
-[![Watch C4X Demo](https://img.youtube.com/vi/qR1bbctj2rQ/0.jpg)](https://youtu.be/qR1bbctj2rQ)
+[![Watch C4X Demo](https://img.youtube.com/vi/qR1bbctj2rQ/maxresdefault.jpg)](https://youtu.be/qR1bbctj2rQ)
 - ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
 
 ## 🚀 Quick Start
