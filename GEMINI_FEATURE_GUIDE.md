@@ -54,9 +54,30 @@ The AI is not omniscient. It only "sees" relative to where you run it.
     *   *Result*: It might generate a generic/hallucinated system or fail.
 *   **The Fix**: Always run high-level diagrams (C1/C2) from the **Root** of your workspace or the main entry point of your application.
 
-### 2. Depth Constraints
-*   **Depth Limit**: To prevent token overflow, we limit scanning to **2 levels deep** from your selection.
-    *   *Tip*: If your architecture is deep, generate separate diagrams for sub-modules.
+### 2. Scanning Depth & Location Strategy
+The "Generate Diagram Here" command scans **relative to the file you are editing**. This makes the **location** of your Markdown file critical.
+
+#### How Scanning Works
+*   **System Context (C1)**: Scans **2 levels deep** from current folder.
+    *   *Requirement*: Must be run from the **Root** or `docs/` folder.
+    *   *Why*: It needs to see "wide" to find external inputs/outputs.
+*   **Container (C2)**: Scans **1 level deep**.
+    *   *Requirement*: Best run from `src/` or App Root.
+*   **Component (C3)**: Scans **Current Folder Only**.
+    *   *Requirement*: Run inside the specific module (e.g., `src/auth/README.md`).
+
+#### The "Reverse Order" Trap
+If you create a Markdown file deep in your project (e.g., `src/services/payment/README.md`) and ask for a **System Context (C1)**:
+1.  The AI looks for files *inside* `payment/`.
+2.  It cannot see "up" to the Database, UI, or other Services.
+3.  **Result**: It generates a "Micro-System" diagram of just the payment service, or fails to find any system boundaries.
+
+> **Rule of Thumb**:
+> *   **High-Level Diagrams (C1/C2)** -> Go in **Root** docs.
+> *   **Low-Level Diagrams (C3)** -> Go in **Module** docs.
+
+### 3. Depth Constraints
+*   **Scanning Limit**: To prevent token overflow...
 
 ### 2. Strictly C4 Notation
 Gemini is instructed to be a **Strict C4 Architect**.
