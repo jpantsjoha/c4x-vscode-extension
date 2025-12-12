@@ -307,38 +307,24 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 
 ## 🗺️ Roadmap
 
-### v1.0.0 (December 2025) ✅ Shipping Release
+### v1.1.5 (December 2025) ✅ Gemini AI Release
+- 🧠 **Gemini AI Integration** - Text-to-Diagram (Shipped)
+  - **Generate from Code**: Workspace scanning (C1/C2/C3 support).
+  - **Sketch-to-Code**: Create diagrams from text selections.
+  - **Smart Layouts**: Auto-detection of Flow vs Hierarchy.
+- 📐 **Advanced Layout Control** - Manual positioning overrides.
+- 🔨 **Diagnostics & Quick Fixes** - Automated syntax correction.
 
-- ✅ C4X-DSL with Mermaid-inspired syntax (100% working)
-- ✅ 5 built-in themes with instant switching
-- ✅ SVG/PNG export with theme preservation
-- ✅ Sub-50ms rendering for 30-node diagrams
-- ✅ Markdown Integration (Render ```c4x code blocks)
-- ✅ Live Error Highlighting (Diagnostics)
-- ✅ C4 Snippets & Templates
+### v1.2.0 (Q1 2026) 🏗️ Advanced Visuals & Integrations
+- ⏳ **Structurizr DSL Support** - Native parsing of `.dsl` files.
+- 🔮 **Deployment Diagrams** - Visualize infrastructure (Nodes, Pods, Regions).
+- 🔄 **Dynamic Diagrams** - Runtime message flows.
+- 📦 **Workspace Diagnostics** - Dedicated panel for architecture health.
 
-### v1.1.0 (Q1 2026) 🚧 UX & Tooling
-- 📐 **Advanced Layout Control** - Manual positioning, mixed TB/LR direction, and grid alignment
-- 🔨 **Quick Fixes** - Automated solutions for syntax errors
-- 🔨 **Interactive Preview** - Zoom, pan, and click-to-navigate
-- 🔨 **Diagnostics View** - Dedicated panel for workspace-wide issues
-- 🔨 **Diagnostics View** - Dedicated panel for workspace-wide issues
-- 🧠 **Gemini AI Integration** - Text-to-Diagram (Shipped in v1.1.0)
-  - **Intelligent Pre-Flight**: Auto-detects if your text is System (C1) or Component (C3) level.
-  - **Smart Layouts**: Auto-chooses Horizontal (LR) for small flows vs Vertical (TB) for large hierarchies.
-
-### v1.2.0 (Q2 2026) 🏗️ Advanced Visuals & Compatibility
-
-- 🔮 **Deployment Diagrams** - Visualize infrastructure (Nodes, Pods, Regions)
-- 🔄 **Dynamic Diagrams** - Visualize runtime message flows (Sequence-like)
-- ✅ **Compatibility** - Support for PlantUML C4 (Shipped in v1.0.9)
-- ⏳ **Structurizr DSL** - Deferred to v1.3
-
-### v2.0.0 (Q3 2026) 🤖 AI & Agents
-
-- 🧠 **Agent Syntax** - First-class support for `AI_Agent`, `Memory`, `Tool`
-- ✨ **Generative Architecture** - Text-to-Diagram via LLM integration
-- 🛡️ **Architecture Analysis** - Automated detection of bottlenecks and security risks
+### v2.0.0 (Q2 2026) 🤖 Agentic Architecture
+- 🧠 **Agent Syntax** - First-class support for `AI_Agent`, `Memory`, `Tool`.
+- 🛡️ **Architecture Analysis** - Automated detection of bottlenecks and security risks.
+- ✨ **Generative Refactoring** - "Suggest improvements" for your architecture.
 
 ## 📚 Documentation
 
