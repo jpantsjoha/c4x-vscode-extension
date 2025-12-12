@@ -103,7 +103,7 @@ A: We are targeting a v1.0 release for the Marketplace. You can track our progre
 
 ## AI & Gemini Integration
 
-> **See [docs/GEMINI_GUIDE.md](./GEMINI_GUIDE.md)** for the complete User Guide and Best Practices.
+> **See [GEMINI_FEATURE_GUIDE.md](../GEMINI_FEATURE_GUIDE.md)** for the complete User Guide and Best Practices.
 
 ### Q: Does the AI feature cost money?
 A: The feature itself is free, but it uses your own Google Gemini API Key. If you use a free tier key (e.g., AI Studio), it is free within limits. If you use Vertex AI or paid tiers, standard Google Cloud charges apply.
