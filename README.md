@@ -1,14 +1,14 @@
 # C4X - C4 Model Diagrams for VS Code
 >
-> **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards.
+> **Status (2025-12-12)**: ✅ **v1.1.5 STABLE** - Featuring Gemini AI Architect & Advanced Layouts.
 
 ![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 ![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
 
-> **Make C4 architectural diagrams as easy as Mermaid in VS Code** - Jaroslav
+> **Make C4 architectural diagrams as easy as (conversation with AI) in VS Code** - Jaroslav
 
-Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats.
+Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats - now powered by Gemini AI.
 
 ## ✨ Features
 
