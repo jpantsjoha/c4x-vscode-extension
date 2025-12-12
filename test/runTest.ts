@@ -63,12 +63,21 @@ async function main() {
       launchArgs.push(`--user-data-dir=${tempUserDataDir}`);
     }
 
+    // Capture CLI arguments (specific test files)
+    const testArgs = process.argv.slice(2);
+    const extensionTestsEnv: Record<string, string> = {};
+    if (testArgs.length > 0) {
+      extensionTestsEnv['C4X_TEST_FILES'] = testArgs.join(',');
+      console.log('🎯 Running specific tests:', testArgs);
+    }
+
     // Download VS Code, unzip, and run tests
     await runTests({
       extensionDevelopmentPath: effectiveExtensionPath,
       extensionTestsPath: effectiveTestsPath,
       vscodeExecutablePath,
-      launchArgs
+      launchArgs,
+      extensionTestsEnv // Pass environment variables
     });
 
     console.log('✅ All tests passed!');

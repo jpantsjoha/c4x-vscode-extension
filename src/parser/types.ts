@@ -12,6 +12,7 @@ export interface RawElement {
     children?: RawElement[];
     technology?: string;
     description?: string;
+    metadata?: Record<string, string>;
 }
 
 export interface RawRelationship {
@@ -48,6 +49,7 @@ export type RawStatement =
 export interface RawBoundary {
     type: 'boundary';
     label: string;
+    direction?: string;
     elements: RawElement[];
     relationships: RawRelationship[];
 }

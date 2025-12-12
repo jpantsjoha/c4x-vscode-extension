@@ -1,13 +1,13 @@
 {
   "name": "c4x",
-  "displayName": "C4X - AI Agent Diagrams",
-  "description": "Create C4 architecture diagrams as easy as Mermaid in VS Code. Supports C4X-DSL, Markdown integration, and themes. Ideal for AI Agent & Microservices design.",
+  "displayName": "C4X - C4 Model Diagrams",
+  "description": "Visual C4 Model diagrams with instant preview. Support for C4X DSL.",
   "galleryBanner": {
     "color": "#08427B",
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.0.9",
+  "version": "1.1.5",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -48,14 +48,15 @@
     "plantuml",
     "structurizr"
   ],
-  "activationEvents": [
-    "onLanguage:c4x"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "markdown.markdownItPlugins": true,
     "markdown.styles": [
       "./assets/styles/markdown.css"
+    ],
+    "markdown.previewScripts": [
+      "./assets/scripts/preview.js"
     ],
     "commands": [
       {
@@ -87,6 +88,16 @@
         "command": "c4x.changeTheme",
         "title": "C4X: Change Theme",
         "category": "C4X"
+      },
+      {
+        "command": "c4x.ai.generateFromMarkdown",
+        "title": "C4X: Generate Diagram Here (Gemini)",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.ai.generateFromSelection",
+        "title": "C4X: Diagram from Selection",
+        "category": "C4X"
       }
     ],
     "menus": {
@@ -95,6 +106,18 @@
           "when": "resourceLangId == markdown",
           "command": "c4x.exportPdf",
           "group": "2_workspace@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "c4x.ai.generateFromMarkdown",
+          "group": "c4x_ai",
+          "when": "resourceLangId == markdown"
+        },
+        {
+          "command": "c4x.ai.generateFromSelection",
+          "group": "c4x_ai",
+          "when": "editorHasSelection"
         }
       ],
       "editor/title/context": [
@@ -152,6 +175,20 @@
             "Adapts to VS Code light/dark theme automatically"
           ],
           "description": "C4 diagram theme"
+        },
+        "c4x.ai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Google Gemini API Key for AI generation features. \n\n⚠️ **SECURITY NOTICE**: \n- If using a **Personal/Retail Key**: Your code snippets may be used by Google for model training depending on terms. Use with caution for private code.\n- If using an **Enterprise/Vertex AI Key**: Data handling adheres to your organization's policies (usually private). \n\nEnsure you understand your API key's privacy terms before reducing."
+        },
+        "c4x.ai.model": {
+          "type": "string",
+          "default": "gemini-3-preview",
+          "enum": [
+            "gemini-3-preview",
+            "gemini-2.5-pro"
+          ],
+          "description": "Model to use for Gemini AI generation. Defaults to gemini-3-preview."
         }
       }
     }
@@ -162,6 +199,7 @@
     "watch": "node esbuild.config.js --watch",
     "lint": "eslint src --ext ts",
     "lint:md": "markdownlint *.md **/*.md --ignore node_modules --ignore out",
+    "generate:parser": "pegjs --format commonjs --output src/parser/c4x.generated.js src/parser/c4x.pegjs",
     "validate:docs": "npm run lint:md && npx ts-node scripts/validate-c4x-examples.ts",
     "test:compile": "tsc -p ./",
     "pretest": "pnpm run test:compile && pnpm run build",
@@ -199,6 +237,7 @@
     "@types/markdown-it": "^14.1.2",
     "dagre": "^0.8.5",
     "elkjs": "^0.11.0",
-    "markdown-it": "^14.1.0"
+    "markdown-it": "^14.1.0",
+    "@google/generative-ai": "^0.13.0"
   }
 }

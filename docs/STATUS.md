@@ -28,9 +28,17 @@ The C4X extension has been successfully released to the VS Code Marketplace (v1.
 - [x] Core C4X-DSL Parser
 - [x] Visual Engine Update (Official C4 styles)
 - [x] Markdown Integration (Inline rendering)
+- [x] Markdown Integration (Inline rendering)
 - [x] **Marketplace Publish** (v1.0.5 Shipped)
 
-### v1.1: Usability & Integration (Q1 2026)
+### v1.1: Intelligent Assistance (Released v1.1.5)
+
+- [x] **Smart Diagram Recommendations**: AI suggests C1/C2/C3 & Layout.
+- [x] **Generative Layouts**: "Smart Visual" engine with 4-node heuristics & input matching.
+- [x] **Resilience**: Automated syntax correction & Gemini 2.5 Pro fallback.
+- [x] **Privacy**: Zero-data retention integration.
+
+### v1.2: Usability & Integration (Q1 2026)
 
 - **Diagnostics Panel**: Dedicated architectural rule validation.
 - **Templates**: Built-in snippets for common patterns.

@@ -3,6 +3,7 @@ import { c4xPlugin } from './markdown/c4xPlugin';
 import { DiagnosticsManager } from './diagnostics/DiagnosticsManager';
 import { HtmlExporter } from './export/HtmlExporter';
 import { PdfExporter } from './export/PdfExporter';
+import { GenerateDiagramCommand } from './commands/GenerateDiagramCommand';
 
 /**
  * Activate the C4X extension
@@ -16,6 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Initialize Exporters
   const htmlExporter = new HtmlExporter();
   const pdfExporter = new PdfExporter();
+  const generateDiagramCommand = new GenerateDiagramCommand(context);
 
   // Register commands
   context.subscriptions.push(
@@ -38,6 +40,16 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showQuickPick(['classic', 'modern', 'muted', 'high-contrast', 'auto'], {
         placeHolder: 'Select C4X theme'
       });
+    }),
+    vscode.commands.registerCommand('c4x.ai.generateFromMarkdown', async () => {
+      if (vscode.window.activeTextEditor) {
+        await generateDiagramCommand.generateFromMarkdown(vscode.window.activeTextEditor);
+      }
+    }),
+    vscode.commands.registerCommand('c4x.ai.generateFromSelection', async () => {
+      if (vscode.window.activeTextEditor) {
+        await generateDiagramCommand.generateFromSelection(vscode.window.activeTextEditor);
+      }
     })
   );
 

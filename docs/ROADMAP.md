@@ -21,16 +21,17 @@
 
 ## 🚀 Upcoming Phases
 
-### Phase 9: Layout Engine 2.0 (Precision Control)
-**Goal**: Give users fine-grained control over diagram structure and specific positioning.
-- [ ] **Manual Positioning**: Syntax hints for relative positioning (e.g., `relayout(id, { x, y })` or `left_of`).
-- [ ] **Direction Control**: Support mixing TB/LR layouts within nested subgraphs.
-- [ ] **Grid Layout**: Option to force strict grid alignment.
+### Phase 9: Intelligent Assistance (Completed)
+- ✅ **Text-to-Diagram**: "Generate a C4 System Context for a Banking App" (Shipped v1.1.0).
+- ✅ **Code-to-Diagram**: Analyze workspace files to suggest structures.
+- ✅ **Layout Guidance**: Smart heuristics for diagram size.
+- ✅ **Visual Control**: `FORCE LAYOUT` override.
 
-### Phase 10: AI Architecture Agents
-**Goal**: Automate the creation of diagrams within documentation.
-- [ ] **Text-to-Diagram**: "Generate a C4 System Context for a Banking App".
-- [ ] **Code-to-Diagram**: Analyze workspace files to suggest structures.
+### Phase 10: Polish & Future Proofing (Planned q1 2026)
+**Goal**: Maintenance, stability, and refining user experience.
+- [ ] **Legacy Test Cleanup**: Clean up old Phase 8 PlantUML tests responsible for CI noise.
+- [ ] **Layout Adherence 2.0**: Revisit heuristics for small diagrams. Address vertical-default frustration for simple 3-4 node flows to prevent "super-scaling" issues.
+- [ ] **Visual Size Override**: Support `width` and `scale` attributes.
 
 ### Phase 11: Intelligent Authoring (Markdown Focused)
 **Goal**: Make writing C4X manually even faster.

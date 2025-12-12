@@ -77,23 +77,48 @@ C4X uses the same graph direction keywords as Mermaid's flowchart diagrams.
 **Syntax**: `graph <direction>`
 
 ### Supported Directions
+C4X supports all Mermaid direction keywords. Choose the one that best fits your narrative:
 
-| Direction | Description |
-|---|---|
-| `TB` | Top to Bottom |
-| `BT` | Bottom to Top |
-| `RL` | Right to Left |
-| `LR` | Left to Right |
+| Direction | Best For | Description |
+|---|---|---|
+| `TB` | **Hierarchy** | (Top-Bottom) Default for Context and Container diagrams. Shows structural decomposition. |
+| `LR` | **Flow** | (Left-Right) Best for sequences, data pipelines, or process flows. |
+| `BT` | **Upstream** | (Bottom-Top) Useful for visualizing dependency inversions. |
+| `RL` | **Reverse** | (Right-Left) Rarely used, but available. |
+
+### Guidance: TB vs LR
+*   **Use `TB`** when you want to show "What is contained in what?". It naturally represents layers.
+*   **Use `LR`** when you want to show "How does data move?". It naturally represents a timeline or pipeline.
 
 ### Example
-
 ```text
 graph LR
 ```
 
----
+### Controlling Layout
+You can influence the relative positioning of elements by changing the **order of relationship definitions**.
+In a `TB` (Top-Bottom) graph:
+*   Relationships defined **first** appear on the **left**.
+*   Relationships defined **later** appear on the **right**.
 
-## Elements
+**Example**:
+```c4x
+%%{ c4: container }%%
+graph TB
+  App[App<br/>Container]
+  DB1[DB 1<br/>Container]
+  DB2[DB 2<br/>Container]
+  
+  %% DB1 will be on the LEFT
+  App --> DB1
+  App --> DB2
+```
+
+To swap them, just swap the lines:
+```text
+  App --> DB2
+  App --> DB1
+```
 
 Elements are the building blocks of your C4 diagram. They represent people, software systems, containers, or components.
 

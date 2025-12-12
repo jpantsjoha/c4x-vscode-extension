@@ -13,6 +13,34 @@
     *   Use `graph TB` (Top-Bottom) for structural hierarchy.
     *   Use `graph LR` (Left-Right) for data flows or sequences.
 4.  **Labels**: Always label relationships. An empty arrow is ambiguous. Use `<br/>` for line breaks.
+## 🎨 Expert Visual Architect - Layout Strategy
+The user expects professional, clean, and organized diagrams. To avoid "spiderweb" layouts:
+
+1.  **Containment is Key**:
+    *   **Always** use `subgraph` to group related containers or components. This forces the layout engine to keep them visually close.
+    *   Do NOT leave nodes floating in the global space unless they are truly top-level (like `User` or external `System`).
+
+2.  **Define the "Backbone" First**:
+    *   Identify the **Main Success Scenario** (e.g., User -> App -> DB).
+    *   Define these nodes and relationships **FIRST** in the code. This sets the central vertical spine of the diagram.
+    *   Define secondary flows (Logging, Email, Analytics) **AFTER**.
+
+3.  **Horizontal vs Vertical (The "Chain" Rule)**:
+    *   **Vertical Stack**: To force a vertical layout, you MUST create a dependency chain: `User --> Frontend --> Backend --> DB`.
+    *   **Avoid "Fan-Out"**: `User --> Frontend`, `User --> Backend`, `User --> DB` makes the diagram **WIDE** (Horizontal). Avoid this unless components are truly parallel.
+    *   **Rule of Thumb**:
+        *   **<= 4 Nodes**: `graph LR` (Left-Right) is acceptable for simple flows.
+        *   **> 4 Nodes**: ALWAYS use `graph TB` (Top-Bottom).
+    *   **User Position**: Define `User` nodes FIRST. Ensure the user connects to the *entry point* (e.g., Web App), not deep internal components, to keep the User at the very top.
+
+4.  **Proximity & Execution Order**:
+    *   **Define in Call Order**: Define components in the order they are used in the "Happy Path".
+        *   If `A` calls `B`, and `B` calls `C`, define them as `A`, `B`, `C` sequentially.
+    *   **Group Neighbors**: Keep connected nodes physically close in the definition to hint the layout engine.
+
+5.  **Sanitized Aesthetics**:
+    *   **Node Labels**: `Label<br/>Type<br/>Tech`. Use `<br/>` for visual hierarchy.
+    *   **Line Labels**: Concise text. **NO HTML**. Use space instead of `<br/>`. Keep it under 3 words if possible.
 
 ## 📝 Syntax Reference
 
@@ -117,4 +145,32 @@ You **MUST** verify your code against these rules before outputting:
 3.  **Arrow Check**: Use `-->` (two dashes). `->` is invalid.
 4.  **Label Check**: Use `<br/>` for multiline labels.
 5.  **Structure**: Ensure `graph TB` or `graph LR` is present immediately after the directive.
-6.  **Element Type Check**: Use ONLY: `Person`, `System`, `Container`, `Component`. Do NOT use `Container Db`.
+## 📚 Documentation & Examples
+
+### Embedding C4X in Markdown
+When documenting C4X, always use this pattern to show both the **Code** and the **Result**:
+
+1.  **Source Code**: Use a **4-backtick** code block to display the syntax without rendering it.
+2.  **Rendered Result**: Use a normal **3-backtick** `c4x` block immediately after to render the live diagram.
+
+````markdown
+### Code
+```c4x
+graph TB
+  %% ...
+```
+
+### Result
+```c4x
+graph TB
+  %% ...
+```
+````
+
+### Layout Control
+C4X uses **Dagre** (Top-to-Bottom). Vertical rank is determined by dependency depth. **Horizontal order** (Left-to-Right) is determined by **Relationship Definition Order**.
+
+*   `A --> B` defined BEFORE `A --> C` puts **B on the Left**.
+*   To swap them, swap the lines of code.
+
+See `docs/EXAMPLES-ORDERING.md` for visual proof.

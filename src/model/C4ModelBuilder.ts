@@ -58,25 +58,47 @@ export class C4ModelBuilder {
 
             seen.add(element.id);
 
+            // Process tags for metadata extraction (for generic elements like A[...])
+            const finalTags: string[] = [];
+            const tagMetadata: Record<string, string> = {};
+
+            const tagsToProcess = element.tags ? [...element.tags] : [];
+            tagsToProcess.forEach(tag => {
+                if (tag.startsWith('$')) {
+                    const parts = tag.substring(1).split('=');
+                    if (parts.length === 2) {
+                        tagMetadata[parts[0]] = parts[1].replace(/['"]/g, ''); // Remove quotes
+                    } else {
+                        // Just a flag like $flag?
+                        tagMetadata[tag.substring(1)] = 'true';
+                    }
+                } else {
+                    finalTags.push(tag);
+                }
+            });
+
             // Auto-inject tags for specific element types (Ext, Db)
-            const tags = element.tags ? [...element.tags] : [];
             const rawType = element.elementType.toLowerCase();
-            
+
             if (rawType.includes('_ext')) {
-                if (!tags.includes('External')) {tags.push('External');}
+                if (!finalTags.includes('External')) { finalTags.push('External'); }
             }
             if (rawType.includes('db')) {
-                if (!tags.includes('Database')) {tags.push('Database');}
+                if (!finalTags.includes('Database')) { finalTags.push('Database'); }
             }
+
+            // Merge explicit metadata (from ElementCall) with tag metadata
+            const metadata = { ...tagMetadata, ...(element.metadata || {}) };
 
             const c4Element: C4Element = {
                 id: element.id,
                 label: element.label,
                 type: elementType,
-                tags: tags.length > 0 ? tags : undefined,
+                tags: finalTags.length > 0 ? finalTags : undefined,
                 sprite: element.sprite,
                 technology: element.technology,
                 description: element.description,
+                metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
             };
 
             if (element.children && element.children.length > 0) {
@@ -89,7 +111,7 @@ export class C4ModelBuilder {
 
     private buildRelationships(rawRelationships: RawRelationship[], elements: C4Element[], viewType: string): C4Rel[] {
         const elementIds = new Set<string>();
-        
+
         // Helper to collect all IDs including nested ones
         const collectIds = (elems: C4Element[]) => {
             elems.forEach(e => {
@@ -129,6 +151,7 @@ export class C4ModelBuilder {
             return {
                 id: boundary.label.toLowerCase().replace(/\s+/g, '-') + '-boundary-' + index,
                 label: boundary.label,
+                direction: boundary.direction,
                 elements: boundary.elements.map(elem => elem.id), // elem is a RawElement with id property
             };
         });

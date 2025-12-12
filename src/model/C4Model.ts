@@ -13,6 +13,7 @@ export interface C4Element {
     description?: string;
     sprite?: string;
     children?: C4Element[];
+    metadata?: Record<string, string>;
 }
 
 export interface C4Rel {
@@ -28,6 +29,7 @@ export interface C4Rel {
 export interface C4Boundary {
     id: string;
     label: string;
+    direction?: string;
     elements: string[]; // IDs of elements within this boundary
 }
 

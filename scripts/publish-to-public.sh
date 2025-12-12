@@ -53,8 +53,10 @@ rsync -avm --delete \
     --exclude='scripts/create-issues-phase9.sh' \
     --include='docs/' \
     --include='docs/images/***' \
+    --include='docs/marketplace/***' \
     --include='docs/c4x-syntax.md' \
     --include='docs/USER-GUIDE.md' \
+    --include='docs/GEMINI_GUIDE.md' \
     --include='docs/FAQ.md' \
     --include='docs/TROUBLESHOOTING.md' \
     --include='docs/STATUS.md' \

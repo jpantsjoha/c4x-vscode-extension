@@ -39,6 +39,28 @@ A: The extension includes a `MarkdownIt` plugin that is automatically used by VS
 
 ---
 
+## Layout & Positioning
+
+### Q: Why does the layout change when I reorder my code?
+
+A: C4X uses **Dagre** (a directed graph layout engine) which is deterministic but sensitive to input order. Specifically, the order in which you define **relationships** determines the left-to-right ordering of sibling nodes.
+
+-   **Defined First** -> Appears Left
+-   **Defined Later** -> Appears Right
+
+You can use this behavior to fine-tune your diagrams without absolute positioning. See [Examples: Ordering & Layout Control](./EXAMPLES-ORDERING.md) for visual demonstrations.
+
+### Q: Can I manually position elements?
+
+A: **Yes (v1.1+)!** You can use the `$x` and `$y` attributes to enforce specific coordinates, overrides the automatic layout engine.
+- Example: `Component(Name, "Label", "Tech", $x="100", $y="200")`
+
+### Q: Can I have horizontal flows inside a vertical diagram?
+
+A: **Yes (v1.1+)!** You can use `direction LR` (or `TB`, `RL`, `BT`) inside any `subgraph` to control its internal layout direction independently of the main diagram. See the [Layout Guide](./EXAMPLES-LAYOUT.md) for details.
+
+---
+
 ## Syntax
 
 ### Q: Can I use my existing Mermaid diagrams with C4X?
@@ -78,6 +100,40 @@ A: Yes. Support for importing diagrams from Structurizr DSL and C4-PlantUML is o
 A: We are targeting a v1.0 release for the Marketplace. You can track our progress in the [STATUS.md](../../docs/STATUS.md) file.
 
 ---
+
+## AI & Gemini Integration
+
+> **See [docs/GEMINI_GUIDE.md](./GEMINI_GUIDE.md)** for the complete User Guide and Best Practices.
+
+### Q: Does the AI feature cost money?
+A: The feature itself is free, but it uses your own Google Gemini API Key. If you use a free tier key (e.g., AI Studio), it is free within limits. If you use Vertex AI or paid tiers, standard Google Cloud charges apply.
+
+### Q: Is my code private when using AI?
+A: That depends on your key type:
+- **Enterprise / Vertex AI**: If you use a key from a standard Google Cloud Project (Vertex AI), your data is handled according to your organization's implementation of Google Cloud Platform terms (typically **NOT trained on**). We recommend this for professional work.
+- **Personal / AI Studio**: If you use a free key from Google AI Studio, Google may use your input for model training. **Do not use personal keys with private/sensitive company code.**
+
+### Q: Where do I get a key?
+A:
+- **Personal (Free)**: [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **Enterprise**: Go to your Google Cloud Console > APIs & Services > Credentials, and create an API Key for your project with Vertex AI API enabled.
+
+### Q: Why do System Context (C1) diagrams read more files?
+A: This is part of our **Smart Context Tuning**:
+- **System Context (C1)**: Scans **2 levels deep**. We do this to "cast a wide net" and find external system integrations (like Stripe, AWS, Legacy APIs) which are often buried in adapter folders.
+- **Container / Component (C2/C3)**: Scans **1 level deep**. This keeps the AI focused on high-level boundaries and prevents it from getting distracted by low-level implementation details, reducing hallucinations.
+
+### Q: How does the AI decide which diagram type to recommend?
+A: When you use "Diagram from Selection", Gemini performs a lightweight analysis of your text before showing the menu:
+- If it sees **External Systems** or high-level actors, it suggests **System Context (C1)**.
+- If it sees **Classes, Code, or Functions**, it suggests **Component (C3)**.
+The recommended option appears at the top with a ⭐ star.
+
+### Q: Why does my diagram sometimes generate Horizontally (LR) and sometimes Vertically (TB)?
+A: This is our **Smart Layout Engine** (v1.1.3+) optimizing for your screen size:
+- **Small Diagrams (≤ 4 Nodes)**: Defaults to **Horizontal (Left-Right)** to save vertical space.
+- **Large Diagrams (> 4 Nodes)**: Defaults to **Vertical (Top-Bottom)** to avoid endless horizontal scrolling.
+- **Input Matching**: If your selected text looks like a horizontal flow (`A -> B -> C`), the AI tries to match that direction.
 
 ## Troubleshooting
 

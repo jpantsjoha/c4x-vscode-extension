@@ -25,15 +25,26 @@ export function c4xPlugin(md: MarkdownIt): MarkdownIt {
     md.renderer.rules.fence = (tokens, idx, options, env, self) => {
         const token = tokens[idx];
         const info = token.info.trim();
-        const lang = info.split(/\s+/)[0];
+        const parts = info.split(/\s+/);
+        const lang = parts[0];
 
         // Only process c4x or plantuml blocks
         if (lang !== 'c4x' && lang !== 'plantuml') {
             return defaultFence(tokens, idx, options, env, self);
         }
 
+        // Parse attributes from remaining parts (e.g. width=50% scale=0.8)
+        const attributes: Record<string, string> = {};
+        for (let i = 1; i < parts.length; i++) {
+            const part = parts[i];
+            const [key, value] = part.split('=');
+            if (key && value) {
+                attributes[key] = value.replace(/['"]/g, ''); // Remove quotes if present
+            }
+        }
+
         // Render C4X diagram
-        return renderC4XBlock(token.content, lang);
+        return renderC4XBlock(token.content, lang, attributes);
     };
 
     return md;
@@ -43,9 +54,10 @@ export function c4xPlugin(md: MarkdownIt): MarkdownIt {
  * Render a C4X code block as inline SVG
  * @param source C4X-DSL source code
  * @param lang Language identifier (c4x or plantuml)
+ * @param attributes Optional rendering attributes (width, height, scale, zoom)
  * @returns HTML string with inline SVG or error message
  */
-function renderC4XBlock(source: string, lang: string): string {
+function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}): string {
     try {
         let model;
 
@@ -71,8 +83,23 @@ function renderC4XBlock(source: string, lang: string): string {
         // 5. Render SVG
         const svg = svgBuilder.build(layout);
 
+        // Apply size overrides
+        let style = '';
+        if (attributes['width']) {
+            style += `width: ${attributes['width']};`;
+        }
+        if (attributes['height']) {
+            style += `height: ${attributes['height']};`;
+        }
+        if (attributes['scale']) {
+            style += `transform: scale(${attributes['scale']}); transform-origin: top left;`;
+        }
+
+        // Add zoom hint capability
+        const zoomClass = attributes['zoom'] === 'false' ? '' : 'zoomable';
+
         // 6. Wrap in container div
-        return `<div class="c4x-diagram">${svg}</div>`;
+        return `<div class="c4x-diagram ${zoomClass}" style="${style}">${svg}</div>`;
 
     } catch (error) {
         // Show error inline in the markdown preview

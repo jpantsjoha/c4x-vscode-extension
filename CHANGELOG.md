@@ -3,6 +3,21 @@
 All notable changes to the "c4x" extension will be documented in this file.
 
 ## [1.0.9] - 2025-12-08
+## [1.1.0] - 2025-12-09
+### 📐 Advanced Layout Control (Phase 9)
+- **Recursive Layout Engine**: Completely rewritten layout engine to support hierarchical, independent sub-layouts.
+- **Nested Direction**: Support for `direction LR` inside subgraphs allows mixed-orientation diagrams (e.g. Horizontal Flows inside Vertical Systems).
+- **Manual Positioning**: New `$x` and `$y` attributes for pixel-perfect element positioning (e.g., `Component(..., $x="100", $y="200")`).
+
+### 🧠 Gemini AI Architect (Phase 10)
+- **Text-to-Diagram**: Generate complete C4 architectures from your source code using Google Gemini.
+- **Auto-Detection**: Right-click any folder or markdown file to analyze code and detect technologies (React, AWS, etc.).
+- **Smart Syntax**: Outputs valid C4X DSL automatically.
+
+### 🖱️ Visual Interactivity
+- **Click-to-Zoom**: Diagrams in Markdown preview now support lightbox zooming for detailed inspection.
+- **Visual Size Overrides**: Support for `width`, `height`, and `scale` attributes on code blocks.
+
 ### 🚀 New Features
 - **PlantUML Support**: Native rendering of standard PlantUML C4 syntax in markdown.
 - **PDF Export**: Browser-based print preview for high-fidelity PDF generation (`C4X: Export - Preview`).
@@ -10,6 +25,17 @@ All notable changes to the "c4x" extension will be documented in this file.
 
 ### 📝 Documentation
 - Added `EXAMPLES-PLANTUML.md` to showcase PlantUML compatibility.
+
+## [1.1.5] - 2025-12-12
+### 🧠 Intelligent Assistance (Phase 9)
+- **Generative Layout Control**: AI now enforces `graph LR` vs `TB` based on your input flow or explicit instruction.
+- **Smart Recommendations**: Automatically analyzes text selection to suggest "System Context" (C1) or "Container" (C2) diagrams.
+- **Self-Correction**: Robust error handling that fixes AI syntax mistakes automatically.
+- **Fallback Models**: Seamlessly switches to `gemini-2.5-pro` if primary models are busy.
+
+### 📚 Documentation
+- **New Guide**: Added comprehensive `docs/GEMINI_GUIDE.md` for AI workflows.
+- **Marketplace Assets**: Updated README with video demos and screenshot examples.
 
 ## [1.0.8] - 2025-12-06
 
