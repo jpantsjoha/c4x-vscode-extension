@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 ![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
 
-> **Make C4 architectural diagrams as easy as (conversation with AI) in VS Code** - Jaroslav
+> **Make C4 architectural diagrams as easy as getting AI to do this for you...** - Jaroslav
 
 Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats - now powered by Gemini AI.
 
@@ -39,8 +39,6 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 - ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
 
 ## 🚀 Quick Start
-
-### Test Example - from selection
 
 ### Installation
 
@@ -313,7 +311,6 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
   - **Sketch-to-Code**: Create diagrams from text selections.
   - **Smart Layouts**: Auto-detection of Flow vs Hierarchy.
 - 📐 **Advanced Layout Control** - Manual positioning overrides.
-- 🔨 **Diagnostics & Quick Fixes** - Automated syntax correction.
 
 ### v1.2.0 (Q1 2026) 🏗️ Advanced Visuals & Integrations
 - ⏳ **Structurizr DSL Support** - Native parsing of `.dsl` files.
