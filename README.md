@@ -41,7 +41,7 @@ Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support f
 [![Watch C4X Demo](https://img.youtube.com/vi/qR1bbctj2rQ/maxresdefault.jpg)](https://youtu.be/qR1bbctj2rQ)
 - ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
 
-### 🎨 Rich Icon Integration (New in v1.1.8)
+### 🎨 Rich Icon Integration (v1.1.9)
 Visualize real-world architectures with **AWS, Azure, GCP, and React** icons using the simple `$sprite` syntax.
 
 ![C4X Icons Example](assets/marketplace/icons/c4x-icons-example.png)
