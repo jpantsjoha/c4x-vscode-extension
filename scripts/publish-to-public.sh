@@ -54,6 +54,10 @@ rsync -avm --delete \
     --include='docs/' \
     --include='docs/images/***' \
     --include='docs/marketplace/***' \
+    --include='docs/EXAMPLES-LAYOUT.md' \
+    --include='docs/EXAMPLES-ORDERING.md' \
+    --include='docs/EXAMPLES-with-ICONS.md' \
+    --include='docs/ICONS.md' \
     --include='docs/c4x-syntax.md' \
     --include='docs/USER-GUIDE.md' \
     --include='GEMINI_FEATURE_GUIDE.md' \
@@ -84,9 +88,6 @@ rsync -avm --delete \
     --exclude='publish-vsce.md' \
     --include='.gitignore' \
     --include='.vscodeignore' \
-    --include='.vscode/extensions.json' \
-    --include='.vscode/launch.json' \
-    --include='.vscode/tasks.json' \
     --include='.github/***' \
     --exclude='*' \
     "$SOURCE_DIR/" "$DEST_DIR/"
