@@ -52,7 +52,6 @@ rsync -avm --delete \
     --exclude='scripts/publish-to-public.sh' \
     --exclude='scripts/create-issues-phase9.sh' \
     --include='docs/' \
-    --include='docs/adr/***' \
     --include='docs/images/***' \
     --include='docs/marketplace/***' \
     --include='docs/EXAMPLES-LAYOUT.md' \
