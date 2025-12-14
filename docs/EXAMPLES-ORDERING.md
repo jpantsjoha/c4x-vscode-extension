@@ -1,5 +1,9 @@
 # Examples: Ordering & Layout Control
 
+> [!NOTE]
+> **Can't see the diagrams?**
+> You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
+
 Because C4X uses a deterministic layout engine (Dagre), the **order** in which you define elements and relationships can significantly impact the visual result. This guide demonstrates how to use this behavior to "nudge" your diagrams into the desired shape.
 
 ## 1. Controlling Horizontal Order (Left-to-Right)
@@ -95,3 +99,18 @@ graph TB
     API --> DB
 ```
 ````
+
+Result:
+```c4x
+%%{ c4: container }%%
+graph TB
+    User[User<br/>Person]
+    
+    subgraph BackendSystem {
+        API[API<br/>Container]
+        DB[Database<br/>Container]
+    }
+
+    User --> API
+    API --> DB
+```

@@ -1,5 +1,9 @@
 # C4X Diagram Examples
 
+> [!NOTE]
+> **Can't see the diagrams?**
+> You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
+
 **Version**: 1.1.0
 **Last Updated**: 2025-12-01
 

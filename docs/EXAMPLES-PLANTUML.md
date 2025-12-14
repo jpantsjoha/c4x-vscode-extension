@@ -1,5 +1,11 @@
 # Examples - PlantUML
 
+# Examples: Standard PlantUML Support
+
+> [!NOTE]
+> **Can't see the diagrams?**
+> You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
+
 This document demonstrates C4X's native support for **PlantUML C4 syntax**.
 The examples below are functionally equivalent to the C4X DSL examples in [EXAMPLES.md](./EXAMPLES.md).
 

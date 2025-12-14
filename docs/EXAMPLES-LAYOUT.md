@@ -1,5 +1,9 @@
 # C4X Layout Guide
 
+> [!NOTE]
+> **Can't see the diagrams?**
+> You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
+
 > [!IMPORTANT]
 > **Requires C4X v1.1.0+**
 > The features described here (Manual Positioning, Nested Directions) require the latest version of the extension.
