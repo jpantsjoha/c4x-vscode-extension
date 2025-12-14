@@ -3,6 +3,12 @@
 All notable changes to the "c4x" extension will be documented in this file.
 
 ## [1.0.9] - 2025-12-08
+## [1.1.6]
+### Added
+- **Intelligent Icon Integration (AI)**: The Gemini Agent now automatically detects and applies correct technology icons (AWS, Azure, GCP, etc.) using the `$sprite` syntax.
+- **Icon Autocomplete**: Added IntelliSense for `sprite="..."` values. Just type `sprite="` to see available icons.
+- **Rich Icon Support**: Full support for PlantUML-style `Container(..., $sprite="...")` macro syntax in C4X DSL.
+
 ## [1.1.0] - 2025-12-09
 ### 📐 Advanced Layout Control (Phase 9)
 - **Recursive Layout Engine**: Completely rewritten layout engine to support hierarchical, independent sub-layouts.
@@ -25,6 +31,37 @@ All notable changes to the "c4x" extension will be documented in this file.
 
 ### 📝 Documentation
 - Added `EXAMPLES-PLANTUML.md` to showcase PlantUML compatibility.
+
+## [1.1.9] - 2025-12-13
+### 🔧 Reliability & Rendering
+- **Edge-to-Edge Routing**: Fixed a critical rendering issue where arrows would route "Center-to-Center" in complex diagrams, obscuring arrowheads behind boxes. The renderer now forces optimal edge connections for all diagram types for crystal clear visibility.
+- **Strict Syntax**: The parser now enforces strict `$sprite` syntax, preventing "hallucinated" icons and ensuring diagrams always render predictably.
+- **Performance**: Optimized asset loading, removing ~800 unused files and reducing VSIX size by 2MB.
+
+### 📝 Documentation & Assets
+- **Verified Icon Library**: Updated `EXAMPLES-with-ICONS.md` with fully validated keys for AWS, GCP, and Azure.
+- **New GCP Icons**: Added 44+ high-quality Google Cloud icons including `vertexai`, `cloudrun`, and `cloudsql`.
+- **Docs Parity**: Synchronized `GEMINI.md` and `GEMINI_GUIDE.md` to match the internal AI logic perfectly.
+
+## [1.1.8] - 2025-12-13
+### Fixed
+- 🐛 **Visual Rendering**: Fixed missing arrowheaders by namespacing SVG marker IDs (`c4x-arrow-...`) to prevent DOM collisions with other extensions.
+- 🔧 **Icon Library**: Added missing `react` icon and fixed aliases for `gcp-vertex-ai`.
+- 📝 **Docs**: Fixed parse errors in example files and consolidated documentation.
+
+### Changed
+- **AI Reliability Restore**: Reverted default model to `gemini-2.5-pro` (Primary) for stability.
+- **Improved Performance**: Removed massive icon payload from AI prompts to reduce token usage and confusion.
+- **Smart Fallback**: `gemini-3-pro-preview` is now the backup model.
+- 🐛 **AI Syntax Correction**: Updated Gemini prompt to strictly enforce `$sprite` syntax and explicitly forbid improper `="value"` assignments.
+- 🔧 **Icon Reliability**: Improved instructions for `c4xicons` namespace usage to prevent hallucinated icon names.
+
+## [1.1.6] - 2025-12-12
+### Added
+- 🧠 **Gemini 3 Pro Preview**: Defaulted AI model to `gemini-3-pro-preview` for state-of-the-art reasoning.
+- 🎨 **Smart C4X Icons**: New `c4xicons` namespace syntax (e.g., `sprite="c4xicons.aws.s3-bucket"`) for cleaner code.
+- 🧩 **Enhanced Autocomplete**: Intelligent suggestions for namespaces and icon names.
+- 🛡️ **Robust Fallback**: Automatic fallback to `gemini-2.5-pro` if the preview model is unstable.
 
 ## [1.1.5] - 2025-12-12
 ### 🧠 Intelligent Assistance (Phase 9)

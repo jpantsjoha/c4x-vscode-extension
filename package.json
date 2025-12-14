@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.1.5",
+  "version": "1.1.9",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -183,12 +183,12 @@
         },
         "c4x.ai.model": {
           "type": "string",
-          "default": "gemini-3-preview",
+          "default": "gemini-2.5-pro",
           "enum": [
-            "gemini-3-preview",
+            "gemini-3-pro-preview",
             "gemini-2.5-pro"
           ],
-          "description": "Model to use for Gemini AI generation. Defaults to gemini-3-preview."
+          "description": "Model to use for Gemini AI generation. Defaults to gemini-3-preview (State of the Art)."
         }
       }
     }

@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+echo "🔍 Running full pre-commit suite (Lint + Docs + Build + Test)..."
+
+# Use the Makefile 'pre-commit' target which includes:
+# - lint (ESLint)
+# - verify-docs (Markdown validation + C4X syntax check)
+# - build (Compilation)
+# - test (Unit/Integration tests via VS Code runner)
+make pre-commit
+
+echo "✅ All pre-commit checks passed!"

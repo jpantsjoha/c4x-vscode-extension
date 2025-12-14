@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../c4x-vscode-extension"
+		}
+	],
+	"settings": {}
+}

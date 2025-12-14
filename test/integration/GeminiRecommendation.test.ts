@@ -24,12 +24,13 @@ describe('Gemini Recommendation Engine', () => {
         // Mock the model
         (geminiService as any).model = {
             generateContent: async (prompt: string) => {
-                if (prompt.includes('External Systems') || prompt.includes('high-level')) {
+                if (prompt.includes('Stripe')) {
                     return { response: { text: () => JSON.stringify({ types: ['C1'], direction: 'TB' }) } };
                 }
-                if (prompt.includes('raw code') || prompt.includes('class User')) {
+                if (prompt.includes('raw code') || prompt.includes('User')) {
                     return { response: { text: () => JSON.stringify({ types: ['C3', 'C2'], direction: 'LR' }) } };
                 }
+                // Default fallback
                 return { response: { text: () => JSON.stringify({ types: ['C1', 'C2'], direction: 'TB' }) } };
             }
         };

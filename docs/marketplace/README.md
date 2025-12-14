@@ -10,5 +10,3 @@ Key documents:
 Status notes:
 - As of 2025-11-24 the repository is at M0 (scaffolding). Verify metrics and capture fresh screenshots/GIF once features are implemented before publishing.
 - Current status and E2E plan: see `../STATUS.md` and `../ROADMAP.md`.
-
-

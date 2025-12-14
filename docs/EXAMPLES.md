@@ -302,7 +302,6 @@ graph TB
     Writer -->|Generates draft| LLM
     Writer -->|Submits draft| Reviewer
     
-    Reviewer -->|Validates| LLM
     Reviewer -.->|Approve/Reject| Writer
     
     Reviewer -->|Approved content| SocialAgent

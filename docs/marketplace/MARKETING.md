@@ -77,7 +77,7 @@ Traditional C4 tools require Java runtime, Graphviz installation, Docker contain
 User -> System
 ```
 
-2. **PlantUML C4** (.puml) - No Java required!
+1. **PlantUML C4** (.puml) - No Java required!
    ```plantuml
    @startuml
    Person(customer, "Customer")
@@ -86,7 +86,7 @@ User -> System
    @enduml
    ```
 
-3. **Structurizr DSL** (.dsl) - Experimental support
+2. **Structurizr DSL** (.dsl) - Experimental support
    ```
    workspace {
      model {
@@ -580,8 +580,8 @@ C4X acts as your AI pair programmer for software architecture. Whether you're do
 Visualizing agentic systems is hard. C4X allows you to fast "sketch" orchestrators, tools, and memories in text and instantly get a visual map of your swarm's architecture.
 
 📥 Install & Links:
-*   VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x
-*   GitHub Repository: https://github.com/jpantsjoha/c4x-vscode-extension
-*   Documentation: https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/GEMINI_GUIDE.md
+*   VS Code Marketplace: <https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x>
+*   GitHub Repository: <https://github.com/jpantsjoha/c4x-vscode-extension>
+*   Documentation: <https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/GEMINI_GUIDE.md>
 
-#C4Model #VSCode #SoftwareArchitecture #GenAI #Gemini #MultiAgent #DevTools
+## C4Model #VSCode #SoftwareArchitecture #DevTools #DiagramsAsCode #MultiAgent #DevTools

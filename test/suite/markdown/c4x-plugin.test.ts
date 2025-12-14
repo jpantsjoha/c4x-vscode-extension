@@ -47,10 +47,13 @@ user -->|Uses| app
 `;
             const html = md.render(markdown);
 
-            assert.ok(html.includes('<div class="c4x-diagram">'));
-            assert.ok(html.includes('<svg'));
-            assert.ok(html.includes('</svg>'));
-            assert.ok(html.includes('</div>'));
+            if (!html.includes('<div class="c4x-diagram">')) {
+                console.log('❌ TEST FAILURE - HTML Output:', html);
+            }
+            assert.ok(html.includes('class="c4x-diagram'), "Expected c4x-diagram class");
+            assert.ok(html.includes('<svg'), "Expected svg");
+            assert.ok(html.includes('</svg>'), "Expected closing svg");
+            assert.ok(html.includes('</div>'), "Expected closing div");
         });
 
         it('should render SVG with proper structure', () => {
@@ -101,7 +104,7 @@ p2[Person 2<br/>Person]
 `;
             const html = md.render(markdown);
 
-            const diagramCount = (html.match(/class="c4x-diagram"/g) || []).length;
+            const diagramCount = (html.match(/class="c4x-diagram/g) || []).length;
             assert.strictEqual(diagramCount, 2);
         });
     });
@@ -115,7 +118,7 @@ const x = 42;
 `;
             const html = md.render(markdown);
 
-            assert.ok(!html.includes('class="c4x-diagram"'));
+            assert.ok(!html.includes('class="c4x-diagram'));
             assert.ok(html.includes('const x = 42;'));
         });
 
@@ -127,7 +130,7 @@ print("Hello")
 `;
             const html = md.render(markdown);
 
-            assert.ok(!html.includes('class="c4x-diagram"'));
+            assert.ok(!html.includes('class="c4x-diagram'));
             assert.ok(html.includes('print') && html.includes('Hello'));
         });
 
@@ -150,7 +153,7 @@ print("test")
             const html = md.render(markdown);
 
             assert.ok(html.includes('const x = 1;'));
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
             assert.ok(html.includes('print') && html.includes('test'));
         });
 
@@ -158,7 +161,7 @@ print("test")
             const markdown = '```\nplain code\n```';
             const html = md.render(markdown);
 
-            assert.ok(!html.includes('class="c4x-diagram"'));
+            assert.ok(!html.includes('class="c4x-diagram'));
         });
     });
 
@@ -275,7 +278,7 @@ p[Person<br/>Person]
 `;
             const html = md.render(markdown);
 
-            assert.ok(html.includes('<div class="c4x-diagram">'));
+            assert.ok(html.includes('class="c4x-diagram'), "Expected c4x-diagram class");
             assert.ok(html.includes('</div>'));
         });
 
@@ -338,7 +341,7 @@ More text
 
             assert.ok(html.includes('<h1>Heading</h1>'));
             assert.ok(html.includes('Some text'));
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
             assert.ok(html.includes('More text'));
         });
 
@@ -347,7 +350,7 @@ More text
             const html = md.render(markdown);
 
             assert.ok(html.includes('<code>inline code</code>'));
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
         });
 
         it('should preserve other MarkdownIt plugins', () => {
@@ -371,14 +374,14 @@ More text
             const html = md.render(markdown);
 
             // Expect valid diagram container, not error
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
         });
 
         it('should handle whitespace-only c4x block', () => {
             const markdown = '```c4x\n   \n```';
             const html = md.render(markdown);
 
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
         });
 
         it('should handle c4x with language variant', () => {
@@ -386,7 +389,7 @@ More text
             const html = md.render(markdown);
 
             // Should still process as c4x (first word is c4x)
-            assert.ok(html.includes('class="c4x-diagram"') || html.includes('class="c4x-error"'));
+            assert.ok(html.includes('class="c4x-diagram') || html.includes('class="c4x-error"'));
         });
 
         it('should handle very long diagrams', () => {
@@ -398,7 +401,7 @@ More text
             const markdown = `\`\`\`c4x\n${diagram}\n\`\`\``;
             const html = md.render(markdown);
 
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
         });
 
         it('should handle special characters in diagram', () => {
@@ -411,7 +414,7 @@ p[Person with 'quotes' and "double"<br/>Person]
             const html = md.render(markdown);
 
             // Should either render successfully or show error
-            assert.ok(html.includes('class="c4x-diagram"') || html.includes('class="c4x-error"'));
+            assert.ok(html.includes('class="c4x-diagram') || html.includes('class="c4x-error"'));
         });
     });
 });

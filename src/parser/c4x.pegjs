@@ -15,10 +15,7 @@ Start
                 // DeploymentNodes might have internal relationships
                  relationships.push(...stmt.internalRelationships);
               }
-              if (stmt.children) {
-                  // recurse for DeploymentNode children
-                  processStatements(stmt.children);
-              }
+
             } else if (stmt.type === 'relationship') {
               relationships.push(stmt);
             } else if (stmt.type === 'boundary') {
@@ -321,8 +318,24 @@ KVArgs
   }
 
 KVPair
-  = "$" key:Identifier _ "=" _ value:QuotedString {
+  = "$" key:Identifier _ "=" _ value:Value {
       return { key: key, value: value };
+  }
+
+
+Value
+  = QuotedString
+  / DottedIdentifier
+
+DottedIdentifier
+  = head:Identifier tail:("." Identifier)* {
+      const parts = [head, ...tail.map(t => t[1])];
+      // If starts with c4xicons, strip it? Or just return the whole string?
+      // User wants 'c4xicons.gcp...', likely mapping to 'gcp...'.
+      // For now, let's return it as a string. The renderer/resolver handles semantic meaning.
+      // BUT, if we want to support 'c4xicons.aws-s3', passing 'c4xicons.aws-s3' to the sprite lookup will fail unless we handle it.
+      // Let's strip 'c4xicons.' if present here? No, parser should be dumb.
+      return parts.join('.');
   }
 
 // END NEW RULES

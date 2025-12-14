@@ -1,0 +1,17 @@
+%%{ c4: system-context }%%
+graph TB
+    Customer[Customer<br/>Person]
+    Admin[Administrator<br/>Person]
+
+    EcommerceSystem[E-commerce System<br/>Software System]
+
+    EmailService[Email Service<br/>Software System<br/>External]
+    PaymentGateway[Payment Gateway<br/>Software System<br/>External]
+    ShippingService[Shipping Service<br/>Software System<br/>External]
+
+    Customer -->|Views products, places orders| EcommerceSystem
+    Admin -->|Manages products, views orders| EcommerceSystem
+
+    EcommerceSystem -->|Sends order confirmations| EmailService
+    EcommerceSystem -->|Processes payments via| PaymentGateway
+    EcommerceSystem -->|Arranges shipping via| ShippingService

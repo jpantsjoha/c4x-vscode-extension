@@ -27,15 +27,17 @@
 - ✅ **Layout Guidance**: Smart heuristics for diagram size.
 - ✅ **Visual Control**: `FORCE LAYOUT` override.
 
-### Phase 10: Polish & Future Proofing (Planned q1 2026)
+### Phase 10: Polish & Future Proofing (In Progress)
 **Goal**: Maintenance, stability, and refining user experience.
-- [ ] **Legacy Test Cleanup**: Clean up old Phase 8 PlantUML tests responsible for CI noise.
-- [ ] **Layout Adherence 2.0**: Revisit heuristics for small diagrams. Address vertical-default frustration for simple 3-4 node flows to prevent "super-scaling" issues.
+- [x] **Legacy Test Cleanup**: Clean up old Phase 8 PlantUML tests responsible for CI noise. (Completed v1.1.5)
+- [ ] **Async Markdown Integration**: Enable native `.md` preview without blocking UI.
+- [ ] **Layout Adherence 2.0**: Revisit heuristics for small diagrams. Address vertical-default frustration for simple 3-4 node flows.
 - [ ] **Visual Size Override**: Support `width` and `scale` attributes.
 
-### Phase 11: Intelligent Authoring (Markdown Focused)
-**Goal**: Make writing C4X manually even faster.
-- [ ] **Smart Snippets**: Context-aware autocompletion for C4 elements.
+### v1.2.0 (Q1 2026) - Advanced Visuals & Customization
+- [ ] **Custom Local Sprites**: Support for `$sprite="./my-icon.png"` path resolution.
+- [ ] **Structurizr DSL Support**: Native `.dsl` parsing.
+- [ ] **Deployment View**: Support for `DeploymentNode`.
 - [ ] **Live Validation**: Error squiggles for invalid relationships or syntax.
 - [ ] **Refactoring Tools**: "Rename System" command that updates all Markdown files.
 

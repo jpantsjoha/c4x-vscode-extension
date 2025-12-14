@@ -160,8 +160,8 @@ export class SvgBuilder {
         fromBox: { x: number; y: number; width: number; height: number },
         toBox: { x: number; y: number; width: number; height: number }
     ): { from: Point; to: Point; mid: Point } {
-        // C4 model arrow spacing - small gap from box edge for professional appearance
-        const arrowPadding = 5;
+        // C4 model arrow spacing - 0 to ensure arrows touch the element edges
+        const arrowPadding = 0;
 
         // Calculate all possible connection points on both boxes
         const fromPoints = [
@@ -202,20 +202,20 @@ export class SvgBuilder {
 
                 if (isBelow) {
                     // Vertical flow (Down): Prefer Bottom -> Top
-                    if (fromPoint.edge !== 'bottom') {penalty += 150;}
-                    if (toPoint.edge !== 'top') {penalty += 150;}
+                    if (fromPoint.edge !== 'bottom') { penalty += 150; }
+                    if (toPoint.edge !== 'top') { penalty += 150; }
                 } else if (isAbove) {
                     // Vertical flow (Up): Prefer Top -> Bottom
-                    if (fromPoint.edge !== 'top') {penalty += 150;}
-                    if (toPoint.edge !== 'bottom') {penalty += 150;}
+                    if (fromPoint.edge !== 'top') { penalty += 150; }
+                    if (toPoint.edge !== 'bottom') { penalty += 150; }
                 } else if (isRight) {
                     // Horizontal flow (Right): Prefer Right -> Left
-                    if (fromPoint.edge !== 'right') {penalty += 150;}
-                    if (toPoint.edge !== 'left') {penalty += 150;}
+                    if (fromPoint.edge !== 'right') { penalty += 150; }
+                    if (toPoint.edge !== 'left') { penalty += 150; }
                 } else if (isLeft) {
                     // Horizontal flow (Left): Prefer Left -> Right
-                    if (fromPoint.edge !== 'left') {penalty += 150;}
-                    if (toPoint.edge !== 'right') {penalty += 150;}
+                    if (fromPoint.edge !== 'left') { penalty += 150; }
+                    if (toPoint.edge !== 'right') { penalty += 150; }
                 }
 
                 const score = distance + penalty;
@@ -288,6 +288,13 @@ export class SvgBuilder {
         this.labelPositions = [];
 
         const theme = options.theme ?? themeManager.getCurrentTheme();
+        const elementCount = layout.elements.length;
+        const isComplex = elementCount > 4;
+
+        // Smart Sizing: Use 100% for complex diagrams to allow responsive scaling
+        // Keep fixed pixel size for small diagrams to ensure tightness
+        const svgWidth = isComplex ? '100%' : layout.width;
+        const svgHeight = isComplex ? '100%' : layout.height;
 
         // Arrow markers: hollow/open arrow heads (official C4 model style)
         const defs = `
@@ -303,14 +310,14 @@ export class SvgBuilder {
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
-        <marker id="arrow-uses" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-          <path d="M0,0 L8,3 L0,6 z" fill="${theme.colors.relationship.stroke}" />
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="${theme.colors.relationship.stroke}" fill-opacity="1" />
         </marker>
-        <marker id="arrow-async" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-          <path d="M0,0 L8,3 L0,6 z" fill="${theme.colors.relationship.stroke}" />
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="${theme.colors.relationship.stroke}" fill-opacity="1" />
         </marker>
-        <marker id="arrow-sync" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-          <path d="M0,0 L8,3 L0,6 z" fill="${theme.colors.relationship.stroke}" />
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="${theme.colors.relationship.stroke}" fill-opacity="1" />
         </marker>
       </defs>`;
 
@@ -320,6 +327,7 @@ export class SvgBuilder {
         const elementMap = new Map<string, PositionedElement>();
         layout.elements.forEach(el => elementMap.set(el.id, el));
 
+        // Pass complexity flag to renderEdge
         const edgeSvg = layout.relationships.map(edge => this.renderEdge(edge, theme, elementMap)).join('\n');
 
         // Render boundaries if they exist
@@ -327,7 +335,7 @@ export class SvgBuilder {
             layout.boundaries.map(boundary => this.renderBoundary(boundary, theme)).join('\n') : '';
 
         return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${layout.width} ${layout.height}" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${layout.width} ${layout.height}" role="img">
   <rect x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${theme.colors.background}" />
   ${defs}
   <g class="boundaries">
@@ -360,7 +368,7 @@ ${nodeSvg}
 
         // Check if this is a Person element or has a custom sprite - render with icon
         const spriteName = node.element.sprite ?? (node.element.type === 'Person' ? 'person' : undefined);
-        
+
         if (spriteName) {
             return this.renderIconNode(node, x, y, width, height, fill, stroke, textColor, theme, filter, spriteName);
         }
@@ -392,7 +400,7 @@ ${textContent}
     ): string {
         // Icon dimensions
         const iconSize = 40;  // Size of the icon area
-        
+
         // Position the icon at the top center of the element
         const iconCenterX = x + width / 2;
         const iconY = y + 10; // 10px padding from top
@@ -406,7 +414,7 @@ ${textContent}
 
         // Get SVG path for sprite
         const spriteDef = getSprite(spriteName);
-        
+
         let iconSvg = '';
         if (spriteDef) {
             let body: string;
@@ -425,13 +433,13 @@ ${textContent}
             const parts = viewBox.split(' ').map(Number);
             const vbWidth = parts.length === 4 ? parts[2] : 100;
             const scale = iconSize / vbWidth;
-            
+
             const translateX = iconCenterX - (vbWidth * scale) / 2;
             const translateY = iconY;
 
             // Apply fill color only if not preserving original colors
             const fillAttr = preserveColor ? '' : `fill="${stroke}"`;
-            
+
             iconSvg = `<g transform="translate(${translateX.toFixed(2)}, ${translateY.toFixed(2)}) scale(${scale.toFixed(4)})" ${fillAttr} stroke="none">${body}</g>`;
         }
 
@@ -539,7 +547,8 @@ ${textContent}
 
     private renderEdge(edge: RoutedRelationship, theme: C4Theme, elementMap?: Map<string, PositionedElement>): string {
         const dasharray = getEdgeDasharray(edge);
-        const marker = edge.relationship.relType === 'async' ? 'arrow-async' : edge.relationship.relType === 'sync' ? 'arrow-sync' : 'arrow-uses';
+        // Unique namespace for markers to prevent collisions in VS Code DOM
+        const marker = edge.relationship.relType === 'async' ? 'c4x-arrow-async' : edge.relationship.relType === 'sync' ? 'c4x-arrow-sync' : 'c4x-arrow-uses';
 
         let path: string;
         let labelPoint: Point;
@@ -550,7 +559,8 @@ ${textContent}
             const toElement = elementMap.get(edge.relationship.to);
 
             if (fromElement && toElement) {
-                // Calculate optimal connection points
+                // Use optimal edge routing for ALL diagrams to ensure arrows connect to edges
+                // This prevents arrows from being hidden behind nodes (center-to-center issue)
                 const connectionPoints = this.calculateOptimalConnectionPoints(
                     { x: fromElement.x, y: fromElement.y, width: fromElement.width, height: fromElement.height },
                     { x: toElement.x, y: toElement.y, width: toElement.width, height: toElement.height }
@@ -560,12 +570,25 @@ ${textContent}
                 path = `M${connectionPoints.from.x.toFixed(2)},${connectionPoints.from.y.toFixed(2)} L${connectionPoints.to.x.toFixed(2)},${connectionPoints.to.y.toFixed(2)}`;
                 labelPoint = connectionPoints.mid;
             } else {
-                // Fallback to Dagre's routing
-                path = toPath(edge.points);
-                labelPoint = midpoint(edge.points);
+                // COMPLEX DIAGRAMS (or missing elements): Fallback to Dagre's routing
+                // Dagre handles routing around nodes better, avoiding 'spiderwebs'
+                if (edge.points && edge.points.length > 0) {
+                    path = toPath(edge.points);
+                    labelPoint = midpoint(edge.points);
+                } else {
+                    // Fallback if no points from Dagre (shouldn't happen usually)
+                    // Just do center to center
+                    if (fromElement && toElement) {
+                        path = `M${(fromElement.x + fromElement.width / 2).toFixed(2)},${(fromElement.y + fromElement.height / 2).toFixed(2)} L${(toElement.x + toElement.width / 2).toFixed(2)},${(toElement.y + toElement.height / 2).toFixed(2)}`;
+                        labelPoint = { x: (fromElement.x + fromElement.width / 2 + toElement.x + toElement.width / 2) / 2, y: (fromElement.y + fromElement.height / 2 + toElement.y + toElement.height / 2) / 2 };
+                    } else {
+                        path = "";
+                        labelPoint = { x: 0, y: 0 };
+                    }
+                }
             }
         } else {
-            // Fallback to Dagre's routing
+            // Fallback
             path = toPath(edge.points);
             labelPoint = midpoint(edge.points);
         }
@@ -577,7 +600,7 @@ ${textContent}
             // Prefix with sequence number for dynamic diagrams
             const prefix = edge.relationship.order ? `${edge.relationship.order}: ` : '';
             const labelText = prefix + (edge.relationship.label || '').trim();
-            
+
             const fontSize = 12; // Standard C4 relationship label size
             const lineHeight = 14;
 
@@ -599,7 +622,7 @@ ${textContent}
 
             // Create clean, single-line label (C4 model standard)
             // Use paint-order: stroke fill to create a halo effect for legibility over lines
-            labelElement = `<text x="${adjustedPosition.x.toFixed(2)}" y="${adjustedPosition.y.toFixed(2)}" fill="${theme.colors.relationship.text}" stroke="${theme.colors.background}" stroke-width="3" paint-order="stroke" text-anchor="middle" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(labelText)}</text>`;
+            labelElement = `<text x="${adjustedPosition.x.toFixed(2)}" y="${adjustedPosition.y.toFixed(2)}" fill="${theme.colors.relationship.text}" stroke="${theme.colors.background}" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(labelText)}</text>`;
         }
 
         return `<g class="edge" data-id="${edge.id}">

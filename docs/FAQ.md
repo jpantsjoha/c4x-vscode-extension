@@ -1,7 +1,7 @@
 # Frequently Asked Questions (FAQ)
 
-**Version**: 0.2.0
-**Last Updated**: 2025-10-19
+**Version**: 1.1.9
+**Last Updated**: 2025-12-13
 
 This document answers common questions about the C4X extension.
 
@@ -66,6 +66,15 @@ A: **Yes (v1.1+)!** You can use `direction LR` (or `TB`, `RL`, `BT`) inside any 
 ### Q: Can I use my existing Mermaid diagrams with C4X?
 
 A: Not directly, but the migration is very simple. C4X uses a Mermaid-inspired syntax, but requires C4-specific types for elements. For example, where in Mermaid you might have `A[User]`, in C4X you would write `User[User<br/>Person]`. See the [C4X-DSL Syntax Reference](./c4x-syntax.md) for more details.
+
+### Q: How do I use Cloud Icons (AWS/Azure/GCP)?
+
+A: **Yes (v1.1.6+)!** C4X supports PlantUML-style sprites natively.
+To use an icon, you MUST use the **Function/Macro Syntax** instead of the Bracket syntax:
+- **Correct**: `Container(S3, "My Bucket", "AWS S3", $sprite="aws-s3-bucket")`
+- **Incorrect**: `S3[My Bucket<br/>Container...]` (Sprites are not supported in brackets)
+
+**Pro Tip:** Type `sprite="` inside any C4X block to trigger **Autocomplete** and see the full list of available 100+ icons!
 
 ### Q: What C4 levels are supported?
 

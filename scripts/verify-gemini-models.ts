@@ -26,17 +26,13 @@ async function main() {
     console.log('🔍 Checking available Gemini models...');
 
     try {
-        const modelsToCheck = [
+        const modelsToTest = [
             'gemini-3-preview',
-            'gemini-2.5-pro',
-            'gemini-2.0-flash-exp',
-            'gemini-1.5-pro',
-            'gemini-1.5-flash'
+            'gemini-2.5-pro'
         ];
-
         console.log('\n🧪 Testing Model Availability & Generation:\n');
 
-        for (const modelName of modelsToCheck) {
+        for (const modelName of modelsToTest) {
             process.stdout.write(`Testing ${modelName.padEnd(25)} ... `);
             try {
                 const model = genAI.getGenerativeModel({ model: modelName });

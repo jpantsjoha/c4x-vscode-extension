@@ -41,7 +41,7 @@ export class GeminiService {
 
         if (apiKey) {
             this.genAI = new GoogleGenerativeAI(apiKey);
-            const modelName = config.get<string>('model') || 'gemini-3-preview';
+            const modelName = config.get<string>('model') || 'gemini-2.5-pro';
             this.model = this.genAI.getGenerativeModel({ model: modelName });
         }
     }
@@ -64,6 +64,9 @@ export class GeminiService {
 
             const prompt = await this.buildPrompt(files, instruction, options);
 
+            // Log prompt for debugging transparency
+            console.log('[GeminiService] GENERATED PROMPT PREVIEW:', prompt.substring(0, 500) + '...');
+
             try {
                 // Pass the progress object down to update status during validation/retry
                 const result = await this.generateWithFallback(prompt, progress);
@@ -78,6 +81,10 @@ export class GeminiService {
 
     private async generateWithFallback(prompt: string, progress?: vscode.Progress<{ message?: string }>): Promise<string> {
         if (!this.model) { throw new Error("Model not initialized"); }
+
+        // BUILD_ID for debugging version issues
+        const BUILD_ID = '20251213-2212-AUTOFIX';
+        console.log(`[GeminiService] BUILD_ID: ${BUILD_ID}`);
 
         const parser = new C4XParser();
         const maxRetries = 2; // 1 initial + 1 retry
@@ -94,10 +101,15 @@ export class GeminiService {
             const result = await modelInstance.generateContent(currentPrompt);
             const response = await result.response;
             const rawText = response.text();
-            const cleanedText = this.cleanResponse(rawText);
+
+            // Log raw response for debugging
+            console.log(`[GeminiService] Raw Response (${rawText.length} chars)`);
 
             // Self-Correction: Validate with Parser
             try {
+                // Clean the response (may throw on lazy sprite syntax)
+                const cleanedText = this.cleanResponse(rawText);
+
                 // If the cleaned text is empty, it means we failed to extract a block -> Retry
                 if (!cleanedText) { throw new Error("No C4X code block found in response."); }
 
@@ -117,7 +129,7 @@ ERROR: "${validationError.message}"
 
 FAILED CODE:
 \`\`\`c4x
-${cleanedText || rawText}
+${rawText}
 \`\`\`
 
 You MUST fix this error. 
@@ -133,7 +145,8 @@ Do NOT output any conversational text.
         };
 
         const config = vscode.workspace.getConfiguration('c4x.ai');
-        const primaryModelName = config.get<string>('model') || 'gemini-3-preview';
+        // Default to 2.5-pro now
+        const primaryModelName = config.get<string>('model') || 'gemini-2.5-pro';
 
         // Helper to get model instance
         const getModel = (name: string) => this.genAI?.getGenerativeModel({ model: name });
@@ -142,8 +155,14 @@ Do NOT output any conversational text.
             return await executeGeneration(this.model, primaryModelName, prompt, 1);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
-            // If primary is NOT 2.5-pro, and we failed (either API error or Validation exhaust), try 2.5-pro as fallback
-            const fallbackModelName = 'gemini-2.5-pro';
+            // SWAPPED LOGIC: Fallback is now gemini-3-pro-preview (if primary was something else)
+            // Or if primary IS gemini-3-pro-preview, fallback to 2.5-pro?
+            // Let's keep it simple: Determine the 'other' model.
+
+            let fallbackModelName = 'gemini-3-pro-preview';
+            if (primaryModelName === 'gemini-3-pro-preview') {
+                fallbackModelName = 'gemini-2.5-pro';
+            }
 
             if (primaryModelName !== fallbackModelName) {
                 const warnMsg = `Falling back to ${fallbackModelName} due to error: ${error.message}`;
@@ -177,11 +196,18 @@ Do NOT output any conversational text.
             } catch (e) { /* Ignore if missing */ }
 
             try {
-                const examplesUri = vscode.Uri.joinPath(root, 'EXAMPLES.md');
-                const examplesData = await vscode.workspace.fs.readFile(examplesUri);
-                examplesParam = Buffer.from(examplesData).toString('utf8');
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (e) { /* Ignore if missing */ }
+                // Try root first
+                let examplesUri = vscode.Uri.joinPath(root, 'EXAMPLES.md');
+                try {
+                    const examplesData = await vscode.workspace.fs.readFile(examplesUri);
+                    examplesParam = Buffer.from(examplesData).toString('utf8');
+                } catch {
+                    // Try docs/ folder if root missing
+                    examplesUri = vscode.Uri.joinPath(root, 'docs', 'EXAMPLES.md');
+                    const examplesData = await vscode.workspace.fs.readFile(examplesUri);
+                    examplesParam = Buffer.from(examplesData).toString('utf8');
+                }
+            } catch { /* Ignore if missing */ }
         }
 
         // Fallback: If not in workspace, use built-in Expert Guidelines
@@ -200,10 +226,7 @@ Do NOT output any conversational text.
     - **Node Labels**: \`ID[Label<br/>Type<br/>Tech]\`. Use \`<br/>\` for newlines.
     - **Line Labels**: Plain Text ONLY. NO HTML.
 
-## 📝 Syntax Verification
-1. **Directive**: Start with \`%%{ c4: container }%%\`.
-2. **Brace Check**: \`subgraph ID {\` (not \`[\`).
-3. **Arrow Check**: Use \`-->\` (standard) or \`..>\`.
+    - **Line Labels**: Plain Text ONLY. NO HTML.
 `;
 
         const contextSection = geminiParam ? `\n## DESIGN GUIDELINES & RULES (Adhere Strictly):\n${geminiParam}` : `\n## DESIGN GUIDELINES & RULES (Built-in Defaults):\n${DEFAULT_GUIDELINES}`;
@@ -231,7 +254,7 @@ ${contextSection}
 ${examplesSection}
 
 ## CRITICAL SYNTAX RULES (OVERRIDE ANY OTHERS):
-1. **Subgraph IDs**: MUST NOT contain quotes. 
+1. **Subgraph IDs**: MUST NOT contain quotes.
    - ❌ Invalid: \`subgraph "My System"\`
    - ✅ Valid: \`subgraph MySystem {\`
    - Always use \`subgraph ID {\` syntax (braces included).
@@ -240,8 +263,9 @@ ${examplesSection}
 4. **Relationship Labels**: PLAIN TEXT ONLY. NO HTML TAGS.
    - ❌ Invalid: \`User -->|Clicks<br>Button| App\`
    - ✅ Valid: \`User -->|Clicks Button| App\`
-5. **Node Labels**: \`ID[Label<br/>Type<br/>Tech]\`. Use \`<br/>\` for newlines in Nodes ONLY.
-6. **Layout Strategy ("Smart Visuals")**:${layoutRule}
+
+6. **Node Labels**: \`ID[Label<br/>Type<br/>Tech]\`. Use \`<br/>\` for newlines in Nodes ONLY.
+7. **Layout Strategy ("Smart Visuals")**:${layoutRule}
    - **User at Top**: Define User FIRST. Connect User ONLY to the initial entry point.
    - **Execution Order**: Define components in the order they are called.
    - **Vertical Stack**: Create dependency chains (\`User --> Web --> API --> DB\`) to force vertical depth.
@@ -298,8 +322,8 @@ Do not wrap in markdown blocks. Just the JSON string.
 
             return { types, direction };
 
-        } catch (e) {
-            console.warn("Recommendation failed:", e);
+        } catch {
+            // Check for authentication error
             return fallback;
         }
     }
@@ -321,7 +345,7 @@ Do not wrap in markdown blocks. Just the JSON string.
 
         // 2. Sanitize Relationship Labels: Remove <br>, <br/>, </br> tags
         // Matches: -->, ..>, ==>, -.-> followed by |Label|
-        clean = clean.replace(/((?:--|\.\.|==|-\.-)>\s*\|)([^|]+)(\|)/g, (match, arrowPart, label, endPipe) => {
+        clean = clean.replace(/((?:--|\.\.|-\.-|==)>\s*\|)([^|]+)(\|)/g, (match, arrowPart, label, endPipe) => {
             const cleanLabel = label.replace(/<\/?br\s*\/?>/gi, ' ');
             return `${arrowPart}${cleanLabel}${endPipe}`;
         });

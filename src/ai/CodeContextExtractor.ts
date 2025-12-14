@@ -24,6 +24,8 @@ export class CodeContextExtractor {
         '**/.DS_Store',
         '**/test/**',
         '**/tests/**',
+        'test/**',
+        'tests/**',
         '**/spec/**'
     ];
 
@@ -33,21 +35,13 @@ export class CodeContextExtractor {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private static readonly MAX_TOTAL_FILES = 20; // Increased limit slightly since we have better relevance
 
-    public async extractContext(folderUri: vscode.Uri, maxDepth: number = 2): Promise<FileContext[]> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    public async extractContext(folderUri: vscode.Uri, _maxDepth: number = 2): Promise<FileContext[]> {
+        const directoryPath = folderUri.fsPath;
         const context: FileContext[] = [];
 
-        // Generate dynamic depth pattern
-        // Depth 0: {*}
-        // Depth 1: {*,*/*}
-        // Depth 2: {*,*/*,*/*/*}
-        const parts = ['*']; // Level 0
-        let currentLevel = '*';
-        for (let i = 0; i < maxDepth; i++) {
-            currentLevel += '/*';
-            parts.push(currentLevel);
-        }
-        const globPattern = `{${parts.join(',')}}`;
-        const depthPattern = new vscode.RelativePattern(folderUri, globPattern);
+        // Default to recursive search if depth logic causes issues
+        const depthPattern = new vscode.RelativePattern(directoryPath, '**/*');
 
         // Exclude pattern (remove **/ prefix for ignore string construction if needed, 
         // but RelativePattern exclude arg usually takes glob. 
@@ -78,7 +72,7 @@ export class CodeContextExtractor {
                 }
 
                 context.push({
-                    path: path.relative(folderUri.fsPath, file.fsPath),
+                    path: path.relative(directoryPath, file.fsPath),
                     content: content
                 });
             } catch (e) {

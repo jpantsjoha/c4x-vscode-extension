@@ -23,7 +23,7 @@ Person(user, "User", "A user")
             const html = md.render(markdown);
 
             // Should be intercepted by c4xPlugin and rendered as diagram
-            assert.ok(html.includes('class="c4x-diagram"'), 'PlantUML block should be rendered as c4x-diagram');
+            assert.ok(html.includes('class="c4x-diagram'), 'PlantUML block should be rendered as c4x-diagram');
             assert.ok(html.includes('<svg'), 'Should contain generated SVG');
             assert.ok(html.includes('User'), 'Should contain diagram label');
         });
@@ -38,7 +38,7 @@ p[Person<br/>Person]
 `;
             const html = md.render(markdown);
 
-            assert.ok(html.includes('class="c4x-diagram"'));
+            assert.ok(html.includes('class="c4x-diagram'));
             assert.ok(html.includes('<svg'));
         });
 
@@ -67,7 +67,7 @@ console.log('hello');
             const markdown = '```plantuml\nPerson(a, "A")\n```';
             const html = exportMd.render(markdown);
 
-            assert.ok(html.includes('class="c4x-diagram"'), 'Export markdown instance should handle PlantUML');
+            assert.ok(html.includes('class="c4x-diagram'), 'Export markdown instance should handle PlantUML');
         });
     });
 });

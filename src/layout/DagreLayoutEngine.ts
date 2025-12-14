@@ -1,4 +1,4 @@
-import dagre from 'dagre';
+import * as dagre from 'dagre';
 import { C4Element, C4Rel, C4View, C4Boundary } from '../model/C4Model';
 
 export interface PositionedBoundary {

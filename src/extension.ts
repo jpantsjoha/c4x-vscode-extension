@@ -4,6 +4,7 @@ import { DiagnosticsManager } from './diagnostics/DiagnosticsManager';
 import { HtmlExporter } from './export/HtmlExporter';
 import { PdfExporter } from './export/PdfExporter';
 import { GenerateDiagramCommand } from './commands/GenerateDiagramCommand';
+import { C4XCompletionItemProvider } from './completion/C4XCompletionItemProvider';
 
 /**
  * Activate the C4X extension
@@ -51,6 +52,17 @@ export function activate(context: vscode.ExtensionContext) {
         await generateDiagramCommand.generateFromSelection(vscode.window.activeTextEditor);
       }
     })
+  );
+
+  // Register Completion Item Provider for icons
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      ['markdown', 'c4x'], // Supported languages
+      new C4XCompletionItemProvider(),
+      '"', // Trigger character
+      "'", // Trigger character
+      '.'  // Trigger character for namespaces
+    )
   );
 
   // Return extendMarkdownIt for VS Code's markdown preview integration

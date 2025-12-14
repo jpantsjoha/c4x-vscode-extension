@@ -38,6 +38,22 @@ def check_file(filepath):
             if 'Container Db' in line:
                 errors.append((i+1, "Invalid Type: Found 'Container Db'. Use 'Container'."))
 
+            # Check 4: Invalid Sprite Syntax (e.g. =,="icon" or sprite="icon")
+            # Correct strict syntax: $sprite="name"
+            
+            # Detect hallucination: ="value" without $sprite
+            if re.search(r'\s+=\"[^\"]+\"', line) and '$' not in line:
+                 errors.append((i+1, "Invalid Attribute: Found '=\"value\"'. Did you mean '$sprite=\"value\"'?"))
+            
+            # Detect "sprite=" without $
+            # Use negative lookbehind (?<!\$) to ignore if already prefixed
+            if re.search(r'(?<!\$)\bsprite=\"', line):
+                 errors.append((i+1, "Invalid Sprite: Found 'sprite=\"'. Use '$sprite=\"'."))
+
+            # Check 5: Invalid Comments '//' (C4X/Mermaid uses '%%')
+            if re.search(r'^\s*//', line):
+                 errors.append((i+1, "Invalid Comment: Found '//'. Use '%%' for C4X comments."))
+
     return errors
 
 def main():
