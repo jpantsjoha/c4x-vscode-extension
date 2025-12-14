@@ -66,7 +66,7 @@ A new panel will open alongside your editor showing the rendered SVG diagram.
 
 The preview panel automatically updates whenever you make a change to the source `.c4x` file and save it. The update process is debounced to prevent excessive re-rendering while you type.
 
-![C4X Preview Panel](https://raw.githubusercontent.com/jpantsjoha/c4model-vscode-extension/main/docs/images/c4x-preview-example.png)
+![C4X Preview Panel](https://raw.githubusercontent.com/jpantsjoha/c4x-vscode-extension/main/docs/images/c4x-preview-example.png)
 
 ---
 
