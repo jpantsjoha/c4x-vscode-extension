@@ -2,36 +2,6 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
-## [1.0.9] - 2025-12-08
-## [1.1.6]
-### Added
-- **Intelligent Icon Integration (AI)**: The Gemini Agent now automatically detects and applies correct technology icons (AWS, Azure, GCP, etc.) using the `$sprite` syntax.
-- **Icon Autocomplete**: Added IntelliSense for `sprite="..."` values. Just type `sprite="` to see available icons.
-- **Rich Icon Support**: Full support for PlantUML-style `Container(..., $sprite="...")` macro syntax in C4X DSL.
-
-## [1.1.0] - 2025-12-09
-### 📐 Advanced Layout Control (Phase 9)
-- **Recursive Layout Engine**: Completely rewritten layout engine to support hierarchical, independent sub-layouts.
-- **Nested Direction**: Support for `direction LR` inside subgraphs allows mixed-orientation diagrams (e.g. Horizontal Flows inside Vertical Systems).
-- **Manual Positioning**: New `$x` and `$y` attributes for pixel-perfect element positioning (e.g., `Component(..., $x="100", $y="200")`).
-
-### 🧠 Gemini AI Architect (Phase 10)
-- **Text-to-Diagram**: Generate complete C4 architectures from your source code using Google Gemini.
-- **Auto-Detection**: Right-click any folder or markdown file to analyze code and detect technologies (React, AWS, etc.).
-- **Smart Syntax**: Outputs valid C4X DSL automatically.
-
-### 🖱️ Visual Interactivity
-- **Click-to-Zoom**: Diagrams in Markdown preview now support lightbox zooming for detailed inspection.
-- **Visual Size Overrides**: Support for `width`, `height`, and `scale` attributes on code blocks.
-
-### 🚀 New Features
-- **PlantUML Support**: Native rendering of standard PlantUML C4 syntax in markdown.
-- **PDF Export**: Browser-based print preview for high-fidelity PDF generation (`C4X: Export - Preview`).
-- **Marketing Example**: New multi-agent system example added to gallery.
-
-### 📝 Documentation
-- Added `EXAMPLES-PLANTUML.md` to showcase PlantUML compatibility.
-
 ## [1.1.9] - 2025-12-13
 ### 🔧 Reliability & Rendering
 - **Edge-to-Edge Routing**: Fixed a critical rendering issue where arrows would route "Center-to-Center" in complex diagrams, obscuring arrowheads behind boxes. The renderer now forces optimal edge connections for all diagram types for crystal clear visibility.
@@ -73,6 +43,33 @@ All notable changes to the "c4x" extension will be documented in this file.
 ### 📚 Documentation
 - **New Guide**: Added comprehensive `docs/GEMINI_GUIDE.md` for AI workflows.
 - **Marketplace Assets**: Updated README with video demos and screenshot examples.
+
+## [1.1.0] - 2025-12-09
+### 📐 Advanced Layout Control (Phase 9)
+- **Recursive Layout Engine**: Completely rewritten layout engine to support hierarchical, independent sub-layouts.
+- **Nested Direction**: Support for `direction LR` inside subgraphs allows mixed-orientation diagrams (e.g. Horizontal Flows inside Vertical Systems).
+- **Manual Positioning**: New `$x` and `$y` attributes for pixel-perfect element positioning (e.g., `Component(..., $x="100", $y="200")`).
+
+### 🧠 Gemini AI Architect (Phase 10)
+- **Text-to-Diagram**: Generate complete C4 architectures from your source code using Google Gemini.
+- **Auto-Detection**: Right-click any folder or markdown file to analyze code and detect technologies (React, AWS, etc.).
+- **Smart Syntax**: Outputs valid C4X DSL automatically.
+
+### 🖱️ Visual Interactivity
+- **Click-to-Zoom**: Diagrams in Markdown preview now support lightbox zooming for detailed inspection.
+- **Visual Size Overrides**: Support for `width`, `height`, and `scale` attributes on code blocks.
+
+### 🚀 New Features
+- **PlantUML Support**: Native rendering of standard PlantUML C4 syntax in markdown.
+- **PDF Export**: Browser-based print preview for high-fidelity PDF generation (`C4X: Export - Preview`).
+- **Marketing Example**: New multi-agent system example added to gallery.
+
+### 📝 Documentation
+- Added `EXAMPLES-PLANTUML.md` to showcase PlantUML compatibility.
+
+## [1.0.9] - 2025-12-08
+### Fixed
+- Minor bug fixes and performance improvements.
 
 ## [1.0.8] - 2025-12-06
 
