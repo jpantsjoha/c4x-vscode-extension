@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Can't see the diagrams?**
 > You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
-
+>
 > **Navigation**:
 > [🏠 Back to README](../README.md) | [📚 Full Example Gallery](./EXAMPLES.md) | [📝 Syntax Guide](./c4x-syntax.md)
 >

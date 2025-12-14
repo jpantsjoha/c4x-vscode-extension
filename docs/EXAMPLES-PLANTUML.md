@@ -1,5 +1,3 @@
-# Examples - PlantUML
-
 # Examples: Standard PlantUML Support
 
 > [!NOTE]
