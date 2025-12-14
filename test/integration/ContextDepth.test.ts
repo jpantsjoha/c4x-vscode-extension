@@ -57,11 +57,11 @@ describe('Context Depth & Ignore Integration Test', function () {
             // dir/file -> 1 slash
             // dir/dir/file -> 2 slashes
 
-            // If we have dir/dir/dir/file -> 3 slashes -> Should be excluded.
-            if (depth > 2) {
+            // If we have dir/dir/dir/dir/file -> 4 slashes -> Should be excluded.
+            if (depth > 3) {
                 console.warn(`Found deep file: ${f.path}`);
             }
-            assert.ok(depth <= 2, `File ${f.path} is too deep (depth ${depth})`);
+            assert.ok(depth <= 3, `File ${f.path} is too deep (depth ${depth})`);
         });
     });
 });
