@@ -7,30 +7,40 @@
     "project": "./tsconfig.json"
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "security"
   ],
   "extends": [
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "plugin:security/recommended-legacy"
   ],
   "rules": {
     "@typescript-eslint/naming-convention": [
       "warn",
       {
         "selector": "default",
-        "format": ["camelCase"],
+        "format": [
+          "camelCase"
+        ],
         "leadingUnderscore": "allow",
         "trailingUnderscore": "allow"
       },
       {
         "selector": "variable",
-        "format": ["camelCase", "UPPER_CASE", "PascalCase"],
+        "format": [
+          "camelCase",
+          "UPPER_CASE",
+          "PascalCase"
+        ],
         "leadingUnderscore": "allow",
         "trailingUnderscore": "allow"
       },
       {
         "selector": "typeLike",
-        "format": ["PascalCase"]
+        "format": [
+          "PascalCase"
+        ]
       },
       {
         "selector": "import",
@@ -38,14 +48,22 @@
       },
       {
         "selector": "enumMember",
-        "format": ["UPPER_CASE", "PascalCase"]
+        "format": [
+          "UPPER_CASE",
+          "PascalCase"
+        ]
       },
       {
         "selector": "objectLiteralProperty",
         "format": null
       }
     ],
-    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
     "curly": "warn",
     "eqeqeq": "warn",
     "no-throw-literal": "warn",

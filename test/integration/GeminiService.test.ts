@@ -64,7 +64,13 @@ describe('GeminiService Integration Test', () => {
         assert.strictEqual(calls[1].model, 'gemini-3-pro-preview', 'Second call should be backup');
     });
 
-    it('Should rigorously validate C1, C2, and C3 diagram syntax', async () => {
+    it('Should rigorously validate C1, C2, and C3 diagram syntax', async function () {
+        // Skip test in CI environments where no API key is present
+        if (!process.env.GEMINI_API_KEY && !vscode.workspace.getConfiguration('c4x.ai').get<string>('apiKey')) {
+            console.warn('⚠️ Skipping Gemini Integration Test: No API Key found.');
+            this.skip();
+        }
+
         // Force initialize to ensure key is loaded
         await geminiService.initialize();
 
