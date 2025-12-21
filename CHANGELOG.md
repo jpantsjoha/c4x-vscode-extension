@@ -2,6 +2,95 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
+## [1.2.11] - 2025-12-21
+
+### 🧠 Smart Diagram Framework Detection
+- **NEW**: Visual diagram generation now auto-detects the best framework:
+  - **C4 Model** (default) — For structural architecture (systems, containers, components)
+  - **Sequence/Collaboration** — For ordered interactions, API call flows, loops
+  - **Flowchart** — For decision logic, process steps, conditional branches
+- **User Hints**: Override detection with `[Framework: Sequence]` or `[Framework: Flowchart]` in your selection text.
+- **Framework-Specific Prompts**: Each framework uses tailored visual guidelines and reference images.
+
+### 🛡️ Improved C4X Syntax Validation
+- **Element Type Whitelist**: AI now strictly enforces valid C4 element types.
+- **Blocked Invalid Types**: Prevents generation of fabricated types like `Goal()`, `Reason()`, `Decision()`, `Process()`, `Action()`.
+- **Structure vs Behavior**: Prompts now clarify that C4 is for STRUCTURE, and process/flow diagrams should use Sequence or Flowchart frameworks.
+
+## [1.2.10] - 2025-12-21
+
+### Optimized
+- **User Positioning**: Strictly enforces "User at Top-Left" rule to prevent the Person node from floating to the bottom of diagrams.
+- **Visual Spacing**: Increased instruction for padding and spacing to prevent relationship label overlaps and ensure readability.
+
+## [1.2.9] - 2025-12-21
+
+### Optimized
+- **Layout Consistency**: Synchronized layout logic between DSL and Visual generation.
+- **Loop Support**: Increased horizontal layout threshold to 6 nodes and explicitly favored LR for "Loops" and "Sequences".
+
+## [1.2.8] - 2025-12-21
+
+### Optimized
+- **Smart Layout Algorithm**: AI now counts entities to decide layout:
+  - **<= 4 Nodes**: Horizontal (Left-Right) with User on Left.
+  - **>= 5 Nodes**: Vertical (Top-Bottom) with User on Top.
+  - **Sequence Detection**: Strictly mimics linear flows if detected in input text (e.g. ASCII diagrams).
+
+## [1.2.7] - 2025-12-21
+
+### Improved
+- **Transparent Boundaries**: Prompt now explicitly forbids filling containment boundaries (Subgraphs) with color. It enforces "Dashed Stroke + Transparent Fill" for clarity.
+
+## [1.2.6] - 2025-12-21
+
+### Fixed
+- **Background Generation**: Fixed "TextEditor#edit not possible on closed editors" error by using `WorkspaceEdit`. Now you can switch tabs while the visual diagram generates in the background.
+
+## [1.2.5] - 2025-12-21
+
+### Optimized
+- **Layout Patterns**: Injected expert heuristics for C4 layout (Hierarchy First, Flow Direction) derived from `EXAMPLES-LAYOUT.md` to guide the visual model.
+- **Robustness**: Improved reference image loading stability.
+
+## [1.2.4] - 2025-12-21
+
+### Improved
+- **Double Visual Grounding**: Now injects BOTH the reference diagram AND the visual key into the AI prompt for maximum style adherence.
+- **Strict Guidelines**: Hardcoded "Expert Visual Architect" rules into the prompt to prevent common layout mistakes (e.g., node sizing inconsistency).
+
+## [1.2.3] - 2025-12-21
+
+### Enhanced
+- **Visual Diagram Quality**: Now uses **Multimodal Grounding** (sending reference images to matching C1/C2 styles) to strictly enforce C4 layout, consistent node sizing, and arrow styles.
+- **Icon Consistency**: Stricter prompting for standard stick-figure Persons and cylinder Databases.
+- **Layout**: Enforces Uniform width/height for same-type nodes based on visual reference.
+
+## [1.2.2] - 2025-12-21
+
+### Fixed
+- **Parser Resilience**: Enhanced AI self-correction to automatically fix "Expected E found" parser errors (increased retries to 3).
+- **Subgraph Syntax**: Improved AI prompting to strictly enforce correct `subgraph ID {` syntax.
+- **Documentation**: Clarified brace requirements in `GEMINI.md`.
+
+## [1.2.1] - 2025-12-20
+### 🧠 AI Model Upgrade
+- **Primary Model**: Upgraded to `gemini-3-flash-preview` (Gemini 3 Flash) - Pro-grade reasoning at 3x Flash speed.
+- **Fallback Model**: `gemini-3-pro-preview` for reliability when primary is unavailable.
+- **Self-Validation**: AI-generated diagrams are automatically validated using the C4X parser with auto-correction and retry logic.
+- **Model Selection**: VS Code settings now support choosing between `gemini-3-flash-preview`, `gemini-3-pro-preview`, and `gemini-2.5-pro`.
+
+### 🎨 Visual Diagram Generation (Preview)
+- **NEW**: Generate presentation-ready C4 diagrams as PNG images using `gemini-3-pro-image-preview`.
+- **Smart Detection**: AI automatically detects C4 level (C1/C2/C3) from your text context.
+- **Rich Visuals**: Output follows official C4 Model color scheme and styling.
+- **[📘 Read the Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)**
+
+### 📚 Documentation
+- **ADR 012**: Updated with new model strategy and rationale.
+- **ADR 013**: New - Visual diagram generation architecture decision.
+- **README/FAQ**: Added AI model configuration and visual generation sections.
+
 ## [1.1.9] - 2025-12-13
 ### 🔧 Reliability & Rendering
 - **Edge-to-Edge Routing**: Fixed a critical rendering issue where arrows would route "Center-to-Center" in complex diagrams, obscuring arrowheads behind boxes. The renderer now forces optimal edge connections for all diagram types for crystal clear visibility.

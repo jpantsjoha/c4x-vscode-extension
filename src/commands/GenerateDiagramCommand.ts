@@ -35,6 +35,7 @@ export class GenerateDiagramCommand {
         let selectionText: string | undefined;
         let recommendedTypes: string[] = [];
         let recommendedDirection: 'TB' | 'LR' | undefined;
+        let confidence = 0;
 
         if (mode === 'selection') {
             selectionText = editor.document.getText(editor.selection);
@@ -46,16 +47,37 @@ export class GenerateDiagramCommand {
             // AI Recommendation Step
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: 'Consulting Gemini Architect...',
+                title: 'Analyzing context...',
                 cancellable: false
             }, async () => {
                 const result = await this.geminiService.recommendDiagramType(selectionText!);
                 recommendedTypes = result.types;
                 recommendedDirection = result.direction;
+                confidence = result.confidence;
             });
         }
 
-        const selection = await this.promptForInstruction(recommendedTypes);
+        // Smart Auto-Detection: Skip dropdown if high confidence single recommendation
+        let selection: { text: string, depth: number } | undefined;
+
+        if (mode === 'selection' && recommendedTypes.length === 1 && confidence >= 0.7) {
+            // Auto-select based on AI recommendation
+            const typeMap: Record<string, { text: string, depth: number }> = {
+                'C1': { text: 'Create a C4 System Context (Level 1) diagram.', depth: 2 },
+                'C2': { text: 'Create a C4 Container (Level 2) diagram.', depth: 1 },
+                'C3': { text: 'Create a C4 Component (Level 3) diagram.', depth: 1 }
+            };
+            selection = typeMap[recommendedTypes[0]];
+
+            // Show notification of auto-detection
+            vscode.window.showInformationMessage(
+                `Auto-detected: ${recommendedTypes[0]} diagram (${Math.round(confidence * 100)}% confidence)`
+            );
+        } else {
+            // Show dropdown for user selection
+            selection = await this.promptForInstruction(recommendedTypes);
+        }
+
         if (!selection) { return; }
 
         const { text: instruction, depth } = selection;

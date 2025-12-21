@@ -27,14 +27,16 @@
 - ✅ **Layout Guidance**: Smart heuristics for diagram size.
 - ✅ **Visual Control**: `FORCE LAYOUT` override.
 
-### Phase 10: Polish & Future Proofing (In Progress)
-**Goal**: Maintenance, stability, and refining user experience.
-- [x] **Legacy Test Cleanup**: Clean up old Phase 8 PlantUML tests responsible for CI noise. (Completed v1.1.5)
-- [ ] **Async Markdown Integration**: Enable native `.md` preview without blocking UI.
-- [ ] **Layout Adherence 2.0**: Revisit heuristics for small diagrams. Address vertical-default frustration for simple 3-4 node flows.
-- [ ] **Visual Size Override**: Support `width` and `scale` attributes.
+### Phase 10: Codebase Hygiene (Completed)
+- ✅ **Legacy Test Cleanup**: Cleaned up old tests and stabilized CI.
+- ✅ **Security**: Dependabot alerts resolved.
 
-### v1.2.0 (Q1 2026) - Advanced Visuals & Customization
+### Phase 11: Visual Generation (Completed)
+- ✅ **PNG Generation**: Visual diagrams from text selections using Gemini Image model.
+- ✅ **Smart Detection**: Auto-detects C4, Sequence, and Flowchart frameworks.
+- ✅ **Visual Grounding**: Enforces strict C4 Model styling.
+
+### v1.3.0 (Q1 2026) - Advanced Visuals & Customization
 - [ ] **Custom Local Sprites**: Support for `$sprite="./my-icon.png"` path resolution.
 - [ ] **Structurizr DSL Support**: Native `.dsl` parsing.
 - [ ] **Deployment View**: Support for `DeploymentNode`.
