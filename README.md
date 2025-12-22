@@ -1,6 +1,6 @@
 # C4X - C4 Model Diagrams for VS Code
 >
-> **Status (2025-12-20)**: ✅ **v1.2.1 STABLE** - AI Model Upgrade + Visual Diagram Generation (Preview)
+> **Status (2025-12-22)**: ✅ **v1.2.11 STABLE** - AI Model Upgrade + Visual Diagram Generation (Preview)
 
 ![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
