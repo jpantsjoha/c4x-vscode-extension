@@ -443,8 +443,9 @@ FRAMEWORK OPTIONS:
 
 CRITICAL RULES:
 1. C4 is for STRUCTURE (what exists). Sequence/Flowchart are for BEHAVIOR (what happens).
-2. If the text describes a LOOP or CYCLE (e.g., "Reason → Act → Observe"), choose Sequence or Flowchart, NOT C4.
-3. If unsure, prefer C4 only if the text clearly describes software architecture.
+2. If the text contains NUMBERED STEPS (1. 2. 3.) or time-based keywords ("then", "next"), choose **Sequence**, EVEN IF it describes Systems/Containers.
+3. If the text describes a LOOP or CYCLE (e.g., "Reason → Act → Observe"), choose Sequence or Flowchart.
+4. Only choose C4 if the text describes a STATIC structure or hierarchy.
 
 RESPOND WITH ONLY THIS JSON (no markdown):
 {

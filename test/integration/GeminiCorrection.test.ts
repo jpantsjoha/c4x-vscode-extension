@@ -116,7 +116,7 @@ graph TB
         assert.ok(!result.includes('Clicks<br>Button'), 'Dirty tag should be removed');
     });
 
-    it('Should fallback to gemini-2.5-pro if primary model fails', async () => {
+    it('Should fallback to gemini-3-pro-preview if primary model fails', async () => {
         const mockContext = {
             secrets: { get: async () => "test-key", store: async () => { } },
             subscriptions: []
@@ -133,7 +133,7 @@ graph TB
                 requestedModels.push(opts.model);
                 return {
                     generateContent: async () => {
-                        if (opts.model === 'gemini-3-preview') {
+                        if (opts.model === 'gemini-3-flash-preview') {
                             throw new Error('404 Model Not Found');
                         }
                         return {
@@ -147,11 +147,11 @@ graph TB
         };
 
         // Inject initial model (failure one)
-        (service as any).model = (service as any).genAI.getGenerativeModel({ model: 'gemini-3-preview' });
+        (service as any).model = (service as any).genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
         const result = await service.generateDiagram([], 'test fallback');
 
         assert.ok(result.includes('User'), 'Should return result from fallback');
-        assert.deepStrictEqual(requestedModels, ['gemini-3-preview', 'gemini-3-pro-preview'], 'Should have requested both models in order');
+        assert.deepStrictEqual(requestedModels, ['gemini-3-flash-preview', 'gemini-3-pro-preview'], 'Should have requested both models in order');
     });
 });

@@ -42,9 +42,10 @@ export class PdfExporter {
             const htmlContent = this.generatePrintHtml(markdownText, path.basename(fileUri.fsPath));
 
             // Create temp file for print
-            const tempDir = os.tmpdir();
+            // Use source directory to ensure relative paths (images, etc.) resolve correctly
+            const tempDir = path.dirname(fileUri.fsPath);
             const baseName = path.basename(fileUri.fsPath, '.md');
-            const tempFileName = `c4x-print-${baseName}-${Date.now()}.html`;
+            const tempFileName = `preview-${baseName}.html`;
             const tempFileUri = vscode.Uri.file(path.join(tempDir, tempFileName));
 
             // Write HTML to temp file

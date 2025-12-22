@@ -40,7 +40,7 @@ describe('GeminiService Integration Test', () => {
                 calls.push(options);
                 return {
                     generateContent: async () => {
-                        if (options.model === 'gemini-2.5-pro') {
+                        if (options.model === 'gemini-3-flash-preview') {
                             throw new Error('404 Model Not Found');
                         }
                         return { response: { text: () => 'Fallback Result' } };
@@ -51,7 +51,7 @@ describe('GeminiService Integration Test', () => {
 
         // Initialize the internal model property to avoid "Model not initialized"
         // This simulates the state after initialize()
-        (geminiService as any).model = (geminiService as any).genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        (geminiService as any).model = (geminiService as any).genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
         const prompt = "test prompt";
         const result = await (geminiService as any).generateWithFallback(prompt);
@@ -60,7 +60,7 @@ describe('GeminiService Integration Test', () => {
 
         // Verify fallback logic
         assert.strictEqual(calls.length, 2, 'Should have called getGenerativeModel twice');
-        assert.strictEqual(calls[0].model, 'gemini-2.5-pro', 'First call should be primary');
+        assert.strictEqual(calls[0].model, 'gemini-3-flash-preview', 'First call should be primary');
         assert.strictEqual(calls[1].model, 'gemini-3-pro-preview', 'Second call should be backup');
     });
 

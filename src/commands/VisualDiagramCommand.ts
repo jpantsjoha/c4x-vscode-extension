@@ -83,7 +83,8 @@ export class VisualDiagramCommand {
 
                 // Insert markdown image reference
                 const relPath = `./${filename}`;
-                const imageRef = `\n![${c4Level} Diagram](${relPath})\n`;
+                // Use diagramType (e.g. "Sequence", "C2", "Flowchart") for specific label
+                const imageRef = `\n![${diagramType} Diagram](${relPath})\n`;
                 const endPos = editor.selection.end;
 
                 const wsEdit = new vscode.WorkspaceEdit();
