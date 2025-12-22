@@ -46,4 +46,4 @@ logs/
 
 # Test results
 test-results/
-playwright-report/
+playwright-report/*.vsix
