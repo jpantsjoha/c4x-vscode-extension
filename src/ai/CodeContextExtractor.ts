@@ -58,6 +58,12 @@ export class CodeContextExtractor {
 
         for (const file of files) {
             try {
+                // Double check constraints (robust segment check)
+                const segments = file.fsPath.split(path.sep);
+                if (segments.includes('.git') || segments.includes('node_modules')) {
+                    continue;
+                }
+
                 const stat = await vscode.workspace.fs.stat(file);
                 if (stat.size > CodeContextExtractor.MAX_FILE_SIZE) {
                     continue; // Skip large files

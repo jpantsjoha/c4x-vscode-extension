@@ -1,7 +1,7 @@
 # Frequently Asked Questions (FAQ)
 
-**Version**: 1.1.9
-**Last Updated**: 2025-12-13
+**Version**: 1.2.1
+**Last Updated**: 2025-12-20
 
 This document answers common questions about the C4X extension.
 
@@ -143,6 +143,52 @@ A: This is our **Smart Layout Engine** (v1.1.3+) optimizing for your screen size
 - **Small Diagrams (≤ 4 Nodes)**: Defaults to **Horizontal (Left-Right)** to save vertical space.
 - **Large Diagrams (> 4 Nodes)**: Defaults to **Vertical (Top-Bottom)** to avoid endless horizontal scrolling.
 - **Input Matching**: If your selected text looks like a horizontal flow (`A -> B -> C`), the AI tries to match that direction.
+
+### Q: Which AI models does C4X use?
+A: C4X uses a tiered model strategy (v1.2.0+):
+1. **Primary**: `gemini-3-flash-preview` - Pro-grade reasoning at 3x Flash speed (default).
+2. **Fallback**: `gemini-3-pro-preview` - Automatically used if primary fails.
+3. **Legacy**: `gemini-2.5-pro` - Available in settings for compatibility.
+
+You can configure this in VS Code settings: `"c4x.ai.model": "gemini-3-flash-preview"`.
+
+### Q: Does the AI validate its own output?
+A: Yes! C4X implements **Self-Validation with Auto-Correction**:
+1. All generated diagrams are parsed using the C4X syntax validator.
+2. If syntax errors are detected, the error message is fed back to the model.
+3. The model attempts to self-correct (up to 2 retries per model).
+4. If validation fails after retries, it automatically falls back to the secondary model.
+
+This ensures you always receive syntactically valid C4X diagrams.
+
+### Q: What is Visual Diagram Generation (Preview)?
+A: This is a new feature (v1.2.0+) that uses `gemini-3-pro-image-preview` to generate **PNG images** of C4 diagrams directly from text descriptions, without writing any DSL code.
+
+**How it differs from C4X-DSL:**
+
+| C4X-DSL (Default) | Visual Generation (Preview) |
+|-------------------|----------------------------|
+| Outputs SVG via parser | Outputs PNG via AI |
+| Deterministic | Slight variations between runs |
+| Requires DSL syntax | Natural language input |
+| Works offline | Requires API + network |
+| Editable code | Non-editable image |
+
+**[📘 Read the Full Visual Diagram Guide](./DIAGRAM-WITH-GEMINI-IMAGE.md)**
+
+### Q: How do I use Visual Diagram Generation?
+A:
+1. Select text describing your architecture in a markdown file
+2. Right-click → "C4X: Preview - Visual Diagram (Gemini)"
+3. The AI generates a PNG and embeds it in your markdown
+
+The AI automatically detects the C4 level (C1/C2/C3) from your context.
+
+### Q: Why is my visual diagram Vertical instead of Horizontal?
+A: C4X v1.2.8+ uses a **Smart Layout Algorithm**:
+- **≤ 4 Entities**: Defaults to **Horizontal (Left-Right)** to emphasize flow.
+- **≥ 5 Entities**: Defaults to **Vertical (Top-Bottom)** to manage density.
+- **Linear Flows**: If your text describes a sequence (e.g. "A -> B -> C"), it strictly follows that direction.
 
 ## Troubleshooting
 

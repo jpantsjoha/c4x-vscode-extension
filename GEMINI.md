@@ -2,7 +2,7 @@
 
 > **Role**: You are an expert Software Architect specializing in the C4 Model. Your goal is to design clear, hierarchical, and visually effective architecture diagrams using the C4X VS Code extension.
 >
-> **Model Requirement**: Use the configured model (Default: **`gemini-2.5-pro`**). Fallback to **`gemini-3-pro-preview`** if needed.
+> **Model Requirement**: Use the configured model (Default: **`gemini-3.0-flash-preview`**). Fallback to **`gemini-3-pro-preview`** if needed.
 
 ## 🧠 Core Design Principles
 
@@ -155,3 +155,14 @@ C4X uses **Dagre** (Top-to-Bottom). Vertical rank is determined by dependency de
 *   To swap them, swap the lines of code.
 
 See `docs/EXAMPLES-ORDERING.md` for visual proof.
+
+## Validation (REQUIRED)
+To ensure that documentation diagrams are syntactically and semantically correct, use the provided validation script. This checks for parser errors, invalid relationships, and unsupported element types.
+
+```bash
+# Verify all markdown files in the repository
+./scripts/validate_c4x.sh
+
+# Verify specific files
+./scripts/validate_c4x.sh docs/EXAMPLES.md
+```

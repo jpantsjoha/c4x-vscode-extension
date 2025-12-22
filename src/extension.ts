@@ -4,6 +4,7 @@ import { DiagnosticsManager } from './diagnostics/DiagnosticsManager';
 import { HtmlExporter } from './export/HtmlExporter';
 import { PdfExporter } from './export/PdfExporter';
 import { GenerateDiagramCommand } from './commands/GenerateDiagramCommand';
+import { VisualDiagramCommand } from './commands/VisualDiagramCommand';
 import { C4XCompletionItemProvider } from './completion/C4XCompletionItemProvider';
 
 /**
@@ -19,6 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
   const htmlExporter = new HtmlExporter();
   const pdfExporter = new PdfExporter();
   const generateDiagramCommand = new GenerateDiagramCommand(context);
+  const visualDiagramCommand = new VisualDiagramCommand(context);
 
   // Register commands
   context.subscriptions.push(
@@ -50,6 +52,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('c4x.ai.generateFromSelection', async () => {
       if (vscode.window.activeTextEditor) {
         await generateDiagramCommand.generateFromSelection(vscode.window.activeTextEditor);
+      }
+    }),
+    vscode.commands.registerCommand('c4x.ai.generateVisualDiagram', async () => {
+      if (vscode.window.activeTextEditor) {
+        await visualDiagramCommand.generateVisualDiagram(vscode.window.activeTextEditor);
       }
     })
   );

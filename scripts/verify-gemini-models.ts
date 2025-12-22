@@ -27,7 +27,9 @@ async function main() {
 
     try {
         const modelsToTest = [
-            'gemini-3-preview',
+            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
+            'gemini-3-pro-image-preview',
             'gemini-2.5-pro'
         ];
         console.log('\n🧪 Testing Model Availability & Generation:\n');

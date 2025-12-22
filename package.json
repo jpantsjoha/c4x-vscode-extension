@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.1.9",
+  "version": "1.2.11",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -98,6 +98,11 @@
         "command": "c4x.ai.generateFromSelection",
         "title": "C4X: Diagram from Selection",
         "category": "C4X"
+      },
+      {
+        "command": "c4x.ai.generateVisualDiagram",
+        "title": "C4X: Preview - Visual Diagram (PNG)",
+        "category": "C4X"
       }
     ],
     "menus": {
@@ -116,6 +121,11 @@
         },
         {
           "command": "c4x.ai.generateFromSelection",
+          "group": "c4x_ai",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "c4x.ai.generateVisualDiagram",
           "group": "c4x_ai",
           "when": "editorHasSelection"
         }
@@ -183,12 +193,13 @@
         },
         "c4x.ai.model": {
           "type": "string",
-          "default": "gemini-2.5-pro",
+          "default": "gemini-3-flash-preview",
           "enum": [
+            "gemini-3-flash-preview",
             "gemini-3-pro-preview",
             "gemini-2.5-pro"
           ],
-          "description": "Model to use for Gemini AI generation. Defaults to gemini-3-preview (State of the Art)."
+          "description": "Model to use for Gemini AI generation. Defaults to gemini-3-flash-preview (Pro-grade reasoning at Flash speed)."
         }
       }
     }
