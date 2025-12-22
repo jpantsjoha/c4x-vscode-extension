@@ -32,12 +32,12 @@ describe('Gemini Issue Reproduction', () => {
                 // LOG THE PROMPT TO SEE IF IT IS CORRECT
                 console.log("PROMPT RECEIVED:", prompt);
 
-                if (prompt.includes('ORIENTATION DETECTION')) {
+                if (prompt.includes('DETECTION RULES')) {
                     // Simulate CORRECT behavior based on prompt text
                     if (prompt.includes('--->')) {
-                        return { response: { text: () => JSON.stringify({ types: ['C1'], direction: 'LR' }) } };
+                        return { response: { text: () => JSON.stringify({ bestType: 'C1', direction: 'LR', confidence: 0.9 }) } };
                     }
-                    return { response: { text: () => JSON.stringify({ types: ['C1'], direction: 'TB' }) } };
+                    return { response: { text: () => JSON.stringify({ bestType: 'C1', direction: 'TB', confidence: 0.9 }) } };
                 }
 
                 if (prompt.includes('FORCE LAYOUT')) {
