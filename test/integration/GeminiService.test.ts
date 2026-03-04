@@ -31,7 +31,7 @@ describe('GeminiService Integration Test', () => {
         geminiService = new GeminiService(mockContext);
     });
 
-    it.skip('Should fallback to backup model if primary fails', async () => {
+    it.skip('Should fallback to gemini-3.1-pro-preview if user model fails', async () => {
         const calls: any[] = [];
 
         // Mock getGenerativeModel
@@ -49,8 +49,7 @@ describe('GeminiService Integration Test', () => {
             }
         };
 
-        // Initialize the internal model property to avoid "Model not initialized"
-        // This simulates the state after initialize()
+        // Simulates user selecting gemini-3-flash-preview
         (geminiService as any).model = (geminiService as any).genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
         const prompt = "test prompt";
@@ -58,10 +57,10 @@ describe('GeminiService Integration Test', () => {
 
         assert.strictEqual(result, 'Fallback Result');
 
-        // Verify fallback logic
+        // Verify smart fallback elevates to gemini-3.1-pro-preview
         assert.strictEqual(calls.length, 2, 'Should have called getGenerativeModel twice');
-        assert.strictEqual(calls[0].model, 'gemini-3-flash-preview', 'First call should be primary');
-        assert.strictEqual(calls[1].model, 'gemini-3-pro-preview', 'Second call should be backup');
+        assert.strictEqual(calls[0].model, 'gemini-3-flash-preview', 'First call should be user model');
+        assert.strictEqual(calls[1].model, 'gemini-3.1-pro-preview', 'Second call should be smart fallback');
     });
 
     it('Should rigorously validate C1, C2, and C3 diagram syntax', async function () {

@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { glob } from 'glob';
 import { C4XParser } from '../src/parser/C4XParser';
+import { c4ModelBuilder } from '../src/model/C4ModelBuilder';
 
 // Colors for console output
 const colors = {
@@ -22,16 +23,18 @@ async function validateMarkdownFiles() {
     let filesWithErrors = 0;
 
     // Find all markdown files
-    const files = await glob('**/*.md', { 
+    const files = await glob('**/*.md', {
         ignore: [
-            'node_modules/**', 
-            'out/**', 
-            'dist/**', 
-            '.github/**', 
+            'node_modules/**',
+            'out/**',
+            'dist/**',
+            '.github/**',
             'test/**',
             'docs/archive/**',
-            'docs/phases/**'
-        ] 
+            'docs/phases/**',
+            '_agents/**',
+            '.claude/**'
+        ]
     });
 
     for (const file of files) {
@@ -54,7 +57,10 @@ async function validateMarkdownFiles() {
             const startLine = linesUpToBlock.length;
 
             try {
-                parser.parse(code);
+                // Parse syntax
+                const parseResult = parser.parse(code);
+                // Validate element types by building the model
+                c4ModelBuilder.build(parseResult, file);
             } catch (error: any) {
                 failedBlocks++;
                 hasError = true;

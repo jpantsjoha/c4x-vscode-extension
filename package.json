@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.2.12",
+  "version": "1.3.0",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -193,13 +193,41 @@
         },
         "c4x.ai.model": {
           "type": "string",
-          "default": "gemini-3-flash-preview",
+          "default": "gemini-3.1-pro-preview",
+          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nRecommended models (March 2026):\n- gemini-3.1-pro-preview — Best reasoning, 1M context\n- gemini-3-flash-preview — Fast, free tier available\n- gemini-2.5-pro — Stable (sunset June 2026)\n- gemini-2.5-flash — Cost-effective (sunset June 2026)\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
+        },
+        "c4x.ai.imageModel": {
+          "type": "string",
+          "default": "gemini-3.1-flash-image-preview",
+          "description": "Gemini model ID for visual PNG diagram generation. Enter any image-capable model ID your API key supports.\n\nRecommended image models (March 2026):\n- gemini-3.1-flash-image-preview — Nano Banana 2 (Fast, 4K, $67/1k images) ⚡\n- gemini-3-pro-image-preview — Nano Banana Pro (Highest quality)\n- gemini-2.5-flash-image — Previous Flash model\n\nSee https://ai.google.dev/gemini-api/docs/image-generation for details."
+        },
+        "c4x.ai.visualGroundingContext": {
+          "type": "string",
+          "default": "",
+          "maxLength": 300,
+          "description": "Custom visual style context for PNG diagram generation (max 300 chars). This text is injected into the AI prompt to guide the visual style. Leave empty to use preset or default. Example: 'Dark theme with neon accents, transparent background, cyberpunk aesthetic'"
+        },
+        "c4x.ai.visualPreset": {
+          "type": "string",
           "enum": [
-            "gemini-3-flash-preview",
-            "gemini-3-pro-preview",
-            "gemini-2.5-pro"
+            "default",
+            "dark",
+            "light",
+            "pastel",
+            "corporate"
           ],
-          "description": "Model to use for Gemini AI generation. Defaults to gemini-3-flash-preview (Pro-grade reasoning at Flash speed)."
+          "default": "default",
+          "description": "Visual style preset for PNG diagrams.\n\n• default — Clean white background, standard C4 colors\n• dark — Dark background, white/cyan text, neon accents\n• light — Bright white, high contrast, professional\n• pastel — Soft pastel palette, rounded corners, gentle aesthetic\n• corporate — Professional grey-blue palette, sharp edges, business-ready\n\nNote: Custom 'visualGroundingContext' overrides this preset."
+        },
+        "c4x.ai.layoutPreference": {
+          "type": "string",
+          "enum": [
+            "balanced",
+            "compact",
+            "spacious"
+          ],
+          "default": "balanced",
+          "description": "Layout spacing preference for PNG diagrams.\n\n• balanced — Standard spacing (default)\n• compact — Tighter spacing, more elements on screen\n• spacious — Generous padding, larger arrows, better readability"
         }
       }
     }
@@ -246,6 +274,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.13.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@types/dagre": "^0.7.53",
     "@types/markdown-it": "^14.1.2",
     "dagre": "^0.8.5",

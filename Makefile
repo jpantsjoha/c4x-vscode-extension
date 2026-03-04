@@ -68,7 +68,7 @@ verify-docs:
 	@echo "📝 Verifying documentation..."
 	pnpm run validate:docs
 	@echo "🐍 Running strict C4X syntax check..."
-	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*")
+	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/_agents/*" -not -path "*/.claude/*")
 
 # Clean build artifacts
 clean:

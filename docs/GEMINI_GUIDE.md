@@ -31,9 +31,9 @@ You must provide an API key to enable AI features.
 *   **Workflow**:
     1.  Click the command.
     2.  **Select Diagram Type**:
-        *   `System Context (C1)`: Scans 2 levels deep. Best for root folders.
-        *   `Container (C2)`: Scans 1 level deep. Best for app roots.
-        *   `Component (C3)`: Scans current folder. Best for specific modules.
+        *   `System Context (C1)`: Scans 1 level deep. High-level overview — best from root folders.
+        *   `Container (C2)`: Scans 2 levels deep. Find all services/apps — best from src/ or app root.
+        *   `Component (C3)`: Scans 3 levels deep. Detailed structure — best from specific module folders.
     3.  The AI analyzes the file's location and neighbor files to generate the diagram.
 
 ### 2. Diagram from Selection (Sketch Mode)
@@ -57,14 +57,16 @@ The AI is not omniscient. It only "sees" relative to where you run it.
 ### 2. Scanning Depth & Location Strategy
 The "Generate Diagram Here" command scans **relative to the file you are editing**. This makes the **location** of your Markdown file critical.
 
-#### How Scanning Works
-*   **System Context (C1)**: Scans **2 levels deep** from current folder.
+#### How Scanning Works (Updated v1.3.0)
+*   **System Context (C1)**: Scans **1 level deep** from current folder.
     *   *Requirement*: Must be run from the **Root** or `docs/` folder.
-    *   *Why*: It needs to see "wide" to find external inputs/outputs.
-*   **Container (C2)**: Scans **1 level deep**.
+    *   *Why*: High-level overview — shallow scan prevents implementation noise while capturing major systems.
+*   **Container (C2)**: Scans **2 levels deep**.
     *   *Requirement*: Best run from `src/` or App Root.
-*   **Component (C3)**: Scans **Current Folder Only**.
+    *   *Why*: Medium depth discovers services/apps in nested folders (e.g., `src/services/payment/`).
+*   **Component (C3)**: Scans **3 levels deep**.
     *   *Requirement*: Run inside the specific module (e.g., `src/auth/README.md`).
+    *   *Why*: Deep scan captures all classes, modules, and implementation details.
 
 #### The "Reverse Order" Trap
 If you create a Markdown file deep in your project (e.g., `src/services/payment/README.md`) and ask for a **System Context (C1)**:
@@ -90,6 +92,108 @@ While we use advanced prompting (`GEMINI.md`) to ground the AI, it may occasiona
 *   Invent relationships that don't exist (based on variable names).
 *   Misidentify a library as an external system.
 *   **Always verify the generated C4 DSL code manually.**
+
+---
+
+## 🎨 Visual Diagram Customization (v1.3.0)
+
+### Overview
+C4X supports generating **presentation-ready PNG diagrams** using Gemini's image generation models. You have full control over the visual style, layout, and colors.
+
+### Quick Start
+1. **Select text** describing your architecture (or use existing C4X code).
+2. **Right-click** → `C4X: Preview - Visual Diagram (PNG)`.
+3. The AI generates a PNG image and inserts it into your markdown.
+
+### Visual Presets
+Control the overall aesthetic with built-in presets:
+
+```json
+{
+  "c4x.ai.visualPreset": "dark"
+}
+```
+
+| Preset | Description | Best For |
+|--------|-------------|----------|
+| `default` | Clean white background, standard C4 colors | Professional documentation, technical specs |
+| `dark` | Dark background (#1a1a1a), neon accents | Presentations, slide decks, dark-theme environments |
+| `light` | Bright white, high contrast, sharp edges | Print-ready documents, formal reports |
+| `pastel` | Soft pastel palette, rounded corners | Creative presentations, gentle aesthetic |
+| `corporate` | Grey-blue palette, sharp edges | Business presentations, executive summaries |
+
+### Layout Preferences
+Control diagram spacing and density:
+
+```json
+{
+  "c4x.ai.layoutPreference": "spacious"
+}
+```
+
+| Preference | Description | Use Case |
+|------------|-------------|----------|
+| `balanced` | Standard spacing, medium arrow length | Most diagrams (default) |
+| `compact` | Tight spacing, short arrows | Fitting many elements on screen, complex systems |
+| `spacious` | Generous padding, long arrows | Presentations, readability focus, simple systems |
+
+### Custom Style Override
+For complete control, use `visualGroundingContext` (max 300 characters):
+
+```json
+{
+  "c4x.ai.visualGroundingContext": "Cyberpunk aesthetic with neon purple and cyan accents, transparent background, glowing edges on all boxes"
+}
+```
+
+**Examples**:
+- `"Hand-drawn sketch style, black pen on white paper, rough edges"`
+- `"Minimalist monochrome, thin lines, sans-serif labels, lots of white space"`
+- `"Blueprint style, white lines on deep blue background (#003366), technical drawing aesthetic"`
+
+> **Note**: Custom grounding context **overrides** the visual preset. Leave it empty to use the preset.
+
+### C4 Color Palette Enforcement
+C4X strictly enforces the official C4 Model color palette to ensure consistency across all generated diagrams:
+
+**Official Colors** (EXACT, MANDATORY):
+- **Person**: `#08427B` (Dark Blue) with White Text
+- **Software System**: `#1168BD` (Blue) with White Text
+- **External System**: `#999999` (Grey) with White Text
+- **Container**: `#438DD5` (Light Blue) with White Text
+- **Component**: `#85BBF0` (Lighter Blue) with Black Text
+
+**Forbidden Colors** (for structural elements):
+- ❌ Green, Red, Yellow, Orange — Reserved for **status indicators only**
+- ✅ Status Colors:
+  - Green = Active/Success/Running
+  - Red = Error/Critical/Down
+  - Yellow = Warning/Degraded
+
+### Configuration Example
+Complete visual customization setup:
+
+```json
+{
+  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview",  // Nano Banana 2
+  "c4x.ai.visualPreset": "corporate",                     // Grey-blue aesthetic
+  "c4x.ai.layoutPreference": "spacious",                  // Generous spacing
+  "c4x.ai.visualGroundingContext": ""                     // Empty = use preset
+}
+```
+
+### Best Practices
+1. **Use Presets First**: Try built-in presets before writing custom grounding.
+2. **Be Specific**: Custom grounding works best with concrete details ("neon purple #A855F7") not vague terms ("cool colors").
+3. **Respect C4 Colors**: Don't override structural element colors — maintain C4 Model standards.
+4. **Layout Matters**: Choose `compact` for complex systems (10+ elements), `spacious` for presentations (5-8 elements).
+5. **Iterate**: If output doesn't match expectations, refine your grounding context and regenerate.
+
+### Troubleshooting
+- **Colors Don't Match**: Ensure you're not using forbidden colors (green/red/yellow) for structural elements.
+- **Layout Too Crowded**: Switch to `spacious` layout preference.
+- **Style Ignored**: Check that `visualGroundingContext` is empty if you want to use presets.
+- **Text Unreadable**: Use high-contrast presets (`light` or `dark`) for better legibility.
 
 ---
 

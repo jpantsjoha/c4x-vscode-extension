@@ -17,6 +17,14 @@ test-output*
 *.svg
 *.html
 
+# Build artifacts (packaged extensions)
+*.vsix
+
+# Private agent configurations (Antigravity/Gemini)
+_agents/
+.gemini/
+local.gemini.md
+
 # IDE
 .vscode/settings.json
 .vscode/launch.json

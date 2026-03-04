@@ -51,6 +51,8 @@ async function main() {
       effectiveExtensionPath, // Open the extension folder as a workspace
       '--disable-extensions', // Disable other extensions
       '--disable-gpu',        // Faster execution
+      '--disable-dev-shm-usage', // Prevent shared memory exhaustion on ARM64 macOS
+      '--no-sandbox',         // Reduce process overhead
     ];
 
     // If we're using temp dir, also use temp paths for extensions and user data

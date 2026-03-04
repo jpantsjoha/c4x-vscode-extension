@@ -1,8 +1,10 @@
 {
   "mcpServers": {
-    "pinescript-validator": {
+    "c4x-validator": {
       "command": "node",
-      "args": ["mcp/pinescript-mcp-server.js"]
+      "args": [
+        "out/mcp/c4x-mcp-server.js"
+      ]
     }
   }
 }
