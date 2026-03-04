@@ -198,7 +198,7 @@ Complete visual customization setup:
 ---
 
 ## 🤖 Advanced: Using the System Prompt
-We have open-sourced our **Expert System Prompt** so you can use it in your own workflows (e.g., Gemini Advanced, ChatGPT, Claude, Antigravity).
+We have open-sourced our **Expert System Prompt** so you can use it in your own workflows (e.g., Gemini Advanced, ChatGPT, Claude, Gemini CLI).
 
 ### Why use it?
 If you want to generate diagrams manually in a chat interface, pasting our system prompt ensures the AI:

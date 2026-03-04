@@ -31,9 +31,7 @@ async function validateMarkdownFiles() {
             '.github/**',
             'test/**',
             'docs/archive/**',
-            'docs/phases/**',
-            '_agents/**',
-            '.claude/**'
+            'docs/phases/**'
         ]
     });
 

@@ -62,9 +62,9 @@ All notable changes to the "c4x" extension will be documented in this file.
 - **Default**: Falls back to `"Elegant, simple C4 model diagram against white background, logically organised and well spaced"`.
 - **Use Cases**: Customize colour schemes, backgrounds, styling, or add domain-specific context.
 
-### 🔒 Sync Script Safety
-- **Hardened `publish-to-public.sh`**: Rewrote with strict allowlisting, excluding private dev tooling, ADRs, phase docs, agent configs, and build artifacts.
-- **Post-Sync Safety Check**: Script now auto-verifies no private files leaked and aborts if detected.
+### 🔒 Release Safety
+- **Improved release workflow**: Strict allowlisting excludes dev tooling and build artifacts from distribution.
+- **Post-release safety checks**: Automated verification ensures no unintended files are included.
 
 ## [1.2.11] - 2025-12-21
 

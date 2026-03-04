@@ -68,7 +68,7 @@ verify-docs:
 	@echo "📝 Verifying documentation..."
 	pnpm run validate:docs
 	@echo "🐍 Running strict C4X syntax check..."
-	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/_agents/*" -not -path "*/.claude/*")
+	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*")
 
 # Clean build artifacts
 clean:
@@ -83,12 +83,6 @@ package: build
 
 # Alias for package (create VSIX)
 vsix: package
-
-# Sync to public repo
-sync:
-	@if [ -z "$(DEST)" ]; then echo "Usage: make sync DEST=../path-to-public-repo"; exit 1; fi
-	@echo "🚀 Syncing to public repo: $(DEST)"
-	@./scripts/publish-to-public.sh "$(DEST)"
 
 # Pre-commit checks (3m pattern: make, measure, monitor)
 pre-commit: lint verify-docs build test
@@ -117,7 +111,6 @@ help:
 	@echo "Publishing:"
 	@echo "  make package    - Create VSIX file for marketplace"
 	@echo "  make vsix       - Alias for 'make package'"
-	@echo "  make sync DEST=../public-repo - Sync to public repo"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean      - Remove build artifacts (dist, out, node_modules)"
