@@ -5,7 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Claude Code configuration (private)
+# Claude Code
 .claude/
 CLAUDE.md
 
@@ -16,6 +16,14 @@ out/
 test-output*
 *.svg
 *.html
+
+# Build artifacts (packaged extensions)
+*.vsix
+
+# Agent configurations
+_agents/
+.gemini/
+local.gemini.md
 
 # IDE
 .vscode/settings.json

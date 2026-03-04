@@ -16,8 +16,9 @@ describe('Gemini Image Model Integration Test', function () {
 
     const MODEL_NAME = 'gemini-3-pro-image-preview';
     let genAI: GoogleGenerativeAI | null = null;
+    let skipTests = false;
 
-    before(async () => {
+    before(async function () {
         // Load API key
         const envPath = path.resolve(__dirname, '../../../.env');
         let apiKey = process.env.GEMINI_API_KEY;
@@ -28,14 +29,24 @@ describe('Gemini Image Model Integration Test', function () {
             if (match) apiKey = match[1];
         }
 
-        if (apiKey) {
+        if (!apiKey) {
+            console.warn('⚠️ Skipping Gemini Image tests: No API Key found');
+            skipTests = true;
+            this.skip();
+            return;
+        }
+
+        try {
             genAI = new GoogleGenerativeAI(apiKey);
+        } catch (error) {
+            console.warn('⚠️ Skipping Gemini Image tests: Failed to initialize GoogleGenerativeAI', error);
+            skipTests = true;
+            this.skip();
         }
     });
 
     it('Should verify gemini-3-pro-image-preview model is available', async function () {
-        if (!genAI) {
-            console.warn('⚠️ Skipping: No API Key found');
+        if (skipTests || !genAI) {
             this.skip();
         }
 
@@ -50,8 +61,7 @@ describe('Gemini Image Model Integration Test', function () {
     });
 
     it('Should generate a C4 System Context diagram image', async function () {
-        if (!genAI) {
-            console.warn('⚠️ Skipping: No API Key found');
+        if (skipTests || !genAI) {
             this.skip();
         }
 
@@ -96,8 +106,7 @@ Create this as a clear, presentation-ready diagram image.
     });
 
     it('Should generate a C4 Container diagram image', async function () {
-        if (!genAI) {
-            console.warn('⚠️ Skipping: No API Key found');
+        if (skipTests || !genAI) {
             this.skip();
         }
 

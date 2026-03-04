@@ -15,10 +15,6 @@ This project represents a collaboration between human architectural vision and A
 
 We believe in transparency about the use of AI in software development. This repository demonstrates that AI can be used not just for snippets, but for end-to-end project delivery—including documentation, testing infrastructure, and marketplace asset generation—when guided by clear architectural principles.
 
-## The "Private vs. Public" Repo
-
-To maintain a clean open-source history, this public repository is a mirror of the core codebase. It excludes the verbose conversational history and intermediate experimental branches used during the AI collaboration, presenting only the polished, shippable result.
-
 ---
 
 *Built for the future of software architecture.*

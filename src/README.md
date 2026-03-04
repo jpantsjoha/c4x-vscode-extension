@@ -16,7 +16,7 @@ graph TB
   VSCode -->|Notifies of text changes and saves| C4XSystem
 ```
 
-## C2: Component Diagram
+## C2: Container Diagram
 
 ```c4x
 %%{ c4: container }%%
@@ -27,10 +27,10 @@ graph TB
   subgraph C4XExtension {
     Container(ExtensionCore, "Extension Core", "TypeScript", "Handles command registration, lifecycle management, and VS Code API integration.")
     Container(LayoutEngines, "Layout Engines", "Dagre / ELK", "Processes the C4 model into coordinates using Dagre or ELK algorithms.")
-    Container(RenderingEngine, "SVG Builder", "TypeScript / SVG", "Generates SVG markup from positioned elements using selected themes.")
     Container(ThemeManager, "Theme Manager", "TypeScript", "Manages visual styles like Classic, Modern, and High Contrast.")
-    Container(Exporters, "Export Modules", "TypeScript / Playwright", "Converts SVG diagrams into HTML, PDF, PNG, and Standalone SVG formats.")
+    Container(RenderingEngine, "SVG Builder", "TypeScript / SVG", "Generates SVG markup from positioned elements using selected themes.")
     Container(SpriteLibrary, "Sprite Library", "TypeScript", "Provides a collection of normalized SVG paths for AWS, Azure, GCP, and C4 icons.")
+    Container(Exporters, "Export Modules", "TypeScript / Playwright", "Converts SVG diagrams into HTML, PDF, PNG, and Standalone SVG formats.")
   }
 
   System_Ext(FS, "File System", "Local storage for exported diagram files and extension configuration.")
@@ -38,13 +38,12 @@ graph TB
   User -->|Uses| VSCode
   VSCode -->|Invokes Commands| ExtensionCore
   ExtensionCore -->|Requests Layout| LayoutEngines
-  LayoutEngines -->|Returns Coordinates| ExtensionCore
-  ExtensionCore -->|Requests Render| RenderingEngine
+  LayoutEngines -->|Returns Coordinates| RenderingEngine
   ExtensionCore -->|Retrieves Theme| ThemeManager
   ThemeManager -->|Provides Styling| RenderingEngine
   RenderingEngine -->|Fetches Icons| SpriteLibrary
   RenderingEngine -->|Provides SVG| Exporters
-  Exporters -->|Writes| FS
+  Exporters -->|Writes Files| FS
 ```
 
 ## C3: Container Diagram

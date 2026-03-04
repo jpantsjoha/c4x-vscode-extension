@@ -142,9 +142,9 @@ export class GenerateDiagramCommand {
 
     private async promptForInstruction(recommendations: string[] = []): Promise<{ text: string, depth: number } | undefined> {
         const baseItems = [
-            { label: 'System Context (C1)', type: 'C1', description: 'Users & Systems (Scans 2 levels deep)', instruction: 'Create a C4 System Context (Level 1) diagram.', depth: 2 },
-            { label: 'Container Architecture (C2)', type: 'C2', description: 'Apps & DBs (Scans 1 level deep)', instruction: 'Create a C4 Container (Level 2) diagram.', depth: 1 },
-            { label: 'Component Diagram (C3)', type: 'C3', description: 'Classes & Modules (Scans current folder)', instruction: 'Create a C4 Component (Level 3) diagram.', depth: 1 },
+            { label: 'System Context (C1)', type: 'C1', description: 'High-level systems & actors (Scans 1 level - broad overview)', instruction: 'Create a C4 System Context (Level 1) diagram.', depth: 1 },
+            { label: 'Container Architecture (C2)', type: 'C2', description: 'Apps, services & DBs (Scans 2 levels - find all containers)', instruction: 'Create a C4 Container (Level 2) diagram.', depth: 2 },
+            { label: 'Component Diagram (C3)', type: 'C3', description: 'Classes & modules (Scans 3 levels - detailed structure)', instruction: 'Create a C4 Component (Level 3) diagram.', depth: 3 },
             { label: 'Custom / Ask Architect...', type: 'CUSTOM', description: 'Describe what you want (e.g. "Focus on Cloud")', instruction: 'CUSTOM', depth: 2 }
         ];
 

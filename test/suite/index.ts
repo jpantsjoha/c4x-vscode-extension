@@ -12,7 +12,7 @@ export function run(): Promise<void> {
   const mocha = new Mocha({
     ui: 'bdd', // BDD-style (describe/it) instead of TDD (suite/test)
     color: true,
-    timeout: 10000, // 10 seconds
+    timeout: 30000, // 30 seconds (ARM64 macOS needs more time under symlinks)
   });
 
   const testsRoot = path.resolve(__dirname, '..');

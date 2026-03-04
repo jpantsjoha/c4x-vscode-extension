@@ -2,6 +2,70 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
+## [1.3.0] - 2026-03-02
+
+### 🧠 Gemini 3.1 Pro Migration (Breaking)
+- **Default Model**: Changed to `gemini-3.1-pro-preview` (best reasoning, 1M context, ARC-AGI-2: 77.1%).
+- **Removed**: `gemini-3-pro-preview` (sunset March 9, 2026) and `gemini-3.1-flash-preview` (invalid model ID).
+- **Smart Fallback**: If user's model fails, automatically tries `gemini-3.1-pro-preview` or `gemini-3-flash-preview`.
+
+### 🎛️ User-Configurable Model Selection
+- **Free-text model input**: The `c4x.ai.model` setting now accepts any Gemini model ID — no more restrictive dropdown.
+- **Future-proof**: New Google models can be used immediately without waiting for an extension update.
+- **ADR-015**: Documents the migration strategy and rationale.
+
+### 🖼️ Nano Banana 2 Image Model (New)
+- **Default Image Model**: Visual PNG diagram generation now uses `gemini-3.1-flash-image-preview` (Nano Banana 2).
+- **4K Support**: New model supports 4K upscaling, better text rendering, and subject consistency.
+- **User-Configurable**: New `c4x.ai.imageModel` setting allows specifying any Gemini image model.
+- **Cost Effective**: Nano Banana 2 delivers Pro-level quality at Flash speeds ($67 per 1k images vs Pro pricing).
+
+### 🔧 Context Scanning Depth Fix (Breaking)
+- **Corrected Logic**: Depth now properly increases with diagram detail level (was inverted).
+  - **C1 (System Context)**: 1 level (was 2) — Broad, shallow scan for high-level systems
+  - **C2 (Container)**: 2 levels (was 1) — Medium depth to find all services/apps
+  - **C3 (Component)**: 3 levels (was 1) — Deep scan for detailed class structure
+- **Rationale**: Higher abstraction = shallower scan; lower abstraction = deeper scan
+- **Impact**: "Generate Diagram Here" now captures appropriate context for each C4 level
+
+### 🤖 Agent Team Expansion
+- **GCP AI Architecture Agent**: Tracks Gemini model lifecycle, pricing, sunset dates, and architecture coherence.
+- **Delivery Manager Agent**: Manages sprint coordination, backlog priorities, roadmap updates, and feature shipping velocity.
+- **4 New Commands**: `/track-models`, `/audit-architecture`, `/delivery-status`, `/update-roadmap`.
+
+### 🎨 Visual Customization (New)
+- **Visual Presets**: 5 built-in style presets for PNG diagrams: `default`, `dark`, `light`, `pastel`, `corporate`.
+- **Layout Preferences**: Control diagram spacing with `balanced` (default), `compact`, or `spacious` options.
+- **Custom Style Override**: New `c4x.ai.visualGroundingContext` setting (max 300 chars) for complete visual control.
+- **Enhanced Color Enforcement**: Stricter prompts enforce official C4 Model color palette with "EXACT COLORS MANDATORY" rules.
+- **Forbidden Colors**: AI now explicitly avoids green/red/yellow for structural elements (reserved for status indicators only).
+- **Layout Algorithm Hints**: Different spacing rules for compact (tight), balanced (standard), and spacious (generous) layouts.
+- **Better Documentation**: Comprehensive visual customization guide added to README with preset tables and examples.
+
+## [1.2.12] - 2026-02-23
+
+### 🧠 AI Model Upgrade
+- **Gemini 3.1**: Default model upgraded to `gemini-3.1-flash-preview` with `gemini-3.1-pro-preview` fallback for improved reasoning and generation quality.
+
+### 🛡️ C4X MCP Validator (New)
+- **MCP Server**: New `mcp/c4x-mcp-server.ts` exposes a `validate_c4x` tool for AI agent pre-validation of C4X syntax.
+- **AI Grounding**: Enables AI agents to validate C4X notation before applying it, creating a self-correction feedback loop.
+- **Configuration**: Register via `.mcp.json` for Gemini Code Assist, Claude, and other MCP-compatible tools.
+
+### 🎯 Improved C4 Diagram Quality
+- **Element Whitelist**: Syntax correction fallback now enforces the strict C4 element type whitelist (`Person`, `System`, `Container`, etc.).
+- **Anti Fan-Out**: Visual generation prompts enforce vertical chaining and single-entry-point patterns for cleaner layouts.
+- **Hierarchy Rules**: Stricter `subgraph Id {` enforcement in all AI prompts.
+
+### 🎨 Visual Grounding Override (New Setting)
+- **`c4x.ai.visualGroundingContext`**: New user setting (up to 300 characters) to override the default visual style prompt for PNG diagram generation.
+- **Default**: Falls back to `"Elegant, simple C4 model diagram against white background, logically organised and well spaced"`.
+- **Use Cases**: Customize colour schemes, backgrounds, styling, or add domain-specific context.
+
+### 🔒 Release Safety
+- **Improved release workflow**: Strict allowlisting excludes dev tooling and build artifacts from distribution.
+- **Post-release safety checks**: Automated verification ensures no unintended files are included.
+
 ## [1.2.11] - 2025-12-21
 
 ### 🧠 Smart Diagram Framework Detection

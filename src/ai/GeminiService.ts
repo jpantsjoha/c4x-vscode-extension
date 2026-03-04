@@ -41,7 +41,7 @@ export class GeminiService {
 
         if (apiKey) {
             this.genAI = new GoogleGenerativeAI(apiKey);
-            const modelName = config.get<string>('model') || 'gemini-3-flash-preview';
+            const modelName = config.get<string>('model') || 'gemini-3.1-pro-preview';
             this.model = this.genAI.getGenerativeModel({ model: modelName });
         }
     }
@@ -83,7 +83,7 @@ export class GeminiService {
         if (!this.model) { throw new Error("Model not initialized"); }
 
         // BUILD_ID for debugging version issues
-        const BUILD_ID = '20251213-2212-AUTOFIX';
+        const BUILD_ID = '20260302-GEMINI31-MIGRATION';
         console.log(`[GeminiService] BUILD_ID: ${BUILD_ID}`);
 
         const parser = new C4XParser();
@@ -138,6 +138,7 @@ COMMON FIXES:
 2. **Missing Braces**: Ensure all \`{\` are closed with \`}\`.
 3. **Invalid Arrows**: Use \`-->\` (standard) or \`..>\`. Do NOT use \`->\`.
 4. **Directives**: Ensure \`%%{ c4: container }%%\` is at the very top.
+5. **Element Type Whitelist**: ONLY use \`Person\`, \`System\`, \`System_Ext\`, \`Container\`, \`ContainerDb\`, \`Component\`, \`Node\`. Do NOT invent types like \`Goal()\`, \`Reason()\`, \`Decision()\`, \`Process()\`.
 
 You MUST fix this error. 
 Output ONLY the corrected C4X DSL code block.
@@ -152,8 +153,8 @@ Do NOT output any conversational text.
         };
 
         const config = vscode.workspace.getConfiguration('c4x.ai');
-        // Default to gemini-3-flash-preview (Gemini 3 Flash - fast + pro-grade reasoning)
-        const primaryModelName = config.get<string>('model') || 'gemini-3-flash-preview';
+        // Default to gemini-3.1-pro-preview (Gemini 3.1 Pro - best reasoning, replaces gemini-3-pro-preview)
+        const primaryModelName = config.get<string>('model') || 'gemini-3.1-pro-preview';
 
         // Helper to get model instance
         const getModel = (name: string) => this.genAI?.getGenerativeModel({ model: name });
@@ -162,26 +163,34 @@ Do NOT output any conversational text.
             return await executeGeneration(this.model, primaryModelName, prompt, 1);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
-            // SWAPPED LOGIC: Fallback is now gemini-3-pro-preview (if primary was something else)
-            // Or if primary IS gemini-3-pro-preview, fallback to 2.5-pro?
-            // Let's keep it simple: Determine the 'other' model.
-
-            let fallbackModelName = 'gemini-3-pro-preview';
-            if (primaryModelName === 'gemini-3-pro-preview') {
+            // Smart fallback: Elevate to gemini-3.1-pro-preview if user's model fails.
+            // If already on 3.1-pro, try gemini-3-flash-preview as alternative.
+            let fallbackModelName = 'gemini-3.1-pro-preview';
+            if (primaryModelName === 'gemini-3.1-pro-preview') {
                 fallbackModelName = 'gemini-3-flash-preview';
             }
 
             if (primaryModelName !== fallbackModelName) {
-                const warnMsg = `Falling back to ${fallbackModelName} due to error: ${error.message}`;
-                progress?.report({ message: "Primary model failed. Switching to Backup Model..." });
-                console.warn(warnMsg);
+                progress?.report({ message: `Model failed. Trying ${fallbackModelName}...` });
+                console.warn(`[GeminiService] "${primaryModelName}" failed: ${error.message}. Falling back to "${fallbackModelName}".`);
 
                 const fallbackModel = getModel(fallbackModelName);
                 if (fallbackModel) {
-                    return await executeGeneration(fallbackModel, fallbackModelName, prompt, 1);
+                    try {
+                        return await executeGeneration(fallbackModel, fallbackModelName, prompt, 1);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } catch (fallbackError: any) {
+                        console.error(`[GeminiService] Fallback "${fallbackModelName}" also failed: ${fallbackError.message}`);
+                    }
                 }
             }
-            throw error;
+
+            // Both models failed — surface clear error with guidance
+            throw new Error(
+                `AI generation failed with "${primaryModelName}". ` +
+                `Check your model selection in Settings > C4X > AI > Model. ` +
+                `See https://ai.google.dev/gemini-api/docs/models for available models.`
+            );
         }
     }
 
@@ -195,12 +204,23 @@ Do NOT output any conversational text.
         // Try to find GEMINI.md and EXAMPLES.md in the workspace root first
         if (vscode.workspace.workspaceFolders) {
             const root = vscode.workspace.workspaceFolders[0].uri;
+
+            // Try comprehensive guidelines first (v2.0)
             try {
-                const geminiUri = vscode.Uri.joinPath(root, 'GEMINI.md');
-                const geminiData = await vscode.workspace.fs.readFile(geminiUri);
-                geminiParam = Buffer.from(geminiData).toString('utf8');
+                const guidelinesUri = vscode.Uri.joinPath(root, 'docs', 'C4X-GENERATION-GUIDELINES.md');
+                const guidelinesData = await vscode.workspace.fs.readFile(guidelinesUri);
+                geminiParam = Buffer.from(guidelinesData).toString('utf8');
+                console.log('[GeminiService] Loaded comprehensive C4X-GENERATION-GUIDELINES.md');
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (e) { /* Ignore if missing */ }
+            } catch (e) {
+                // Fallback to legacy GEMINI.md if guidelines not found
+                try {
+                    const geminiUri = vscode.Uri.joinPath(root, 'GEMINI.md');
+                    const geminiData = await vscode.workspace.fs.readFile(geminiUri);
+                    geminiParam = Buffer.from(geminiData).toString('utf8');
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                } catch (e2) { /* Ignore if missing */ }
+            }
 
             try {
                 // Try root first
@@ -217,23 +237,66 @@ Do NOT output any conversational text.
             } catch { /* Ignore if missing */ }
         }
 
-        // Fallback: If not in workspace, use built-in Expert Guidelines
+        // Fallback: If not in workspace, use built-in Expert Guidelines (v2.0 - Enhanced)
         const DEFAULT_GUIDELINES = `
-## 🎨 Expert Visual Architect - Layout Strategy
-1. **Containment is Key**: Always use \`subgraph\` to group related containers. Do NOT leave nodes floating.
-2. **Backbone First**: Define the "Main Success Scenario" (User -> App -> DB) FIRST to set the vertical spine.
-3. **Horizontal vs Vertical (Chaining Rule)**:
-    - **Vertical Stack**: Create dependency chains (\`User --> Frontend --> Backend --> DB\`) to force vertical depth.
-    - **Avoid Fan-Out**: Minimize connecting one node to many others; it creates wide, messy diagrams.
-    - **> 6 Nodes**: ALWAYS use \`graph TB\`. Loops use \`graph LR\`.
-4. **Proximity & Execution Order**:
-    - **Define in Call Order**: If A calls B, define A then B.
-    - **Group Neighbors**: Keep connected nodes physically close in the definition.
-5. **Sanitized Aesthetics**:
-    - **Node Labels**: \`ID[Label<br/>Type<br/>Tech]\`. Use \`<br/>\` for newlines.
-    - **Line Labels**: Plain Text ONLY. NO HTML.
+## 🎨 Expert Visual Architect - Layout Strategy (v2.0)
 
-    - **Line Labels**: Plain Text ONLY. NO HTML.
+### Core Principle: Visual Coherence
+C4X diagrams must be **tidy, consistent, elegant, well-aligned, and visually appealing**.
+
+### Element Organization Pattern
+\`\`\`c4x
+graph TB
+  # 1. External actors FIRST (top of diagram)
+  Person(user, "User", "End user")
+  System_Ext(external, "External System", "Third party")
+
+  # 2. Main system boundary
+  subgraph MainSystem {
+    # Entry point
+    Container(gateway, "API Gateway", "Kong", "Router")
+
+    # Core services (in execution order)
+    Container(auth, "Auth Service", "Node.js", "Authentication")
+    Container(business, "Business Logic", "Java", "Processing")
+
+    # Data layer LAST
+    ContainerDb(db, "Database", "PostgreSQL", "Storage")
+  }
+
+  # 3. External storage/systems (bottom)
+  System_Ext(storage, "File System", "S3")
+
+  # 4. Relationships follow execution flow
+  user --> gateway
+  gateway --> auth
+  auth --> business
+  business --> db
+  business --> storage
+\`\`\`
+
+### Layout Rules
+1. **Vertical Chaining**: Force vertical layout with dependency chains (User → Web → API → DB)
+2. **Anti Fan-Out**: User connects ONLY to entry point(s), not to every node
+3. **Declaration Order = Visual Order**: Define A before B if A calls B
+4. **Grouping**: Use \`subgraph\` for related components (> 6 nodes)
+5. **Direction Choice**:
+   - **TB (Top-Bottom)**: Default for most diagrams (> 6 elements)
+   - **LR (Left-Right)**: Linear pipelines, sequences, user-provided ASCII flow
+
+### Syntax Constraints
+- **Subgraph**: \`subgraph ID {\` (NO quotes, NO brackets)
+- **Arrows**: \`-->\` (solid), \`-.->\` (async/dotted), \`==>\` (data flow)
+- **Labels**: Plain text in relationships, \`<br/>\` allowed in node labels ONLY
+- **Directives**: \`%%{ c4: container }%%\` at very top
+
+### Advanced Patterns (from 108 validated examples)
+- **Event-Driven**: Use \`-.->\` for async events
+- **Service Mesh**: Show sidecars explicitly
+- **GraphQL**: DataLoader batching pattern
+- **Microservices**: Clear service boundaries in subgraphs
+
+Reference: Extension includes 108 validated examples in /samples for grounding.
 `;
 
         const contextSection = geminiParam ? `\n## DESIGN GUIDELINES & RULES (Adhere Strictly):\n${geminiParam}` : `\n## DESIGN GUIDELINES & RULES (Built-in Defaults):\n${DEFAULT_GUIDELINES}`;
@@ -495,7 +558,10 @@ RESPOND WITH ONLY THIS JSON (no markdown):
             .replace(/<img[^>]*>/g, '')        // Remove HTML images
             .replace(/\[.*?\]\(.*?\.(png|jpg|jpeg|gif|webp).*?\)/g, ''); // Remove other links to images
 
-        const imageModel = this.genAI.getGenerativeModel({ model: 'gemini-3-pro-image-preview' });
+        // Use configurable image model (default: gemini-3.1-flash-image-preview - Nano Banana 2)
+        const config = vscode.workspace.getConfiguration('c4x.ai');
+        const imageModelName = config.get<string>('imageModel') || 'gemini-3.1-flash-image-preview';
+        const imageModel = this.genAI.getGenerativeModel({ model: imageModelName });
 
         // Step 1: Detect the best diagram framework (or use override)
         let frameworkResult = frameworkOverride;
@@ -543,7 +609,31 @@ RESPOND WITH ONLY THIS JSON (no markdown):
             await loadParamImage(`${refBase}-key.png`);
         }
 
-        // Step 3: Build framework-specific prompt
+        // Step 3: Read user's visual preferences
+        const visualPreset = config.get<string>('visualPreset') || 'default';
+        const layoutPreference = config.get<string>('layoutPreference') || 'balanced';
+        const customGrounding = (config.get<string>('visualGroundingContext') || '').trim().substring(0, 300);
+
+        // Apply visual preset (unless custom grounding provided)
+        const presetStyles: Record<string, string> = {
+            'default': 'Elegant, simple C4 model diagram against white background, logically organised and well spaced',
+            'dark': 'Dark background (#1a1a1a or #0d1117), white/cyan text, neon blue/purple accents, high contrast, modern dark theme aesthetic',
+            'light': 'Bright white background, high contrast with standard C4 colors, clean professional appearance, sharp edges',
+            'pastel': 'Soft pastel color palette (light blues #B4D4FF, pinks #FFB4D4, purples #D4B4FF), rounded corners, gentle aesthetic, white background',
+            'corporate': 'Professional grey-blue palette (Navy #1E3A5F, Steel Blue #4682B4, Light Grey #D3D3D3), sharp rectangular edges, business presentation ready'
+        };
+        const presetGrounding = presetStyles[visualPreset] || presetStyles['default'];
+        const userGrounding = customGrounding || presetGrounding;
+
+        // Apply layout preference hints
+        const layoutHints: Record<string, string> = {
+            'balanced': 'Use standard spacing between nodes. Arrows should be medium length.',
+            'compact': 'Use TIGHT spacing to fit more elements. Keep arrows SHORT. Minimize whitespace.',
+            'spacious': 'Use GENEROUS padding between all elements. Make arrows LONG with plenty of label space. Maximize readability.'
+        };
+        const layoutHint = layoutHints[layoutPreference] || layoutHints['balanced'];
+
+        // Step 4: Build framework-specific prompt
         const layoutDirection = direction === 'LR' ? 'Left-to-Right flow' : 'Top-to-Bottom hierarchy';
         let promptText: string;
 
@@ -581,7 +671,10 @@ VISUAL GUIDELINES (STRICT COMPLIANCE):
 
 6. **Legend**: Include a Key box showing what the numbers represent.
 
-7. **Spacing**: GENEROUS padding. Arrows should be long enough for labels to be readable.
+7. **Spacing Preference**: ${layoutHint}
+
+VISUAL STYLE CONTEXT: ${userGrounding}
+LAYOUT PREFERENCE: ${layoutPreference}
 
 Generate the diagram image now. The detected context is: ${reasoning}
 `;
@@ -621,9 +714,12 @@ VISUAL GUIDELINES (STRICT COMPLIANCE):
    - Dotted lines for optional/async paths.
    - All arrows MUST have labels describing the condition or action.
 
-6. **Spacing**: GENEROUS padding between nodes. No overlapping labels.
+6. **Spacing Preference**: ${layoutHint}
 
 7. **Legend**: Include a Key box explaining the shapes.
+
+VISUAL STYLE CONTEXT: ${userGrounding}
+LAYOUT PREFERENCE: ${layoutPreference}
 
 Generate the diagram image now. The detected context is: ${reasoning}
 `;
@@ -645,13 +741,15 @@ ${sanitizedText.substring(0, 3000)}
 """
 
 VISUAL GUIDELINES (STRICT COMPLIANCE REQUIRED):
-1. **Color Palette (Official C4)**:
+1. **Color Palette (Official C4 - EXACT COLORS MANDATORY)**:
    - **Person**: #08427B (Dark Blue), White Text.
    - **Software System**: #1168BD (Blue), White Text.
    - **External System**: #999999 (Grey), White Text.
    - **Container**: #438DD5 (Light Blue), White Text.
    - **Database**: #438DD5 (Light Blue), Cylinder Shape.
    - **Component**: #85BBF0 (Lighter Blue), Black Text.
+   - **FORBIDDEN COLORS**: DO NOT use green, red, yellow, or orange for structural elements.
+   - **Status Colors (ONLY for status indicators)**: Green = Active/Success, Red = Error/Critical, Yellow = Warning.
 
 2. **Shapes & Sizing**:
    - **Person**: Stick figure icon above rounded rectangle.
@@ -663,20 +761,29 @@ VISUAL GUIDELINES (STRICT COMPLIANCE REQUIRED):
    - **Heads**: Filled triangles.
    - **Layout**: ${layoutDirection}.
 
-4. **Layout Algorithm**:
-   - Place User/Person at TOP-LEFT or LEFT-CENTER.
-   - Avoid fan-out (connecting one node to many directly).
-   - Use generous spacing.
+4. **Layout Algorithm (CRITICAL for Visual Coherence)**:
+   - **User/Person Placement**: TOP-LEFT or TOP-CENTER only.
+   - **Vertical Chaining**: Force vertical depth by chaining dependencies: User → Web App → API → DB.
+   - **Anti Fan-Out**: User connects ONLY to main entry point(s), NOT to every node.
+   - **Element Alignment**: Same-type elements should align vertically or horizontally.
+   - **Minimize Crossing**: Route arrows to avoid overlaps. Use orthogonal routing.
+   - **Logical Grouping**: Visually cluster related elements in proximity.
+   - **Spacing Preference**: ${layoutHint}
+   - **Goal**: Tidy, consistent, elegant, well-aligned diagram
 
 5. **Boundaries**:
-   - System boundaries MUST be TRANSPARENT with dashed borders.
-   - Nodes are filled; Boundaries are not.
+   - Group related elements using visual boundary boxes (subgraphs).
+   - System/Container boundaries MUST have dashed borders and transparent backgrounds.
+   - Nodes are visually filled; Boundaries are not.
 
 6. **Legend**: Include a Key box in the bottom-right corner.
 
 7. **CRITICAL**: This is a STRUCTURAL diagram. Only use C4 element types:
    - Person, System, System_Ext, Container, ContainerDb, Component
    - DO NOT invent types like Goal(), Reason(), Decision(), Action(), Process().
+
+VISUAL STYLE CONTEXT: ${userGrounding}
+LAYOUT PREFERENCE: ${layoutPreference}
 
 Generate the ${c4Level} diagram image now.
 `;

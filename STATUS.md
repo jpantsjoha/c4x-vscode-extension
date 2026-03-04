@@ -2,48 +2,78 @@
 
 | Metric | Status | Details |
 | :--- | :--- | :--- |
-| **Version** | v1.2.11 | **Smart Frameworks & Strict C4** |
-| **Build** | Valid | `c4x-1.2.11.vsix` packaged |
-| **Tests** | All Pass | DSL tests pass. 2 known integration failures (unrelated). |
+| **Version** | v1.3.0 | Gemini 3.1 Pro Migration + User Model Selection + Visual Customization |
+| **Build** | Passing | 117ms (esbuild) |
+| **Tests** | 474 Passing | 6 pending (API-gated) |
 | **Linting** | Zero Issues | `eslint` clean |
-| **AI** | Advanced | **Multi-Framework Detection** + **Strict Type Safety** |
+| **AI** | Advanced | **Gemini 3.1 Pro** + **MCP Grounding** + **Multi-Framework Detection** |
 
-## 🚀 Recent Achievements (v1.2.11)
+## v1.3.0 Release Notes (2026-03-04)
 
-### 1. Smart Diagram Framework Detection (New)
-- **Intelligent Classification**: `detectDiagramFramework()` analyzes text to decide between **C4 Model** (Structure), **Sequence** (Behavior), or **Flowchart** (Process).
-- **User Hints**: Supports overrides like `[Framework: Sequence]`.
-- **Tailored Prompts**: Each framework uses specific visual guidelines (Diamonds for Flowcharts, Numbered Steps for Sequences).
+### 1. Gemini 3.1 Pro Migration
+- **Primary**: `gemini-3.1-pro-preview` — Best reasoning (ARC-AGI-2: 77.1%), 1M context.
+- **Fallback**: Smart elevation to `gemini-3.1-pro-preview` or `gemini-3-flash-preview`.
+- **Removed**: `gemini-3-pro-preview` (sunset March 9, 2026) and `gemini-3.1-flash-preview` (invalid model ID).
 
-### 2. Strict C4 Syntax Enforcement
-- **Element Whitelist**: Hardcoded rules in `GEMINI.md` and `GeminiService.ts` to prevent AI from inventing invalid types (e.g., `Goal()`, `Reason()`).
-- **Behavioral Guardrails**: Explicit instructions to model *components* rather than abstract process steps in C4 diagrams.
+### 2. User-Configurable Model Selection
+- **Free-text model input**: Users can now enter any Gemini model ID their API key supports.
+- **No restrictive enum**: Decouples the extension from Google's model lifecycle.
+- **Future-proof**: New models work immediately without an extension update.
 
-## 🛑 Critical Reflection & Analysis (Phase 11)
+### 3. Visual Customization
+- **Image model**: Upgraded to Nano Banana 2 (`gemini-3.1-flash-image-preview`) as default.
+- **User-configurable image model**: New `c4x.ai.imageModel` setting.
+- **Visual presets**: dark, light, pastel, corporate styles for PNG generation.
+- **Layout preferences**: balanced, compact, spacious spacing options.
+- **Custom grounding context**: Free-text visual style descriptions.
 
-**Review Date**: 2025-12-21
-**Reviewer**: Antigravity (Agent)
+### 4. MCP Validator Server
+- New MCP server for C4X syntax validation (`mcp/c4x-mcp-server.ts`).
+- Validates diagrams via `validate_c4x` tool.
+- Exposes example resources for AI grounding.
 
-### 1. Architectural Drift
-The implementation of v1.2.11 represents a significant **capability expansion** beyond the original "C4 Model" scope defined in [ADR-013](docs/adrs/013-gemini-visual-diagram-generation.md).
-- **Cons**: We now generate visual artifacts (Flowcharts) that the core C4X DSL cannot natively check, edit, or render. This creates a "Capability Gap" where the AI is smarter than the tool's core engine.
-- **Pros**: It solves a real user need. Users rarely have pure structural descriptions; they mix process and structure. Supporting mixed modes enhances utility.
+### 5. Enhanced Validation
+- Element type error detection (catches invalid types like `Class`, `Goal`, etc.).
+- Defensive error handling in markdown-it plugin.
+- Context scanning depth fix for C4 diagram levels.
 
-### 2. Implementation Risks
-- **Reference Image Mismatch ("Optimistic Prompting")**: We are currently using C4 Collaboration diagrams (Rectangles) as visual grounding for Flowcharts (which need Diamonds).
-  - **Risk**: High probability of AI hallucinating "Decision Rectangles" instead of Diamonds because visual grounding often overrides text prompts.
-  - **Mitigation**: We **MUST** generate dedicated `Flowchart.png` and `Sequence.png` reference assets in the next iteration.
+### 6. 113 New Examples
+- Comprehensive C4X diagram examples across all C4 levels.
+- Real-world patterns: event-driven, microservices, GraphQL, OAuth2, healthcare.
 
-### 3. Coherence Check
-- **Vision**: "Make C4 diagrams as easy as Mermaid".
-- **Verdict**: The new feature makes *diagrams* easy, but biases away from strict C4. We are evolving into an "AI Architecture Assistant" rather than just a "C4 Tool". This is acceptable but requires updating our messaging and expectations.
+## Model Registry (as of 2026-03-04)
 
-## 📅 Roadmap Updates (v1.3.0+)
+| Model ID | Purpose | Status | Sunset |
+|---|---|---|---|
+| `gemini-3.1-pro-preview` | Primary DSL generation | Active | - |
+| `gemini-3-flash-preview` | Fallback DSL generation | Active | - |
+| `gemini-3.1-flash-image-preview` | **Default** Visual PNG (Nano Banana 2) | Active | - |
+| `gemini-3-pro-image-preview` | Visual PNG (Pro quality, user option) | Active | - |
+| `gemini-2.5-pro` | User option (legacy) | Active | June 17, 2026 |
+| `gemini-2.5-flash` | User option (budget) | Active | June 17, 2026 |
+| ~~`gemini-3-pro-preview`~~ | **REMOVED** | **Sunset** | March 9, 2026 |
+| ~~`gemini-3.1-flash-preview`~~ | **REMOVED** | **Invalid** | N/A |
 
-- [ ] **Technical Debt**: Generate proper `Flowchart` and `Sequence` reference images to fix grounding mismatch.
-- [ ] **Documentation**: Formalize "Visual-Only Frameworks" in docs to explain why Flowcharts can't be edited as DSL.
-- [ ] **ADR**: Draft `ADR-014` to ratify the Multi-Framework Visual strategy.
+## Known Issues
 
-## ⚠️ Known Issues
-- **Integration Tests**: `GeminiIssueRepro` and `ContextDepth` tests fail consistently in local dev environment (environmental configuration issues).
-- **Visuals**: Flowchart generation may yield inconsistent shapes until dedicated reference images are provided.
+- **Flowchart Visuals**: Flowchart generation may yield inconsistent shapes until dedicated reference images are provided.
+- **Model Validation**: No runtime check for invalid model IDs — relies on API error messages.
+
+## Roadmap
+
+### v1.3.0 (Current — March 2026)
+- Gemini 3.1 Pro migration
+- User-configurable model selection
+- Visual customization features
+- MCP validator server
+
+### v1.4.0 (Target — April 2026)
+- Model ID constants refactoring
+- Sunset warning notifications
+- Flowchart/Sequence reference images
+
+### v2.0.0 (Target — Q3 2026)
+- Vertex AI enterprise integration
+- Context caching for repeat generation
+- Batch multi-diagram API
+- AI-powered auto-layout optimization

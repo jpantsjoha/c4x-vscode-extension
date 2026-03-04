@@ -77,7 +77,13 @@ export function activate(context: vscode.ExtensionContext) {
   // See: https://code.visualstudio.com/api/extension-guides/markdown-extension
   return {
     extendMarkdownIt(md: import('markdown-it')) {
-      return c4xPlugin(md);
+      try {
+        return c4xPlugin(md);
+      } catch (error) {
+        console.error('[C4X] Failed to extend Markdown-It:', error);
+        // Return unmodified instance to prevent breaking markdown preview
+        return md;
+      }
     }
   };
 }

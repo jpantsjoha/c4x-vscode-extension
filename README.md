@@ -1,6 +1,6 @@
 # C4X - C4 Model Diagrams for VS Code
 >
-> **Status (2025-12-22)**: ✅ **v1.2.11 STABLE** - AI Model Upgrade + Visual Diagram Generation (Preview)
+> **Status (2026-03-03)**: ✅ **v1.3.0 STABLE** - Gemini 3.1 Pro + Visual Customization + 113 Examples
 
 ![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -8,38 +8,85 @@
 
 > **Make C4 architectural diagrams as easy as getting AI to do this for you...** - Jaroslav
 
-Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats - now powered by Gemini AI.
+Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and AI-powered generation - now with 113 validated examples and visual customization.
+
+## 🎉 What's New in v1.3.0 (March 2026)
+
+### 🚀 One-Click Diagram Generation
+
+Right-click anywhere in your markdown files and instantly generate C4 diagrams:
+
+![Generate Diagram Here](assets/marketplace/screenshots/generate-diagram-here-context-menu.png)
+
+**How it works**:
+1. Right-click in any `.md` file
+2. Select **"C4X: Generate Diagram Here (Gemini)"**
+3. Choose your C4 level (C1: System Context, C2: Container, C3: Component)
+4. AI-generated diagram appears at your cursor as a PNG image
+
+### 🎨 Visual Customization & Enhanced AI
+
+- **5 Visual Presets**: Default, Dark, Light, Pastel, Corporate - or define your own custom style
+- **Layout Control**: Balanced, Compact, or Spacious spacing
+- **Nano Banana 2**: Upgraded to `gemini-3.1-flash-image-preview` (4K support, better text rendering)
+- **Gemini 3.1 Pro**: 2x reasoning improvement with `gemini-3.1-pro-preview` as default
+- **Any Model Support**: Configure any Gemini model ID - no dropdown restrictions
+- **Smart Fallback**: Automatically elevates to best available model on failure
+- **Self-Validation**: AI auto-corrects syntax errors with 3 retry attempts
+
+### 📚 Rich Example Library (113 Validated Diagrams)
+
+**16 comprehensive sample files** covering production-ready patterns:
+- Event-Driven Architecture (EventBridge, SQS, async messaging)
+- Serverless Pipelines (Lambda, Step Functions, S3 triggers)
+- OAuth 2.0 Authentication (PKCE, dynamic flows, token validation)
+- Healthcare HIPAA Systems (HL7 FHIR, audit logging)
+- GraphQL APIs (DataLoader, N+1 problem, federation)
+- gRPC Microservices (Istio service mesh, Protocol Buffers)
+
+> **All examples are 100% validated** - ready to learn from and use!
+
+### 🔌 Developer Experience
+
+- **MCP Validator**: Model Context Protocol server for external AI assistants (Claude, Cursor, Windsurf)
+- **Comprehensive Guidelines**: `docs/C4X-GENERATION-GUIDELINES.md` for advanced AI prompting
+- **Improved Layouts**: AI generates tidy, well-aligned, visually coherent diagrams
+
+---
 
 ## ✨ Features
 
-- ⚡ **Instant preview** - Sub-50ms rendering for 30-node diagrams
+### 🚀 Core Capabilities
+- ⚡ **Instant Preview** - Sub-50ms rendering for 30-node diagrams
 - 🔍 **Real-time Validation** - Syntax highlighting and error reporting as you type
-- 📝 **Markdown Integration** - Render ` ```c4x ` blocks directly in your README files
-- 🎨 **5 built-in themes** - Classic, Modern, Muted, High Contrast, Auto
-- 📝 **Simple DSL** - Mermaid-inspired C4X syntax
-- 🚀- **Zero Dependencies**: No Java, no Graphviz, no Docker required. Everything is bundled in the extension.
+- 📝 **Markdown Integration** - Render ```c4x blocks directly in README files
+- 🎨 **5 Built-in Themes** - Classic, Modern, Muted, High Contrast, Auto
+- 📤 **Export** - SVG, PNG, PDF with theme preservation
+- 🔒 **Secure & Offline** - Zero dependencies, no CDN, CSP-compliant
+- 🧩 **1500+ Icons** - AWS, Azure, GCP with IntelliSense autocomplete
+- ⚡ **Lightning Fast** - 0.15ms activation (99.9% faster than 200ms target)
 
-### 🛠️ Improvements)
-- 🔒 **Secure** - CSP-compliant, no external CDN dependencies
-- 📤 **Export** - Save as SVG/PNG or Print to PDF
-- ☁️ **Cloud Icons** - AWS, Azure, GCP & Tech Stack icons (via PlantUML syntax)
-- 🧩 **Icon IntelliSense** - Autocomplete for over 1500+ AWS, Azure, and GCP icons directly in the editor
-- 🔄 **PlantUML Support** - Use standard PlantUML C4 syntax directly
-- 🧠 **Intelligent Architecture (Gemini AI)** - Your pair programmer for diagrams.
-  - **Generate from Code**: Analyzes Workspace files (`.ts`, `.java`, `.py`) to create accurate C4 models.
-  - **Sketch-to-Code**: Select *any* text (notes, ASCII art, user stories) and turn it into a diagram.
-  - **Visual Generation (Preview)**: Generate PNG images directly using `gemini-3-pro-image-preview`. 🆕
-  - **Smart Layouts**: Automatically optimizes for screen space (Horizontal vs Vertical).
-  - *Enterprise Ready*: Supports Vertex AI keys for zero-data retention.
-  - **[📘 Gemini AI Guide](./docs/GEMINI_GUIDE.md)** | **[📘 Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)**
+### 🤖 AI-Powered Generation (Gemini 3.1 Pro)
+- 🧠 **Code → Diagram**: Analyzes workspace files (.ts, .java, .py) to create accurate C4 models
+- ✍️ **Text → Diagram**: Turn notes, ASCII art, user stories into diagrams
+- 🖼️ **Right-Click Generation**: "Generate Diagram Here" for instant visual diagrams at cursor
+- 🎨 **Style Customization**: 5 visual presets + custom grounding context
+- 🎯 **Smart Layouts**: Auto-detects flow vs hierarchy orientation
+- ✅ **Self-Correcting**: Validates & auto-fixes syntax errors (3 retry attempts)
+- 🏢 **Enterprise Ready**: Supports Vertex AI keys for zero-data retention
+
+> **[📘 Gemini AI Guide](./docs/GEMINI_GUIDE.md)** | **[📘 Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)** | **[📘 Advanced Guidelines](./docs/C4X-GENERATION-GUIDELINES.md)**
+
+### 📚 Rich Learning Resources
+- 📖 **113 Validated Examples**: Production-ready patterns in `/samples` directory
+- 🎓 **16 Comprehensive Guides**: Event-driven, serverless, OAuth2, healthcare, GraphQL, gRPC
+- 🔌 **MCP Integration**: Validator server for Claude, Cursor, and other AI assistants
+- 📘 **Expert Guidelines**: C4X-GENERATION-GUIDELINES.md for advanced AI prompting
 
 <img src="docs/marketplace/example-gemini-powered-diagram-c2.png" width="60%" alt="Example C2 Diagram Generated by Gemini" />
 
-<br/>
-
 ### 🎥 Watch 30s Demo - Build Diagrams with Gemini AI
 [![Watch C4X Demo](https://img.youtube.com/vi/qR1bbctj2rQ/maxresdefault.jpg)](https://youtu.be/qR1bbctj2rQ)
-- ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
 
 ### 🎨 Rich Icon Integration (v1.1.9)
 Visualize real-world architectures with **AWS, Azure, GCP, and React** icons using the simple `$sprite` syntax.
@@ -119,33 +166,57 @@ graph TB
 
 The extension will automatically render this code block as a visual SVG diagram in the VS Code Markdown Preview.
 
-## 📚 Examples & Use Cases
+## 📚 Learning & Examples
 
-C4X makes it easy to visualize complex architectures, from traditional web apps to advanced AI agent systems.
+### 🎓 Rich Example Library (113 Validated Diagrams)
 
-### Featured Example: Multi-Agent Marketing System (C1 - System Context)
+Explore **16 comprehensive sample files** in the `/samples` directory covering real-world production architectures:
 
-This diagram visualizes the high-level interactions for an AI-powered marketing system, featuring human roles, the multi-agent platform, and external AI services.
+**📁 `/samples/advanced/`**
+- **Event-Driven Architecture**: EventBridge, SQS, async messaging, dead letter queues
+- **Serverless Data Pipeline**: Lambda, S3 triggers, Step Functions, DynamoDB
+- **OAuth 2.0 Authentication**: PKCE flow, JWT validation, token introspection
+- **Domain-Driven Design**: Bounded contexts, aggregates, domain events
+
+**📁 `/samples/container/`**
+- **gRPC Microservices**: Istio service mesh, Protocol Buffers, Envoy sidecars
+- **Kafka Event Streaming**: Producers, consumers, topics, consumer groups
+- **CDC Data Pipeline**: Debezium, change data capture, stream processing
+
+**📁 `/samples/component/`**
+- **GraphQL API Gateway**: DataLoader pattern, N+1 problem solution, federation
+- **REST API Design**: Controllers, services, repositories, CQRS pattern
+
+**📁 `/samples/real-world/`**
+- **Healthcare Patient Management**: HIPAA-compliant, HL7 FHIR, audit logging
+- **E-Commerce Platform**: Order processing, inventory, payment integration
+- **Trading Platform**: Real-time market data, WebSockets, order matching
+
+**📁 `/samples/cloud/`**
+- **AWS Multi-Region**: S3, DynamoDB global tables, CloudFront distribution
+- **Azure Microservices**: AKS, Service Bus, Cosmos DB, API Management
+- **GCP Serverless**: Cloud Run, Pub/Sub, Firestore, Cloud Functions
+
+> **✅ 100% Validated** - All 113 diagrams are syntax-correct and render perfectly!
+
+### 📖 Documentation & Guides
+
+*   [**Example Gallery**](./docs/EXAMPLES.md): Banking, Microservices, AI Agents
+*   [**Cloud Icons**](./docs/EXAMPLES-with-ICONS.md): AWS, Azure, GCP sprites with autocomplete
+*   [**Visual Diagrams**](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md): PNG generation with Nano Banana 2
+*   [**C4X Generation Guidelines**](./docs/C4X-GENERATION-GUIDELINES.md): Advanced AI prompting & best practices
+*   [**Layout Guide**](./docs/EXAMPLES-LAYOUT.md): TB vs LR, spacing control
+*   [**Syntax Reference**](./docs/c4x-syntax.md): Complete DSL specification
+
+### Featured Example: Multi-Agent Marketing System
+
+**C1 - System Context**: High-level interactions between users, AI agents, and external services
 
 ![Multi-Agent System Context](assets/marketplace/images/multi-agent-context.png)
 
-### C2: Multi-Agent Orchestrator (Container Diagram)
-
-A container-level view of the Multi-Agent Marketing System, detailing the main building blocks within the Multi-Agent System.
+**C2 - Container Diagram**: Internal architecture of the Multi-Agent platform
 
 ![Multi-Agent Orchestrator](assets/marketplace/images/multi-agent-container.png)
-
-## 📚 Examples & References
-
-For comprehensive galleries and guides, explore our documentation:
-
-*   [**Example Gallery**](./docs/EXAMPLES.md): A rich collection of C4 diagrams (Banking, Microservices, AI Agents).
-*   [**Cloud Icons & AI**](./docs/EXAMPLES-with-ICONS.md): Using `$sprite` and Gemini for cloud architectures.
-*   [**Visual Diagrams**](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md): Generate PNG diagrams with Gemini Image model. 🆕
-*   [**Layout Guide**](./docs/EXAMPLES-LAYOUT.md): Controlling diagram direction (`TB`, `LR`).
-*   [**Ordering Guide**](./docs/EXAMPLES-ORDERING.md): Controlling node order.
-*   [**PlantUML Guide**](./docs/EXAMPLES-PLANTUML.md): Using standard PlantUML syntax.
-*   [**Syntax Guide**](./docs/c4x-syntax.md): Full DSL reference.
 
 ---
 
@@ -161,17 +232,138 @@ For comprehensive galleries and guides, explore our documentation:
 - **Option A (Interactive)**: Right-click any markdown file -> `C4X: Generate Diagram`. If no key is found, paste it when prompted.
 - **Option B (Settings)**: Set `"c4x.ai.apiKey": "YOUR_KEY"` in VS Code settings.
 
-**3. AI Model Configuration (v1.2.0)**
+**3. AI Model Configuration (v1.3.0)**
 
-C4X uses a tiered model strategy for optimal performance and reliability:
+C4X defaults to `gemini-3.1-pro-preview` with smart fallback. You can use **any Gemini model** your API key supports:
 
-| Priority | Model | Use Case |
-|----------|-------|----------|
-| **Primary** | `gemini-3-flash-preview` | Default - Pro-grade reasoning at Flash speed (3x faster) |
-| **Fallback** | `gemini-3-pro-preview` | Auto-fallback if primary fails |
-| **Legacy** | `gemini-2.5-pro` | Available for compatibility |
+```json
+{
+  "c4x.ai.model": "gemini-3.1-pro-preview"
+}
+```
 
-**Self-Validation**: All AI-generated diagrams are automatically validated using the C4X parser. If syntax errors are detected, the model self-corrects and retries before returning results.
+| Model | Use Case | Notes |
+|-------|----------|-------|
+| `gemini-3.1-pro-preview` | **Default** - Best reasoning, 1M context | Recommended |
+| `gemini-3-flash-preview` | Fast iteration, free tier available | Good for rapid prototyping |
+| `gemini-2.5-pro` | Stable, battle-tested | Sunset June 2026 |
+| `gemini-2.5-flash` | Cost-effective | Sunset June 2026 |
+
+**Custom Models**: Enter any valid Gemini model ID in settings. New models work immediately without an extension update.
+
+**Smart Fallback**: If your chosen model fails, C4X automatically tries `gemini-3.1-pro-preview` (or `gemini-3-flash-preview` if already on 3.1-pro).
+
+**Self-Validation**: All AI-generated diagrams are automatically validated using the C4X parser. If syntax errors are detected, the model self-corrects and retries (up to 3 attempts).
+
+**4. Image Model Configuration (v1.3.0)**
+
+For visual PNG diagram generation (Alt+V), C4X uses Nano Banana 2 by default. You can override with any Gemini image model:
+
+```json
+{
+  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview"
+}
+```
+
+| Image Model | Use Case | Features |
+|-------------|----------|----------|
+| `gemini-3.1-flash-image-preview` | **Default** - Nano Banana 2 | 4K upscaling, better text rendering, $67/1k images ⚡ |
+| `gemini-3-pro-image-preview` | Nano Banana Pro | Highest quality, best for production assets |
+| `gemini-2.5-flash-image` | Previous Flash | Legacy model |
+
+**Benefits of Nano Banana 2**:
+- **4K Support**: Upscales to 400,000 pixels
+- **Better Text**: More accurate text rendering in diagrams
+- **Subject Consistency**: Maintains up to 5 characters and 14 objects
+- **Cost Effective**: Pro quality at Flash pricing
+
+**5. Visual Customization (v1.3.0)**
+
+Customize the appearance of PNG diagrams with presets and fine-grained control:
+
+```json
+{
+  "c4x.ai.visualPreset": "dark",           // Visual style preset
+  "c4x.ai.layoutPreference": "spacious",   // Layout spacing
+  "c4x.ai.visualGroundingContext": ""      // Custom style override
+}
+```
+
+**Visual Presets**:
+
+| Preset | Description | Use Case |
+|--------|-------------|----------|
+| `default` | Clean white background, standard C4 colors | Professional documentation |
+| `dark` | Dark background, neon accents, high contrast | Presentations, dark-theme slides |
+| `light` | Bright white, sharp edges | Print-ready, high contrast |
+| `pastel` | Soft colors, rounded corners | Creative, gentle aesthetic |
+| `corporate` | Grey-blue palette, sharp edges | Business presentations |
+
+**Layout Preferences**:
+
+| Preference | Description |
+|------------|-------------|
+| `balanced` | Standard spacing (default) |
+| `compact` | Tight spacing, fits more elements |
+| `spacious` | Generous padding, maximum readability |
+
+**Custom Style Override**:
+Use `visualGroundingContext` for complete control (overrides presets):
+```json
+{
+  "c4x.ai.visualGroundingContext": "Cyberpunk aesthetic, neon purple/cyan, transparent background, glowing edges"
+}
+```
+
+**C4 Color Palette Enforcement**:
+C4X strictly enforces official C4 Model colors to ensure consistency:
+- **Person**: `#08427B` (Dark Blue)
+- **System**: `#1168BD` (Blue)
+- **External**: `#999999` (Grey)
+- **Container**: `#438DD5` (Light Blue)
+- **Component**: `#85BBF0` (Lighter Blue)
+
+*Note: Green/Red/Yellow are reserved for status indicators only.*
+
+## 🔌 C4X MCP Server (Model Context Protocol)
+
+C4X includes a built-in **MCP (Model Context Protocol) Server** that provides validation and grounding resources for external AI assistants.
+
+### 🛠️ Available Tools & Resources
+
+**`validate_c4x` Tool**:
+- Validates C4X syntax before writing to files
+- Identifies syntax errors, invalid element types, structural issues
+- Returns precise line/column numbers for auto-correction
+- Ensures C4 Model compliance
+
+**MCP Resources**:
+- `c4x://guidelines` - C4X Generation Guidelines (best practices, patterns)
+- `c4x://examples/event-driven` | `c4x://examples/serverless` | `c4x://examples/oauth2` | `c4x://examples/healthcare` | `c4x://examples/graphql` | `c4x://examples/grpc` - Production-ready examples
+- `c4x://syntax` - Complete DSL syntax reference
+
+### 📝 Configuration
+
+Add to your AI Assistant's MCP config (e.g., `cline_mcp_settings.json`, Claude Desktop `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "c4x-validator": {
+      "command": "node",
+      "args": ["/path/to/c4x-vscode-extension/out/mcp/c4x-mcp-server.js"]
+    }
+  }
+}
+```
+
+**Supported Clients**: Claude Desktop, Cursor, Windsurf, Cline, any MCP-compatible AI assistant
+
+### 💡 Use Cases
+
+- **Pre-validation**: AI assistants validate diagrams before writing to files
+- **Grounding**: Access to 113 examples and best practices for diagram generation
+- **Self-correction**: Automatic syntax error detection and fixing
 
 ## 📖 C4X-DSL Syntax Guide
 
@@ -308,6 +500,9 @@ Export your diagrams to SVG or PNG with theme preservation:
 | Command | Shortcut | Description |
 |---------|----------|-------------|
 | `C4X: Open Preview` | `Ctrl+K V` (Mac: `Cmd+K V`) | Open live preview panel |
+| **`C4X: Generate Diagram Here (Gemini)`** | - | **Generate AI diagram at cursor position** |
+| `C4X: Generate from Selection` | `Alt+V` | Generate PNG from text selection |
+| `C4X: Generate from Workspace` | - | Analyze code and create C4 model |
 | `C4X: Export SVG` | - | Export diagram to SVG file |
 | `C4X: Export PNG` | - | Export diagram to PNG file |
 | `C4X: Copy SVG to Clipboard` | - | Copy SVG to clipboard |
@@ -368,17 +563,24 @@ See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 
 ### v1.2.1 (December 2025) ✅ AI Model Upgrade + Visual Generation
 - 🧠 **AI Model Upgrade** - Upgraded to `gemini-3-flash-preview` (3x faster)
-- 🎨 **Visual Diagram Generation** - PNG diagrams via `gemini-3-pro-image-preview`. 🆕
+- 🎨 **Visual Diagram Generation** - PNG diagrams via `gemini-3-pro-image-preview`.
 - 🔄 **Self-Validation** - Auto-correction for AI-generated diagrams.
 - **[📘 Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)**
 
-### v1.3.0 (Q1 2026) 🏗️ Advanced Integrations
+### v1.3.0 (March 2026) ✅ Gemini 3.1 Pro + Custom Model Selection
+- 🧠 **Gemini 3.1 Pro** - Default model upgraded to `gemini-3.1-pro-preview` (2x reasoning improvement).
+- 🎛️ **Custom Model Selection** - Enter any Gemini model ID in settings — no more restrictive dropdown.
+- 🔄 **Smart Fallback** - Automatic elevation to best available model on failure.
+- 🗑️ **Removed sunset models** - `gemini-3-pro-preview` (sunset March 9, 2026) removed from defaults.
+
+### v1.4.0 (Q2 2026) 🏗️ Advanced Integrations
 - ⏳ **Structurizr DSL Support** - Native parsing of `.dsl` files.
 - 🖼️ **Custom Local Icons** - Support for `$sprite="./assets/logo.png"`.
 - 🔮 **Deployment Diagrams** - Visualize infrastructure (Nodes, Pods, Regions).
 - 📦 **Workspace Diagnostics** - Dedicated panel for architecture health.
 
-### v2.0.0 (Q2 2026) 🤖 Agentic Architecture
+### v2.0.0 (Q3 2026) 🤖 Multi-Provider AI + Agentic Architecture
+- 🧠 **Multi-Provider AI** - Support for Claude (Anthropic), OpenAI, and Gemini models.
 - 🧠 **Agent Syntax** - First-class support for `AI_Agent`, `Memory`, `Tool`.
 - 🛡️ **Architecture Analysis** - Automated detection of bottlenecks and security risks.
 - ✨ **Generative Refactoring** - "Suggest improvements" for your architecture.
@@ -393,12 +595,10 @@ Contributions welcome! We'd love your help to make C4X even better.
 
 **Ways to contribute**:
 
-- 🐛 Report bugs or suggest features via [GitHub Issues](https://github.com/jpantsjoha/c4model-vscode-extension/issues)
+- 🐛 Report bugs or suggest features via [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues)
 - 📝 Improve documentation or examples
 - 🎨 Design new themes or icons
 - 🧪 Write tests for edge cases
-- ⚡ Performance optimizations
-
 - ⚡ Performance optimizations
 
 ### ✅ Validation
