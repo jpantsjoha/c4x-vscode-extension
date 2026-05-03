@@ -16,11 +16,20 @@ import { buildVisualDiagramPrompt, buildVisualFixPrompt } from '../../ai/PromptB
 
 describe('buildVisualDiagramPrompt', () => {
     const sampleText = 'A web application with a React frontend, Node.js API, and PostgreSQL database';
-    const defaultArgs = {
+    const defaultArgs: {
+        sanitizedText: string;
+        c4Level: string;
+        direction: 'TB' | 'LR';
+        framework: 'C4' | 'Sequence' | 'Flowchart';
+        reasoning: string;
+        userGrounding: string;
+        layoutPreference: string;
+        layoutHint: string;
+    } = {
         sanitizedText: sampleText,
         c4Level: 'C2',
-        direction: 'TB' as const,
-        framework: 'C4' as const,
+        direction: 'TB',
+        framework: 'C4',
         reasoning: 'Text describes containers',
         userGrounding: 'Elegant, simple C4 model diagram',
         layoutPreference: 'balanced',
@@ -32,8 +41,8 @@ describe('buildVisualDiagramPrompt', () => {
         return buildVisualDiagramPrompt(
             args.sanitizedText,
             args.c4Level,
-            args.direction,
-            args.framework,
+            args.direction as 'TB' | 'LR',
+            args.framework as 'C4' | 'Sequence' | 'Flowchart',
             args.reasoning,
             args.userGrounding,
             args.layoutPreference,

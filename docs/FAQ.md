@@ -165,6 +165,7 @@ A: Open **Settings**, search for `c4x.ai.imageModel`, and enter an image-capable
 ```
 
 **Available image models:**
+
 | Model | Notes |
 |-------|-------|
 | `gemini-3.1-flash-image-preview` | **Default** -- Nano Banana 2 (fast, 4K output) |

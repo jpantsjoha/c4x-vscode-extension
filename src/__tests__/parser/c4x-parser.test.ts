@@ -1,5 +1,6 @@
 import * as assert from 'assert';
-import { C4XParser, C4XParseError } from '../../parser/C4XParser';
+import { C4XParser } from '../../parser/C4XParser';
+import { C4XParseError } from '../../parser/types';
 
 describe('C4XParser', () => {
     let parser: C4XParser;
@@ -445,8 +446,9 @@ graph TB
                 assert.fail('Expected C4XParseError');
             } catch (error: unknown) {
                 assert.ok(error instanceof C4XParseError);
-                assert.ok(typeof error.location.line === 'number');
-                assert.ok(typeof error.location.column === 'number');
+                const parseError = error as C4XParseError;
+                assert.ok(typeof parseError.location.line === 'number');
+                assert.ok(typeof parseError.location.column === 'number');
             }
         });
 
@@ -461,7 +463,7 @@ graph TB
                 assert.fail('Expected error');
             } catch (error: unknown) {
                 assert.ok(error instanceof C4XParseError);
-                assert.strictEqual(error.name, 'C4XParseError');
+                assert.strictEqual((error as C4XParseError).name, 'C4XParseError');
             }
         });
     });

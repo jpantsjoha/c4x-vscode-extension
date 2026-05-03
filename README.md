@@ -50,7 +50,7 @@ Customer -->|Uses| Banking
 Banking -->|Sends notifications| Email
 ```
 
-3. Open preview: `Cmd+K V` (or `Ctrl+K V`)
+1. Open preview: `Cmd+K V` (or `Ctrl+K V`)
 
 No Java, no servers, no configuration needed.
 

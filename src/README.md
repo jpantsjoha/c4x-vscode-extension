@@ -2,10 +2,6 @@
 
 ## C1: System Context Diagram
 
-
-
-
-
 ```c4x
 %%{ c4: container }%%
 graph TB
@@ -47,8 +43,6 @@ graph TB
     themeSystem -->|Persists configuration to| vscode
 ```
 ## C2: Container Diagram
-
-
 
 ```c4x
 %%{ c4: component }%%

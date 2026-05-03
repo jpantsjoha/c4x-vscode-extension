@@ -5,6 +5,8 @@ import { ParseResult } from '../../src/parser';
 describe('C4ModelBuilder', () => {
     const baseParseResult: ParseResult = {
         viewType: 'system-context',
+        direction: 'TB',
+        hasExplicitDirection: false,
         elements: [
             { type: 'element', id: 'Customer', label: 'Customer', elementType: 'Person', tags: [] },
             { type: 'element', id: 'System', label: 'System', elementType: 'Software System', tags: [] },

@@ -87,7 +87,8 @@ function createMockProgress(): { progress: { report: (v: { message?: string }) =
  * Patch the vscode mock's getConfiguration to return a specific model setting.
  */
 function patchModelSetting(modelId: string | undefined) {
-    vscodeMock.workspace.getConfiguration = (_section?: string) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vscodeMock.workspace.getConfiguration = (_section?: string): any => ({
         get: (_key: string) => modelId,
     });
 }
