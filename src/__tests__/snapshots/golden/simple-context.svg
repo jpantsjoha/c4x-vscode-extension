@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="870" viewBox="0 0 400 870" role="img">
+  <rect x="0" y="0" width="400" height="870" fill="#FFFFFF" />
+  
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+          <feOffset in="blur" dx="3" dy="3" result="offsetBlur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#707070" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#707070" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#707070" fill-opacity="1" />
+        </marker>
+      </defs>
+  
+  <g class="diagram-content" transform="translate(0, 0)">
+    <g class="boundaries">
+
+    </g>
+    <g class="edges">
+<g class="edge" data-id="rel-0">
+    <path d="M170.00,200.00 L170.00,280.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="170.00" y="234.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
+  </g>
+<g class="edge" data-id="rel-1">
+    <path d="M170.00,420.00 L170.00,500.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="170.00" y="454.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends emails via</text>
+  </g>
+    </g>
+    <g class="nodes">
+<g class="node person" data-id="Customer" >
+    <rect x="70.00" y="40.00" width="200.00" height="160.00" rx="10" ry="10" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+    <g class="element-icon">
+      <g transform="translate(150.00, 50.00) scale(0.4000)" fill="#438DD5" stroke="none"><circle cx="50" cy="25" r="15" fill="currentColor"/><path d="M 25 80 Q 25 45 50 45 Q 75 45 75 80 Z" fill="currentColor"/></g>
+    </g>
+<text x="170.00" y="150.50" fill="#438DD5" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Customer</text>
+  </g>
+<g class="node" data-id="Banking" >
+    <rect x="40.00" y="280.00" width="260.00" height="140.00" rx="10" ry="10" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text x="170.00" y="358.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Internet Banking System</text>
+  </g>
+<g class="node" data-id="Email" >
+    <rect x="40.00" y="500.00" width="260.00" height="140.00" rx="10" ry="10" fill="#FFFFFF" stroke="#999999" stroke-width="2" />
+<text x="170.00" y="578.00" fill="#999999" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Email System</text>
+  </g>
+    </g>
+  </g>
+  <g class="legend">
+    <rect x="190" y="740" width="200" height="120" rx="4" ry="4" fill="#FFFFFF" stroke="#707070" stroke-width="1" opacity="0.9" />
+    <text x="290.00" y="754.00" fill="#707070" text-anchor="middle" font-size="11" font-family="Arial, sans-serif" font-weight="bold">Legend</text>
+    <circle cx="198.00" cy="757.00" r="3" fill="#FFFFFF" />
+    <text x="210" y="760.00" fill="#707070" font-size="10" font-family="Arial, sans-serif">Person</text>
+    <rect x="192.00" y="768.00" width="12" height="12" rx="2" ry="2" fill="#FFFFFF" />
+    <text x="210" y="778.00" fill="#707070" font-size="10" font-family="Arial, sans-serif">Software System</text>
+    <rect x="192.00" y="786.00" width="12" height="12" rx="2" ry="2" fill="#FFFFFF" />
+    <text x="210" y="796.00" fill="#707070" font-size="10" font-family="Arial, sans-serif">External System</text>
+    <rect x="192.00" y="804.00" width="12" height="12" rx="2" ry="2" fill="none" stroke="#707070" stroke-width="1" stroke-dasharray="3,2" />
+    <text x="210" y="814.00" fill="#707070" font-size="10" font-family="Arial, sans-serif">System Boundary</text>
+    <line x1="192.00" y1="828.00" x2="204.00" y2="828.00" stroke="#707070" stroke-width="1.5" stroke-dasharray="4,2" />
+    <text x="210" y="832.00" fill="#707070" font-size="10" font-family="Arial, sans-serif">Relationship</text>
+  </g>
+</svg>

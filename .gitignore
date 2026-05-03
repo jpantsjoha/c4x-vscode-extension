@@ -12,6 +12,7 @@ out/
 .vscode-test/
 test-output*
 *.svg
+!src/__tests__/snapshots/golden/*.svg
 *.html
 
 # Build artifacts (packaged extensions)
