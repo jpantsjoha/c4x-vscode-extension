@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { PlantUMLParser, parsePlantUML } from '../../parser/plantuml/PlantUMLParser';
+import { parsePlantUML } from '../../parser/plantuml/PlantUMLParser';
 import { PlantUMLAdapter, parsePlantUMLtoC4Model } from '../../parser/plantuml/PlantUMLAdapter';
 import { PlantUMLDocument, ElementMacro, RelationshipMacro, BoundaryMacro } from '../../parser/plantuml/macros';
 

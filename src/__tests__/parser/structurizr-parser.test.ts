@@ -2,8 +2,7 @@ import * as assert from 'assert';
 import { StructurizrLexer } from '../../parser/structurizr/Lexer';
 import { StructurizrParser } from '../../parser/structurizr/Parser';
 import { StructurizrParserError, WorkspaceNode } from '../../parser/structurizr/ast';
-import { TokenType } from '../../parser/structurizr/tokens';
-
+import { parseStructurizrDSL } from '../../parser/structurizr/index';
 /**
  * Helper: lex + parse in one step (returns AST)
  */
@@ -327,7 +326,6 @@ describe('StructurizrParser', () => {
 
     describe('full pipeline (parseStructurizrDSL)', () => {
         it('converts a complete workspace to C4Model', () => {
-            const { parseStructurizrDSL } = require('../../parser/structurizr/index');
             const source = `workspace "Banking System" {
     model {
         user = person "Customer"

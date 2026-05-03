@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { StructurizrLexer } from '../../parser/structurizr/Lexer';
-import { TokenType, StructurizrLexerError } from '../../parser/structurizr/tokens';
+import { TokenType, StructurizrLexerError, isKeyword, getKeywordType } from '../../parser/structurizr/tokens';
 
 describe('StructurizrLexer', () => {
 
@@ -409,26 +409,22 @@ describe('StructurizrLexer', () => {
 
     describe('token helper functions', () => {
         it('isKeyword returns true for known keywords', () => {
-            const { isKeyword } = require('../../parser/structurizr/tokens');
             assert.strictEqual(isKeyword('workspace'), true);
             assert.strictEqual(isKeyword('model'), true);
             assert.strictEqual(isKeyword('person'), true);
         });
 
         it('isKeyword returns false for unknown words', () => {
-            const { isKeyword } = require('../../parser/structurizr/tokens');
             assert.strictEqual(isKeyword('foobar'), false);
             assert.strictEqual(isKeyword('myService'), false);
         });
 
         it('getKeywordType returns correct token type for keywords', () => {
-            const { getKeywordType } = require('../../parser/structurizr/tokens');
             assert.strictEqual(getKeywordType('workspace'), TokenType.WORKSPACE);
             assert.strictEqual(getKeywordType('person'), TokenType.PERSON);
         });
 
         it('getKeywordType returns null for non-keywords', () => {
-            const { getKeywordType } = require('../../parser/structurizr/tokens');
             assert.strictEqual(getKeywordType('foobar'), null);
         });
     });

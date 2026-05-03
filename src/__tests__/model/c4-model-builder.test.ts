@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { C4ModelBuilder } from '../../model/C4ModelBuilder';
-import { C4XParseError, ParseResult, RawElement, RawRelationship, RawBoundary } from '../../parser/types';
+import { C4ModelBuilder, c4ModelBuilder } from '../../model/C4ModelBuilder';
+import { C4XParseError, ParseResult, RawElement, RawRelationship, RawBoundary, RelationshipArrow } from '../../parser/types';
 
 describe('C4ModelBuilder', () => {
     let builder: C4ModelBuilder;
@@ -301,7 +301,7 @@ describe('C4ModelBuilder', () => {
                         makeElement({ id: 'A' }),
                         makeElement({ id: 'B', elementType: 'system' }),
                     ],
-                    relationships: [makeRelationship({ from: 'A', to: 'B', arrow: arrow as any })],
+                    relationships: [makeRelationship({ from: 'A', to: 'B', arrow: arrow as RelationshipArrow })],
                 });
                 const model = builder.build(result, 'Test');
                 assert.strictEqual(
@@ -627,7 +627,6 @@ describe('C4ModelBuilder', () => {
 
     describe('c4ModelBuilder singleton', () => {
         it('is exported and functional', () => {
-            const { c4ModelBuilder } = require('../../model/C4ModelBuilder');
             assert.ok(c4ModelBuilder);
             assert.ok(typeof c4ModelBuilder.build === 'function');
 

@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 import { C4XParser, C4XParseError } from '../../parser/C4XParser';
-import { ParseResult, RawElement } from '../../parser/types';
 
 describe('C4XParser', () => {
     let parser: C4XParser;
@@ -444,8 +443,8 @@ graph TB
             try {
                 parser.parse(input);
                 assert.fail('Expected C4XParseError');
-            } catch (error: any) {
-                assert.strictEqual(error.name, 'C4XParseError');
+            } catch (error: unknown) {
+                assert.ok(error instanceof C4XParseError);
                 assert.ok(typeof error.location.line === 'number');
                 assert.ok(typeof error.location.column === 'number');
             }
@@ -453,14 +452,15 @@ graph TB
 
         it('throws C4XParseError for invalid relationship arrow', () => {
             const input = 'graph TB\nCustomer[Customer<br/>Person]\nCustomer => System';
-            assert.throws(() => parser.parse(input), (err: any) => err.name === 'C4XParseError' || err instanceof Error);
+            assert.throws(() => parser.parse(input), (err: unknown) => err instanceof C4XParseError || err instanceof Error);
         });
 
         it('C4XParseError has correct name property', () => {
             try {
                 parser.parse('graph TB\nX[X]\n');
                 assert.fail('Expected error');
-            } catch (error: any) {
+            } catch (error: unknown) {
+                assert.ok(error instanceof C4XParseError);
                 assert.strictEqual(error.name, 'C4XParseError');
             }
         });

@@ -15,7 +15,7 @@ Module._resolveFilename = function (request: string, ...args: unknown[]) {
 
 import { C4XParser } from '../../parser/C4XParser';
 import { C4ModelBuilder } from '../../model/C4ModelBuilder';
-import { DagreLayoutEngine, LayoutResult, PositionedElement } from '../../layout/DagreLayoutEngine';
+import { DagreLayoutEngine, LayoutResult } from '../../layout/DagreLayoutEngine';
 import { SvgBuilder } from '../../render/SvgBuilder';
 import { ClassicTheme } from '../../themes/ClassicTheme';
 
