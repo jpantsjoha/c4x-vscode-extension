@@ -1,0 +1,8 @@
+## Mocha configuration for unit tests (standalone, no VS Code host)
+require:
+  - ts-node/register/transpile-only
+spec: "src/__tests__/**/*.test.ts"
+recursive: true
+timeout: 10000
+ui: bdd
+color: true
