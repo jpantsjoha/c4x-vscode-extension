@@ -4,7 +4,7 @@ import { C4XParseError } from '../parser/types';
 
 export class DiagnosticsManager {
     private collection: vscode.DiagnosticCollection;
-    private timeout: NodeJS.Timeout | undefined = undefined;
+    private timeouts = new Map<string, NodeJS.Timeout>();
 
     constructor(context: vscode.ExtensionContext) {
         this.collection = vscode.languages.createDiagnosticCollection('c4x');
@@ -12,16 +12,24 @@ export class DiagnosticsManager {
 
         // Validate active editor on activation
         if (vscode.window.activeTextEditor) {
-            this.validate(vscode.window.activeTextEditor.document);
+            const doc = vscode.window.activeTextEditor.document;
+            if (this.isRelevantDocument(doc)) {
+                this.validate(doc);
+            }
         }
 
-        // Listen for changes
+        // Listen for changes — only process documents we care about
+        // to avoid interfering with other extensions (e.g. Markdown preview)
         context.subscriptions.push(
-            vscode.workspace.onDidChangeTextDocument(editor => {
-                this.validateDebounced(editor.document);
+            vscode.workspace.onDidChangeTextDocument(event => {
+                if (this.isRelevantDocument(event.document)) {
+                    this.validateDebounced(event.document);
+                }
             }),
             vscode.workspace.onDidOpenTextDocument(doc => {
-                this.validate(doc);
+                if (this.isRelevantDocument(doc)) {
+                    this.validate(doc);
+                }
             }),
             vscode.workspace.onDidCloseTextDocument(doc => {
                 this.collection.delete(doc.uri);
@@ -29,14 +37,32 @@ export class DiagnosticsManager {
         );
     }
 
-    private validateDebounced(document: vscode.TextDocument) {
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = undefined;
+    /**
+     * Check whether a document is relevant for C4X diagnostics.
+     * Filters out virtual documents (used by Markdown preview, output channels, etc.)
+     * and documents that cannot contain C4X content.
+     */
+    private isRelevantDocument(document: vscode.TextDocument): boolean {
+        // Skip non-file schemes (vscode-markdown-preview, output, untitled virtual docs, etc.)
+        // Only process 'file' and 'untitled' schemes to avoid interfering with
+        // internal VS Code webview/preview documents
+        const scheme = document.uri.scheme;
+        if (scheme !== 'file' && scheme !== 'untitled') {
+            return false;
         }
-        this.timeout = setTimeout(() => {
+
+        return document.languageId === 'c4x' || document.languageId === 'markdown';
+    }
+
+    private validateDebounced(document: vscode.TextDocument): void {
+        if (!this.isRelevantDocument(document)) return;
+        const key = document.uri.toString();
+        const existing = this.timeouts.get(key);
+        if (existing) clearTimeout(existing);
+        this.timeouts.set(key, setTimeout(() => {
+            this.timeouts.delete(key);
             this.validate(document);
-        }, 500); // 500ms delay
+        }, 300));
     }
 
     private validate(document: vscode.TextDocument) {
@@ -66,7 +92,7 @@ export class DiagnosticsManager {
             c4xParser.parse(text);
         } catch (e) {
             if (e instanceof C4XParseError) {
-                // PEG.js lines are 1-based
+                // Peggy parser lines are 1-based
                 const lineIndex = startLineOffset + Math.max(0, e.location.line - 1);
                 const colIndex = Math.max(0, e.location.column - 1);
 
@@ -88,5 +114,11 @@ export class DiagnosticsManager {
                 diagnostics.push(diagnostic);
             }
         }
+    }
+
+    dispose(): void {
+        this.timeouts.forEach(t => clearTimeout(t));
+        this.timeouts.clear();
+        this.collection.dispose();
     }
 }

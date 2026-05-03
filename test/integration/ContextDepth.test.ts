@@ -7,6 +7,7 @@ describe('Context Depth & Ignore Integration Test', function () {
     this.timeout(10000);
 
     before(function () {
+        // @skip-reason: Requires an open VS Code workspace with folders; skips in bare test host
         if (!vscode.workspace.workspaceFolders) {
             this.skip();
         }

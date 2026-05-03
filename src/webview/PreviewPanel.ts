@@ -241,7 +241,7 @@ export class PreviewPanel {
         const csp = [
             "default-src 'none'",
             "img-src data:",
-            "style-src 'unsafe-inline'",
+            `style-src 'nonce-${nonce}'`,
             `script-src 'nonce-${nonce}'`,
         ].join('; ');
 
@@ -252,7 +252,7 @@ export class PreviewPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>C4X Preview</title>
-  <style>
+  <style nonce="${nonce}">
     :root {
       color-scheme: light dark;
     }

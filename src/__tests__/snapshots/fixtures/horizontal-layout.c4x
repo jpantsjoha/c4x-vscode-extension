@@ -1,0 +1,7 @@
+%%{ c4: system-context }%%
+graph LR
+    User[User<br/>Person]
+    WebApp[Web Application<br/>Software System]
+    Database[Database<br/>Software System]
+    User -->|Uses| WebApp
+    WebApp -->|Reads and writes| Database

@@ -5,9 +5,9 @@ export class C4XParser {
     public parse(input: string): ParseResult {
         // Preprocess: ensure a default graph direction exists to reduce syntax friction
         // If user omitted 'graph TB|BT|LR|RL', inject 'graph TB' after an optional directive
-        const hasGraphDirective = /\bgraph\s+(TB|BT|LR|RL)\b/.test(input);
+        const hasExplicitDirection = /\bgraph\s+(TB|BT|LR|RL)\b/.test(input);
         let processedInput = input;
-        if (!hasGraphDirective) {
+        if (!hasExplicitDirection) {
             const directiveMatch = /^\s*%%\{[^\n]*\}%%\s*/m.exec(input);
             if (directiveMatch) {
                 const insertPos = directiveMatch.index + directiveMatch[0].length;
@@ -19,6 +19,7 @@ export class C4XParser {
 
         try {
             const result = pegParser.parse(processedInput);
+            result.hasExplicitDirection = hasExplicitDirection;
 
             // Normalize c4xicons (Syntax Sugar) -> Internal Keys
             // c4xicons.aws.s3-bucket -> aws-s3-bucket

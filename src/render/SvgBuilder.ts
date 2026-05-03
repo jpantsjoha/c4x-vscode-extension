@@ -1,84 +1,29 @@
-import { PositionedElement, RoutedRelationship, LayoutResult, Point, PositionedBoundary } from '../layout/DagreLayoutEngine';
+/**
+ * SVG document orchestrator for C4 diagrams.
+ *
+ * Composes the final SVG by delegating to focused modules:
+ *   - EdgeRouter     — connection-point geometry and path generation
+ *   - LabelRenderer  — label collision detection and positioning
+ *   - ElementRenderer — node/element rendering (boxes, persons, icons)
+ *   - BoundaryRenderer — boundary/subgraph rendering
+ */
+
+import { PositionedElement, RoutedRelationship, LayoutResult, Point } from '../layout/DagreLayoutEngine';
 import { C4Theme } from '../themes/Theme';
 import { themeManager } from '../themes/ThemeManager';
-import { getSprite } from '../assets/icons';
+import { escapeXml } from './svg-utils';
+import { toPath, midpoint, calculateOptimalConnectionPoints } from './EdgeRouter';
+import { LabelCollisionTracker } from './LabelRenderer';
+import { renderNode } from './ElementRenderer';
+import { renderBoundary } from './BoundaryRenderer';
+import { C4ViewType } from '../parser';
 
 interface SvgBuildOptions {
     theme?: C4Theme;
-}
-
-
-function escapeXml(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-}
-
-function toPath(points: Point[]): string {
-    return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
-}
-
-function midpoint(points: Point[]): Point {
-    if (points.length === 0) {
-        return { x: 0, y: 0 };
-    }
-    const middle = points[Math.floor(points.length / 2)];
-    return middle;
-}
-
-function getFillColor(node: PositionedElement, theme: C4Theme): string {
-    const isExternal = node.element.tags?.some(tag => tag.toLowerCase() === 'external');
-
-    switch (node.element.type) {
-        case 'Person':
-            return isExternal ? (theme.colors.externalPerson?.fill ?? theme.colors.externalSystem.fill) : theme.colors.person.fill;
-        case 'Container':
-            return isExternal ? (theme.colors.externalContainer?.fill ?? theme.colors.externalSystem.fill) : theme.colors.container.fill;
-        case 'Component':
-            return isExternal ? (theme.colors.externalComponent?.fill ?? theme.colors.externalSystem.fill) : theme.colors.component.fill;
-        case 'SoftwareSystem':
-        default:
-            return isExternal ? theme.colors.externalSystem.fill : theme.colors.softwareSystem.fill;
-    }
-}
-
-function getStrokeColor(node: PositionedElement, theme: C4Theme): string {
-    const isExternal = node.element.tags?.some(tag => tag.toLowerCase() === 'external');
-
-    switch (node.element.type) {
-        case 'Person':
-            return isExternal ? (theme.colors.externalPerson?.stroke ?? theme.colors.externalSystem.stroke) : theme.colors.person.stroke;
-        case 'Container':
-            return isExternal ? (theme.colors.externalContainer?.stroke ?? theme.colors.externalSystem.stroke) : theme.colors.container.stroke;
-        case 'Component':
-            return isExternal ? (theme.colors.externalComponent?.stroke ?? theme.colors.externalSystem.stroke) : theme.colors.component.stroke;
-        case 'DeploymentNode':
-            return theme.colors.deploymentNode.stroke;
-        case 'SoftwareSystem':
-        default:
-            return isExternal ? theme.colors.externalSystem.stroke : theme.colors.softwareSystem.stroke;
-    }
-}
-
-function getTextColor(node: PositionedElement, theme: C4Theme): string {
-    const isExternal = node.element.tags?.some(tag => tag.toLowerCase() === 'external');
-
-    switch (node.element.type) {
-        case 'Person':
-            return isExternal ? (theme.colors.externalPerson?.text ?? theme.colors.externalSystem.text) : theme.colors.person.text;
-        case 'Container':
-            return isExternal ? (theme.colors.externalContainer?.text ?? theme.colors.externalSystem.text) : theme.colors.container.text;
-        case 'Component':
-            return isExternal ? (theme.colors.externalComponent?.text ?? theme.colors.externalSystem.text) : theme.colors.component.text;
-        case 'DeploymentNode':
-            return theme.colors.deploymentNode.text;
-        case 'SoftwareSystem':
-        default:
-            return isExternal ? theme.colors.externalSystem.text : theme.colors.softwareSystem.text;
-    }
+    /** View type for the diagram title (e.g. 'system-context', 'container'). */
+    viewType?: C4ViewType;
+    /** Workspace name for the diagram title. */
+    workspaceName?: string;
 }
 
 function getEdgeDasharray(edge: RoutedRelationship): string | undefined {
@@ -95,206 +40,26 @@ function getEdgeDasharray(edge: RoutedRelationship): string | undefined {
 }
 
 export class SvgBuilder {
-    // Track label positions to prevent overlapping
-    private labelPositions: Array<{ x: number; y: number; width: number; height: number }> = [];
-
-    /**
-     * Check if a label position overlaps with existing labels
-     */
-    private checkLabelCollision(x: number, y: number, width: number, height: number): boolean {
-        return this.labelPositions.some(pos =>
-            x < pos.x + pos.width &&
-            x + width > pos.x &&
-            y < pos.y + pos.height &&
-            y + height > pos.y
-        );
-    }
-
-    /**
-     * Find non-overlapping position for a relationship label
-     */
-    private findNonOverlappingPosition(baseX: number, baseY: number, width: number, height: number): { x: number; y: number } {
-        const offsets = [
-            { x: 0, y: 0 },           // Original position
-            { x: 0, y: -25 },         // Above
-            { x: 0, y: 25 },          // Below
-            { x: -30, y: 0 },         // Left
-            { x: 30, y: 0 },          // Right
-            { x: -20, y: -20 },       // Top-left
-            { x: 20, y: -20 },        // Top-right
-            { x: -20, y: 20 },        // Bottom-left
-            { x: 20, y: 20 },         // Bottom-right
-        ];
-
-        for (const offset of offsets) {
-            const testX = baseX + offset.x;
-            const testY = baseY + offset.y;
-
-            if (!this.checkLabelCollision(testX - width / 2, testY - height / 2, width, height)) {
-                return { x: testX, y: testY };
-            }
-        }
-
-        // If all positions collide, use original position (last resort)
-        return { x: baseX, y: baseY };
-    }
-
-    /**
-     * Register a label position to track for collisions
-     */
-    private registerLabelPosition(x: number, y: number, width: number, height: number): void {
-        this.labelPositions.push({
-            x: x - width / 2,
-            y: y - height / 2,
-            width,
-            height
-        });
-    }
-
-    /**
-     * Calculate optimal connection points between two C4 model boxes
-     * Uses true closest-edge routing for professional C4 diagram appearance
-     * Returns the closest edge points for direct line routing
-     */
-    private calculateOptimalConnectionPoints(
-        fromBox: { x: number; y: number; width: number; height: number },
-        toBox: { x: number; y: number; width: number; height: number }
-    ): { from: Point; to: Point; mid: Point } {
-        // C4 model arrow spacing - 0 to ensure arrows touch the element edges
-        const arrowPadding = 0;
-
-        // Calculate all possible connection points on both boxes
-        const fromPoints = [
-            { x: fromBox.x + fromBox.width / 2, y: fromBox.y - arrowPadding, edge: 'top' },           // Top center
-            { x: fromBox.x + fromBox.width + arrowPadding, y: fromBox.y + fromBox.height / 2, edge: 'right' }, // Right center
-            { x: fromBox.x + fromBox.width / 2, y: fromBox.y + fromBox.height + arrowPadding, edge: 'bottom' }, // Bottom center
-            { x: fromBox.x - arrowPadding, y: fromBox.y + fromBox.height / 2, edge: 'left' }         // Left center
-        ];
-
-        const toPoints = [
-            { x: toBox.x + toBox.width / 2, y: toBox.y - arrowPadding, edge: 'top' },           // Top center
-            { x: toBox.x + toBox.width + arrowPadding, y: toBox.y + toBox.height / 2, edge: 'right' }, // Right center
-            { x: toBox.x + toBox.width / 2, y: toBox.y + toBox.height + arrowPadding, edge: 'bottom' }, // Bottom center
-            { x: toBox.x - arrowPadding, y: toBox.y + toBox.height / 2, edge: 'left' }         // Left center
-        ];
-
-        // Determine relative positions to bias connection choice
-        // This helps achieve the "holistic top-down flow" requested by the user
-        const isBelow = toBox.y >= fromBox.y + fromBox.height;
-        const isAbove = fromBox.y >= toBox.y + toBox.height;
-        const isRight = toBox.x >= fromBox.x + fromBox.width;
-        const isLeft = fromBox.x >= toBox.x + toBox.width;
-
-        // Find the closest pair of connection points with directional bias
-        let minScore = Infinity;
-        let bestFromPoint = fromPoints[0];
-        let bestToPoint = toPoints[0];
-
-        for (const fromPoint of fromPoints) {
-            for (const toPoint of toPoints) {
-                const distance = Math.sqrt(
-                    Math.pow(toPoint.x - fromPoint.x, 2) +
-                    Math.pow(toPoint.y - fromPoint.y, 2)
-                );
-
-                // Add penalties for non-ideal flows
-                let penalty = 0;
-
-                if (isBelow) {
-                    // Vertical flow (Down): Prefer Bottom -> Top
-                    if (fromPoint.edge !== 'bottom') { penalty += 150; }
-                    if (toPoint.edge !== 'top') { penalty += 150; }
-                } else if (isAbove) {
-                    // Vertical flow (Up): Prefer Top -> Bottom
-                    if (fromPoint.edge !== 'top') { penalty += 150; }
-                    if (toPoint.edge !== 'bottom') { penalty += 150; }
-                } else if (isRight) {
-                    // Horizontal flow (Right): Prefer Right -> Left
-                    if (fromPoint.edge !== 'right') { penalty += 150; }
-                    if (toPoint.edge !== 'left') { penalty += 150; }
-                } else if (isLeft) {
-                    // Horizontal flow (Left): Prefer Left -> Right
-                    if (fromPoint.edge !== 'left') { penalty += 150; }
-                    if (toPoint.edge !== 'right') { penalty += 150; }
-                }
-
-                const score = distance + penalty;
-
-                if (score < minScore) {
-                    minScore = score;
-                    bestFromPoint = fromPoint;
-                    bestToPoint = toPoint;
-                }
-            }
-        }
-
-        // If no good connection found (boxes too close), use fallback
-        if (minScore === Infinity) {
-            bestFromPoint = fromPoints[1]; // Right
-            bestToPoint = toPoints[3];     // Left
-        }
-
-        // Calculate midpoint for label positioning
-        const midPoint = {
-            x: (bestFromPoint.x + bestToPoint.x) / 2,
-            y: (bestFromPoint.y + bestToPoint.y) / 2
-        };
-
-        return {
-            from: { x: bestFromPoint.x, y: bestFromPoint.y },
-            to: { x: bestToPoint.x, y: bestToPoint.y },
-            mid: midPoint
-        };
-    }
-
-    /**
-     * Check if two edges are opposing (should be avoided for clean routing)
-     */
-    private areOpposingEdges(edge1: string, edge2: string): boolean {
-        return (edge1 === 'left' && edge2 === 'right') ||
-            (edge1 === 'right' && edge2 === 'left') ||
-            (edge1 === 'top' && edge2 === 'bottom') ||
-            (edge1 === 'bottom' && edge2 === 'top');
-    }
-
-    /**
-     * Calculate optimal font size to fit text within box constraints
-     * Ensures text scales down to fit within static C4 box sizes
-     */
-    private calculateOptimalFontSize(textLines: string[], boxWidth: number, boxHeight: number, baseFontSize: number): number {
-        // Available space (with padding)
-        const maxWidth = boxWidth - 20; // 10px padding on each side
-        const maxHeight = boxHeight - 40; // 20px padding top/bottom
-
-        // Calculate required height with base font size
-        const lineHeight = baseFontSize * 1.2; // 20% line spacing
-        const totalTextHeight = textLines.length * lineHeight;
-
-        // Calculate required width (estimate 0.6 * fontSize per character for typical fonts)
-        const charWidth = baseFontSize * 0.6;
-        const maxTextWidth = Math.max(...textLines.map(line => line.length * charWidth));
-
-        // Scale down if text doesn't fit
-        const fontSizeForWidth = maxTextWidth > maxWidth ? (maxWidth / maxTextWidth) * baseFontSize : baseFontSize;
-        const fontSizeForHeight = totalTextHeight > maxHeight ? (maxHeight / totalTextHeight) * baseFontSize : baseFontSize;
-
-        // Use the more restrictive constraint, but ensure minimum readability
-        const optimalSize = Math.min(fontSizeForWidth, fontSizeForHeight);
-        return Math.max(optimalSize, baseFontSize * 0.7); // Never go below 70% of base size
-    }
+    private labelTracker = new LabelCollisionTracker();
 
     public build(layout: LayoutResult, options: SvgBuildOptions = {}): string {
         // Reset label positions for this diagram
-        this.labelPositions = [];
+        this.labelTracker.reset();
 
         const theme = options.theme ?? themeManager.getCurrentTheme();
         const elementCount = layout.elements.length;
         const isComplex = elementCount > 4;
 
+        // Reserve space for title and legend
+        const titleHeight = options.viewType ? 40 : 0;
+        const legendHeight = 130;
+        const totalWidth = layout.width;
+        const totalHeight = layout.height + titleHeight + legendHeight;
+
         // Smart Sizing: Use 100% for complex diagrams to allow responsive scaling
         // Keep fixed pixel size for small diagrams to ensure tightness
-        const svgWidth = isComplex ? '100%' : layout.width;
-        const svgHeight = isComplex ? '100%' : layout.height;
+        const svgWidth = isComplex ? '100%' : totalWidth;
+        const svgHeight = isComplex ? '100%' : totalHeight;
 
         // Arrow markers: hollow/open arrow heads (official C4 model style)
         const defs = `
@@ -321,7 +86,7 @@ export class SvgBuilder {
         </marker>
       </defs>`;
 
-        const nodeSvg = layout.elements.map(node => this.renderNode(node, theme)).join('\n');
+        const nodeSvg = layout.elements.map(node => renderNode(node, theme, this.labelTracker)).join('\n');
 
         // Create element lookup map for edge optimization
         const elementMap = new Map<string, PositionedElement>();
@@ -332,217 +97,122 @@ export class SvgBuilder {
 
         // Render boundaries if they exist
         const boundarySvg = layout.boundaries ?
-            layout.boundaries.map(boundary => this.renderBoundary(boundary, theme)).join('\n') : '';
+            layout.boundaries.map(boundary => renderBoundary(boundary, theme)).join('\n') : '';
+
+        // Render diagram title
+        const titleSvg = this.renderTitle(options.viewType, options.workspaceName, totalWidth, theme);
+
+        // Render legend
+        const legendSvg = this.renderLegend(totalWidth, totalHeight, theme);
 
         return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${layout.width} ${layout.height}" role="img">
-  <rect x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${theme.colors.background}" />
+<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}" role="img">
+  <rect x="0" y="0" width="${totalWidth}" height="${totalHeight}" fill="${theme.colors.background}" />
   ${defs}
-  <g class="boundaries">
+  ${titleSvg}
+  <g class="diagram-content" transform="translate(0, ${titleHeight})">
+    <g class="boundaries">
 ${boundarySvg}
-  </g>
-  <g class="edges">
+    </g>
+    <g class="edges">
 ${edgeSvg}
-  </g>
-  <g class="nodes">
+    </g>
+    <g class="nodes">
 ${nodeSvg}
+    </g>
   </g>
+  ${legendSvg}
 </svg>`;
     }
 
-    private renderNode(node: PositionedElement, theme: C4Theme): string {
-        const fill = getFillColor(node, theme);
-        const stroke = getStrokeColor(node, theme);
-        const textColor = getTextColor(node, theme);
-
-        // Add null checks for layout coordinates
-        const x = node.x ?? 0;
-        const y = node.y ?? 0;
-        const width = node.width ?? 200;
-        const height = node.height ?? 100;
-
-        // Register element position to avoid label overlaps
-        this.registerLabelPosition(x + width / 2, y + height / 2, width, height);
-
-        const filter = theme.styles.shadowEnabled ? 'filter="url(#drop-shadow)"' : '';
-
-        // Check if this is a Person element or has a custom sprite - render with icon
-        const spriteName = node.element.sprite ?? (node.element.type === 'Person' ? 'person' : undefined);
-
-        if (spriteName) {
-            return this.renderIconNode(node, x, y, width, height, fill, stroke, textColor, theme, filter, spriteName);
+    /**
+     * Format a C4ViewType into a human-readable title string.
+     */
+    private static formatViewType(viewType: C4ViewType): string {
+        switch (viewType) {
+            case 'system-context': return 'System Context';
+            case 'container': return 'Container';
+            case 'component': return 'Component';
+            case 'deployment': return 'Deployment';
+            case 'dynamic': return 'Dynamic';
+            default: return String(viewType);
         }
-
-        // Render C4-PlantUML style element structure for non-Person elements
-        const textContent = this.renderC4ElementStructure(node, x, y, width, height, textColor, theme);
-
-        return `<g class="node" data-id="${node.id}" ${filter}>
-    <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${theme.styles.borderRadius}" ry="${theme.styles.borderRadius}" fill="${fill}" stroke="${stroke}" stroke-width="${theme.styles.borderWidth}" />
-${textContent}
-  </g>`;
     }
 
     /**
-     * Render an element with an icon/sprite (Standard C4 Person or Custom Sprite)
+     * Render diagram title at the top of the SVG.
      */
-    private renderIconNode(
-        node: PositionedElement,
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        fill: string,
-        stroke: string,
-        textColor: string,
-        theme: C4Theme,
-        filter: string,
-        spriteName: string
-    ): string {
-        // Icon dimensions
-        const iconSize = 40;  // Size of the icon area
-
-        // Position the icon at the top center of the element
-        const iconCenterX = x + width / 2;
-        const iconY = y + 10; // 10px padding from top
-
-        // Adjust text area to account for icon
-        const textAreaY = y + iconSize + 10;
-        const textAreaHeight = height - iconSize - 10;
-
-        // Render text content in the adjusted area
-        const textContent = this.renderC4ElementStructureForPerson(node, x, textAreaY, width, textAreaHeight, textColor, theme);
-
-        // Get SVG path for sprite
-        const spriteDef = getSprite(spriteName);
-
-        let iconSvg = '';
-        if (spriteDef) {
-            let body: string;
-            let viewBox = '0 0 100 100';
-            let preserveColor = false;
-
-            if (typeof spriteDef === 'string') {
-                body = spriteDef;
-            } else {
-                body = spriteDef.body;
-                viewBox = spriteDef.viewBox || '0 0 100 100';
-                preserveColor = spriteDef.preserveColor || false;
-            }
-
-            // Parse viewBox to calculate scale
-            const parts = viewBox.split(' ').map(Number);
-            const vbWidth = parts.length === 4 ? parts[2] : 100;
-            const scale = iconSize / vbWidth;
-
-            const translateX = iconCenterX - (vbWidth * scale) / 2;
-            const translateY = iconY;
-
-            // Apply fill color only if not preserving original colors
-            const fillAttr = preserveColor ? '' : `fill="${stroke}"`;
-
-            iconSvg = `<g transform="translate(${translateX.toFixed(2)}, ${translateY.toFixed(2)}) scale(${scale.toFixed(4)})" ${fillAttr} stroke="none">${body}</g>`;
-        }
-
-        return `<g class="node person" data-id="${node.id}" ${filter}>
-    <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${theme.styles.borderRadius}" ry="${theme.styles.borderRadius}" fill="${fill}" stroke="${stroke}" stroke-width="${theme.styles.borderWidth}" />
-    <g class="element-icon">
-      ${iconSvg}
-    </g>
-${textContent}
-  </g>`;
-    }
-
-    /**
-     * Render text structure for Person elements (accounts for icon space)
-     */
-    private renderC4ElementStructureForPerson(
-        node: PositionedElement,
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        textColor: string,
+    private renderTitle(
+        viewType: C4ViewType | undefined,
+        workspaceName: string | undefined,
+        totalWidth: number,
         theme: C4Theme
     ): string {
-        const title = node.element.label;
-        const technology = node.element.type;
-        const description = node.element.tags?.join(', ') || '';
-
-        const titleFontSize = 14;
-        const techFontSize = 11;
-        const descFontSize = 11;
-        const lineHeight = 15;
-
-        const totalLines = (title ? 1 : 0) + (technology ? 1 : 0) + (description ? 1 : 0);
-        const totalHeight = totalLines * lineHeight;
-        const startY = y + (height - totalHeight) / 2 + lineHeight - 2;
-
-        let currentY = startY;
-        const textElements: string[] = [];
-
-        if (title) {
-            textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${titleFontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(title)}</text>`);
-            currentY += lineHeight;
+        if (!viewType) {
+            return '';
         }
 
-        if (technology) {
-            const techText = `[${technology}]`;
-            textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${techFontSize}" font-family="${theme.styles.fontFamily}" font-style="italic">${escapeXml(techText)}</text>`);
-            currentY += lineHeight;
-        }
+        const formattedType = SvgBuilder.formatViewType(viewType);
+        const titleText = workspaceName
+            ? `${formattedType} \u2014 ${workspaceName}`
+            : formattedType;
 
-        if (description) {
-            textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${descFontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(description)}</text>`);
-        }
+        const fontSize = 20;
+        const titleX = totalWidth / 2;
+        const titleY = 28; // Vertically centered in the 40px title area
 
-        return textElements.join('\n    ');
+        return `<text class="diagram-title" x="${titleX.toFixed(2)}" y="${titleY.toFixed(2)}" fill="${theme.colors.relationship.text}" text-anchor="middle" font-size="${fontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(titleText)}</text>`;
     }
 
     /**
-     * Render C4-PlantUML style element structure:
-     * == Title (Bold, 14pt)
-     * //[Technology]// (Italic, 12pt)
-     * Description (Normal, 12pt)
+     * Render a compact C4 notation legend at the bottom-right of the SVG.
      */
-    private renderC4ElementStructure(node: PositionedElement, x: number, y: number, width: number, height: number, textColor: string, theme: C4Theme): string {
-        const title = node.element.label;
-        const technology = node.element.type;
-        const description = node.element.tags?.join(', ') || '';
+    private renderLegend(totalWidth: number, totalHeight: number, theme: C4Theme): string {
+        const legendWidth = 200;
+        const legendHeight = 120;
+        const padding = 10;
+        const legendX = totalWidth - legendWidth - padding;
+        const legendY = totalHeight - legendHeight - padding;
+        const fontSize = 10;
+        const lineHeight = 18;
+        const swatchSize = 12;
+        const textOffsetX = legendX + swatchSize + 8;
 
-        // Font sizes following C4-PlantUML standards
-        const titleFontSize = 14;  // Bold title
-        const techFontSize = 12;   // Italic technology
-        const descFontSize = 12;  // Normal description
+        let currentY = legendY + 20; // Start below the "Legend" header
 
-        const lineHeight = 16; // Standard line height
+        const items: string[] = [];
 
-        // Calculate starting Y position (centered)
-        const totalLines = (title ? 1 : 0) + (technology ? 1 : 0) + (description ? 1 : 0);
-        const totalHeight = totalLines * lineHeight;
-        const startY = y + (height - totalHeight) / 2 + lineHeight;
+        // Legend border
+        items.push(`<rect x="${legendX}" y="${legendY}" width="${legendWidth}" height="${legendHeight}" rx="4" ry="4" fill="${theme.colors.background}" stroke="${theme.colors.relationship.stroke}" stroke-width="1" opacity="0.9" />`);
 
-        let currentY = startY;
-        const textElements: string[] = [];
+        // Legend header
+        items.push(`<text x="${(legendX + legendWidth / 2).toFixed(2)}" y="${(legendY + 14).toFixed(2)}" fill="${theme.colors.relationship.text}" text-anchor="middle" font-size="${fontSize + 1}" font-family="${theme.styles.fontFamily}" font-weight="bold">Legend</text>`);
 
-        // Title (Bold, 14pt) - Primary identifier
-        if (title) {
-            textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${titleFontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(title)}</text>`);
-            currentY += lineHeight;
-        }
+        // Person icon (small person silhouette)
+        items.push(`<circle cx="${(legendX + swatchSize / 2 + 2).toFixed(2)}" cy="${(currentY - 3).toFixed(2)}" r="3" fill="${theme.colors.person.fill}" />`);
+        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">Person</text>`);
+        currentY += lineHeight;
 
-        // Technology (Italic, 12pt) - In brackets
-        if (technology) {
-            const techText = `[${technology}]`;
-            textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${techFontSize}" font-family="${theme.styles.fontFamily}" font-style="italic">${escapeXml(techText)}</text>`);
-            currentY += lineHeight;
-        }
+        // Software System (blue box)
+        items.push(`<rect x="${(legendX + 2).toFixed(2)}" y="${(currentY - swatchSize + 2).toFixed(2)}" width="${swatchSize}" height="${swatchSize}" rx="2" ry="2" fill="${theme.colors.softwareSystem.fill}" />`);
+        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">Software System</text>`);
+        currentY += lineHeight;
 
-        // Description (Normal, 12pt) - Supporting information
-        if (description) {
-            textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${descFontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(description)}</text>`);
-        }
+        // External System (grey box)
+        items.push(`<rect x="${(legendX + 2).toFixed(2)}" y="${(currentY - swatchSize + 2).toFixed(2)}" width="${swatchSize}" height="${swatchSize}" rx="2" ry="2" fill="${theme.colors.externalSystem.fill}" />`);
+        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">External System</text>`);
+        currentY += lineHeight;
 
-        return textElements.join('\n    ');
+        // Boundary (dashed border)
+        items.push(`<rect x="${(legendX + 2).toFixed(2)}" y="${(currentY - swatchSize + 2).toFixed(2)}" width="${swatchSize}" height="${swatchSize}" rx="2" ry="2" fill="none" stroke="${theme.colors.relationship.stroke}" stroke-width="1" stroke-dasharray="3,2" />`);
+        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">System Boundary</text>`);
+        currentY += lineHeight;
+
+        // Relationship arrow
+        items.push(`<line x1="${(legendX + 2).toFixed(2)}" y1="${(currentY - 4).toFixed(2)}" x2="${(legendX + swatchSize + 2).toFixed(2)}" y2="${(currentY - 4).toFixed(2)}" stroke="${theme.colors.relationship.stroke}" stroke-width="1.5" stroke-dasharray="4,2" />`);
+        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">Relationship</text>`);
+
+        return `<g class="legend">\n    ${items.join('\n    ')}\n  </g>`;
     }
 
     private renderEdge(edge: RoutedRelationship, theme: C4Theme, elementMap?: Map<string, PositionedElement>): string {
@@ -561,7 +231,7 @@ ${textContent}
             if (fromElement && toElement) {
                 // Use optimal edge routing for ALL diagrams to ensure arrows connect to edges
                 // This prevents arrows from being hidden behind nodes (center-to-center issue)
-                const connectionPoints = this.calculateOptimalConnectionPoints(
+                const connectionPoints = calculateOptimalConnectionPoints(
                     { x: fromElement.x, y: fromElement.y, width: fromElement.width, height: fromElement.height },
                     { x: toElement.x, y: toElement.y, width: toElement.width, height: toElement.height }
                 );
@@ -610,7 +280,7 @@ ${textContent}
             const labelHeight = lineHeight;
 
             // Position label along the arrow path (C4 model standard)
-            const adjustedPosition = this.findNonOverlappingPosition(
+            const adjustedPosition = this.labelTracker.findNonOverlappingPosition(
                 labelPoint.x,
                 labelPoint.y - 6, // Slight offset above the arrow
                 labelWidth,
@@ -618,7 +288,7 @@ ${textContent}
             );
 
             // Register this label position
-            this.registerLabelPosition(adjustedPosition.x, adjustedPosition.y, labelWidth, labelHeight);
+            this.labelTracker.registerPosition(adjustedPosition.x, adjustedPosition.y, labelWidth, labelHeight);
 
             // Create clean, single-line label (C4 model standard)
             // Use paint-order: stroke fill to create a halo effect for legibility over lines
@@ -628,42 +298,6 @@ ${textContent}
         return `<g class="edge" data-id="${edge.id}">
     <path d="${path}" fill="none" stroke="${theme.colors.relationship.stroke}" stroke-width="${theme.styles.borderWidth}" marker-end="url(#${marker})"${dasharray ? ` stroke-dasharray="${dasharray}"` : ''} />
     ${labelElement}
-  </g>`;
-    }
-
-    /**
-     * Render a C4 boundary (subgraph) as a rounded rectangle with dashed border
-     * Following C4 model standards for system/container boundaries
-     */
-    private renderBoundary(boundary: PositionedBoundary, theme: C4Theme): string {
-        const x = boundary.x;
-        const y = boundary.y;
-        const width = boundary.width;
-        const height = boundary.height;
-        const cornerRadius = 8; // Rounded corners for C4 boundaries
-
-        // C4 boundary styling: dashed border, transparent fill, label at bottom
-        const borderColor = theme.colors.relationship.stroke;
-        const labelColor = theme.colors.relationship.text;
-        const fontSize = 14;
-
-        // Label positioned at bottom-left of boundary
-        const labelX = x + 10;
-        const labelY = y + height - 10;
-
-        return `<g class="boundary" data-id="${boundary.id}">
-    <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" 
-          rx="${cornerRadius}" ry="${cornerRadius}" 
-          fill="none" 
-          stroke="${borderColor}" 
-          stroke-width="2" 
-          stroke-dasharray="8,4" 
-          opacity="0.7" />
-    <text x="${labelX.toFixed(2)}" y="${labelY.toFixed(2)}" 
-          fill="${labelColor}" 
-          font-size="${fontSize}" 
-          font-family="${theme.styles.fontFamily}" 
-          font-weight="bold">${escapeXml(boundary.boundary.label)}</text>
   </g>`;
     }
 }

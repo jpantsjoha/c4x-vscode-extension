@@ -17,7 +17,17 @@
 /* Dark mode adjustments for VS Code */
 body.vscode-dark .c4x-diagram {
     background-color: #1e1e1e;
-    /* Match dark background */
+}
+
+/* High contrast mode adjustments for VS Code */
+body.vscode-high-contrast .c4x-diagram {
+    background-color: #000000;
+    border: 1px solid var(--vscode-contrastBorder, #6fc3df);
+}
+
+body.vscode-high-contrast-light .c4x-diagram {
+    background-color: #ffffff;
+    border: 1px solid var(--vscode-contrastBorder, #000000);
 }
 
 /* Error styling */
@@ -35,6 +45,20 @@ body.vscode-dark .c4x-error {
     background-color: #450a0a;
     color: #fecaca;
     border-left-color: #ef4444;
+}
+
+body.vscode-high-contrast .c4x-error {
+    background-color: #000000;
+    color: #ffffff;
+    border-left-color: #ff0000;
+    border: 1px solid var(--vscode-contrastBorder, #6fc3df);
+}
+
+body.vscode-high-contrast-light .c4x-error {
+    background-color: #ffffff;
+    color: #000000;
+    border-left-color: #dc2626;
+    border: 1px solid var(--vscode-contrastBorder, #000000);
 }
 
 .c4x-error-header {
@@ -82,6 +106,18 @@ body.vscode-dark .c4x-error {
 body.vscode-dark .c4x-diagram.lightbox {
     background-color: #1e1e1e;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+body.vscode-high-contrast .c4x-diagram.lightbox {
+    background-color: #000000;
+    border: 2px solid var(--vscode-contrastBorder, #6fc3df);
+    box-shadow: none;
+}
+
+body.vscode-high-contrast-light .c4x-diagram.lightbox {
+    background-color: #ffffff;
+    border: 2px solid var(--vscode-contrastBorder, #000000);
+    box-shadow: none;
 }
 
 /* Lightbox Backdrop */

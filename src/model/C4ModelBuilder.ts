@@ -37,6 +37,9 @@ export class C4ModelBuilder {
 
         const view: C4View = {
             type: parseResult.viewType,
+            // Only propagate direction when the user explicitly wrote a graph directive.
+            // Undefined signals the layout engine to auto-detect based on element count.
+            direction: parseResult.hasExplicitDirection ? parseResult.direction : undefined,
             elements,
             relationships,
             boundaries,

@@ -16,7 +16,7 @@ describe('Gemini Self-Correction Integration Test', function () {
     let hasApiKey = false;
 
     before(async function () {
-        // Check if we have a real API key for integration tests
+        // @skip-reason: Integration test requires GEMINI_API_KEY env var or .env file for live API tests
         const envPath = path.resolve(__dirname, '../../../.env');
         let apiKey = process.env.GEMINI_API_KEY;
 
@@ -61,10 +61,10 @@ describe('Gemini Self-Correction Integration Test', function () {
         }
     }
 
-    it.skip('Should detect syntax error and auto-correct using feedback loop in Mock Mode', async () => {
-        // We mock the internal model instance to force our "Bad -> Good" scenario
-        // identifying that the logic resides in private state is tricky in TS tests without partial mocks, 
-        // so we will instantiate the service, then forcibly generic-cast it to inject our mock model.
+    it('Should detect syntax error and auto-correct using feedback loop in Mock Mode', async () => {
+        // We mock the internal model instance to force our "Bad -> Good" scenario.
+        // The self-correction logic lives in SyntaxValidator.executeWithRetry()
+        // which is called through FallbackStrategy.generateWithFallback().
 
         const mockContext = {
             secrets: { get: async () => "test-key", store: async () => { } },
@@ -73,7 +73,7 @@ describe('Gemini Self-Correction Integration Test', function () {
 
         service = new GeminiService(mockContext);
 
-        // Wait for real initialization to complete before overwriting
+        // Wait for initialization to complete before overwriting
         await service.initialize();
 
         // Inject mock model
@@ -86,12 +86,13 @@ describe('Gemini Self-Correction Integration Test', function () {
 
         // Assert
         assert.ok(result.includes('-->'), 'Result should have corrected arrow syntax');
-        // assert.ok(!result.includes('-> '), 'Result should NOT have invalid arrow syntax'); // --> contains ->
         assert.strictEqual(parser.parse(result) !== undefined, true, 'Result should be valid C4X');
     });
 
-    it.skip('Should sanitize output by removing HTML tags from relationships', async () => {
-        // Mock returning dirty content (Valid C4X but with HTML tags in relationships)
+    it('Should sanitize output by removing HTML tags from relationships', async () => {
+        // Mock returning dirty content (Valid C4X but with HTML tags in relationships).
+        // The cleanResponse() function in SyntaxValidator.ts strips <br>, <br/>, </br>
+        // from relationship labels while preserving them in node labels.
         const dirtyResponse = `
 \`\`\`c4x
 %%{ c4: container }%%
@@ -143,46 +144,11 @@ graph TB
         assert.ok(!result.includes('Clicks<br>Button'), 'Dirty tag should be removed');
     });
 
-    it.skip('Should fallback to gemini-3.1-pro-preview if user model fails', async function () {
-        if (!hasApiKey) {
-            this.skip();
-        }
-
-        const mockContext = {
-            secrets: { get: async () => "test-key", store: async () => { } },
-            subscriptions: []
-        } as any;
-
-        service = new GeminiService(mockContext);
-        // Don't call initialize() - we're mocking everything below
-
-        let requestedModels: string[] = [];
-
-        // Mock GenAI factory (inject before initialize)
-        (service as any).genAI = {
-            getGenerativeModel: (opts: { model: string }) => {
-                requestedModels.push(opts.model);
-                return {
-                    generateContent: async () => {
-                        if (opts.model === 'gemini-3-flash-preview') {
-                            throw new Error('404 Model Not Found');
-                        }
-                        return {
-                            response: {
-                                text: () => "```c4x\n%%{ c4: container }%%\ngraph TB\nUser[User<br/>Person]\n```"
-                            }
-                        };
-                    }
-                };
-            }
-        };
-
-        // Inject initial model (simulates user selecting gemini-3-flash-preview)
-        (service as any).model = (service as any).genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-
-        const result = await service.generateDiagram([], 'test fallback');
-
-        assert.ok(result.includes('User'), 'Should return result from fallback');
-        assert.deepStrictEqual(requestedModels, ['gemini-3-flash-preview', 'gemini-3.1-pro-preview'], 'Should fallback to gemini-3.1-pro-preview');
-    });
+    // DELETED: 'Should fallback to gemini-3.1-pro-preview if user model fails'
+    // Reason: This test assumed generateWithFallback reads the model name from the injected
+    // model instance, but after the WS-5 refactoring, FallbackStrategy.generateWithFallback()
+    // reads the primary model name from vscode.workspace.getConfiguration('c4x.ai').
+    // The duplicate in GeminiService.test.ts was also removed. To properly test fallback,
+    // the VS Code configuration would need to be set programmatically, which requires a
+    // different test architecture. Quarantined in test/quarantine/fallback-strategy.test.ts.
 });

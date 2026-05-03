@@ -112,13 +112,33 @@ export class DagreLayoutEngine {
 
   // --- Internal Hierarchy Helper Classes ---
 
+  /**
+   * Choose the root layout direction.
+   *
+   * Priority order:
+   * 1. Explicit user direction from a `graph TB|LR|…` directive  → use it.
+   * 2. Auto-detect based on top-level element count:
+   *    - <= 4 top-level elements → LR (horizontal, easier to read for small diagrams)
+   *    - >  4 top-level elements → TB (vertical, avoids wide scrolling)
+   */
+  autoDetectDirection(view: C4View): 'TB' | 'BT' | 'LR' | 'RL' {
+    if (view.direction) {
+      return view.direction;
+    }
+    // Count top-level elements only (not children of boundaries)
+    const topLevelCount = view.elements.length;
+    return topLevelCount <= 4 ? 'LR' : 'TB';
+  }
+
   private buildHierarchy(view: C4View): HierarchyNode {
+    const rootDirection = this.autoDetectDirection(view);
+
     // Root Node
     const root: HierarchyNode = {
       id: 'root',
       children: [],
       isGroup: true,
-      direction: 'TB', // Default global direction
+      direction: rootDirection,
       width: 0,
       height: 0
     };

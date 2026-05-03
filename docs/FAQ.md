@@ -1,7 +1,7 @@
 # Frequently Asked Questions (FAQ)
 
 **Version**: 1.3.0
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-05-02
 
 This document answers common questions about the C4X extension.
 
@@ -104,116 +104,158 @@ subgraph MySystem {
 
 A: Yes. Support for importing diagrams from Structurizr DSL and C4-PlantUML is on our roadmap. The goal is to provide a unified preview and editing experience for multiple C4 diagram dialects.
 
-### Q: When will the extension be available on the VS Code Marketplace?
+### Q: Where can I find the extension on the VS Code Marketplace?
 
-A: We are targeting a v1.0 release for the Marketplace. You can track our progress in the [STATUS.md](../../docs/STATUS.md) file.
+A: C4X is available on the [VS Code Marketplace](https://marketplace.visualstudio.com/). Search for "C4X" in VS Code's Extensions panel or install it directly from the Marketplace.
 
 ---
 
 ## AI & Gemini Integration
 
-> **See [GEMINI_FEATURE_GUIDE.md](../GEMINI_FEATURE_GUIDE.md)** for the complete User Guide and Best Practices.
+> **See [GEMINI.md](../GEMINI.md)** for the complete AI Model Configuration guide and DSL reference.
 
-### Q: Does the AI feature cost money?
-A: The feature itself is free, but it uses your own Google Gemini API Key. If you use a free tier key (e.g., AI Studio), it is free within limits. If you use Vertex AI or paid tiers, standard Google Cloud charges apply.
+### Q: How do I change the AI model?
 
-### Q: Is my code private when using AI?
-A: That depends on your key type:
-- **Enterprise / Vertex AI**: If you use a key from a standard Google Cloud Project (Vertex AI), your data is handled according to your organization's implementation of Google Cloud Platform terms (typically **NOT trained on**). We recommend this for professional work.
-- **Personal / AI Studio**: If you use a free key from Google AI Studio, Google may use your input for model training. **Do not use personal keys with private/sensitive company code.**
-
-### Q: Where do I get a key?
-A:
-- **Personal (Free)**: [Google AI Studio](https://aistudio.google.com/app/apikey)
-- **Enterprise**: Go to your Google Cloud Console > APIs & Services > Credentials, and create an API Key for your project with Vertex AI API enabled.
-
-### Q: Why do different diagram levels scan different depths?
-A: This is part of our **Smart Context Tuning** (updated v1.3.0):
-- **System Context (C1)**: Scans **1 level deep**. High-level overview of systems and actors — shallow scan prevents implementation noise.
-- **Container (C2)**: Scans **2 levels deep**. Medium depth to discover all services, apps, and databases in nested folders.
-- **Component (C3)**: Scans **3 levels deep**. Detailed structure requires deep scan to capture all classes, modules, and dependencies.
-
-The depth increases with the level of detail needed — higher abstraction = shallower scan, lower abstraction = deeper scan.
-
-### Q: How does the AI decide which diagram type to recommend?
-A: When you use "Diagram from Selection", Gemini performs a lightweight analysis of your text before showing the menu:
-- If it sees **External Systems** or high-level actors, it suggests **System Context (C1)**.
-- If it sees **Classes, Code, or Functions**, it suggests **Component (C3)**.
-The recommended option appears at the top with a ⭐ star.
-
-### Q: Why does my diagram sometimes generate Horizontally (LR) and sometimes Vertically (TB)?
-A: This is our **Smart Layout Engine** (v1.1.3+) optimizing for your screen size:
-- **Small Diagrams (≤ 4 Nodes)**: Defaults to **Horizontal (Left-Right)** to save vertical space.
-- **Large Diagrams (> 4 Nodes)**: Defaults to **Vertical (Top-Bottom)** to avoid endless horizontal scrolling.
-- **Input Matching**: If your selected text looks like a horizontal flow (`A -> B -> C`), the AI tries to match that direction.
-
-### Q: Which AI models does C4X use?
-A: C4X defaults to `gemini-3.1-pro-preview` (v1.3.0+). You can use **any Gemini model** your API key supports by entering the model ID in settings:
+A: Open **Settings** (Ctrl/Cmd + ,), search for `c4x.ai.model`, and enter any Gemini model ID your API key supports. This is a free-text field -- you can type any valid model ID.
 
 ```json
-"c4x.ai.model": "gemini-3.1-pro-preview"
+{
+  "c4x.ai.model": "gemini-3.1-pro-preview"
+}
 ```
 
-**Recommended models** (March 2026):
-- `gemini-3.1-pro-preview` — Best reasoning, 1M context (default)
-- `gemini-3-flash-preview` — Fast, free tier available
-- `gemini-2.5-pro` — Stable (sunset June 2026)
+The default is `gemini-3.1-pro-preview`.
 
-**Smart fallback**: If your model fails, C4X automatically tries `gemini-3.1-pro-preview`.
+### Q: Which models are supported?
+
+A: C4X works with any Gemini model your API key supports. Here are the recommended options:
+
+| Model | Status | Best For |
+|-------|--------|----------|
+| `gemini-3.1-pro-preview` | **Default** | Best reasoning, 1M context ($2/$12 per 1M tokens) |
+| `gemini-3-flash-preview` | Supported | Fast responses, free tier available (rate-limited) |
+| `gemini-2.5-pro` | Sunset 2026-06-17 | Legacy -- migrate before sunset |
+| `gemini-2.5-flash` | Sunset 2026-06-17 | Legacy -- migrate before sunset |
+
+**Removed models** (no longer available):
+- `gemini-3-pro-preview` -- sunset 2026-03-09
 
 See [Google AI Models](https://ai.google.dev/gemini-api/docs/models) for all available model IDs.
 
-### Q: Can I use Claude or OpenAI models?
-A: Not currently. C4X uses the Google Generative AI SDK which only supports Gemini models. Multi-provider support (Claude, OpenAI) is on the v2.0 roadmap. For now, any valid Gemini model ID will work.
+### Q: What happens if my model is sunset?
 
-### Q: Does the AI validate its own output?
-A: Yes! C4X implements **Self-Validation with Auto-Correction**:
-1. All generated diagrams are parsed using the C4X syntax validator.
-2. If syntax errors are detected, the error message is fed back to the model.
-3. The model attempts to self-correct (up to 3 retries).
-4. If validation still fails, a clear error message guides you to check model settings.
+A: C4X has **smart fallback** built in. If your configured model fails for any reason (sunset, quota, network error), C4X automatically tries backup models:
 
-This ensures you always receive syntactically valid C4X diagrams.
+1. Your configured model (with up to 3 self-correction retries)
+2. `gemini-3.1-pro-preview` (if your model was different)
+3. `gemini-3-flash-preview` (if you were already on `gemini-3.1-pro-preview`)
 
-### Q: What is Visual Diagram Generation (Preview)?
-A: This feature (v1.2.0+, updated v1.3.0) uses **Nano Banana 2** (`gemini-3.1-flash-image-preview`) by default to generate **PNG images** of C4 diagrams directly from text descriptions, without writing any DSL code.
+This happens transparently -- you will see a brief "Trying fallback..." message. If all models fail, you will get a clear error with guidance.
 
-You can customize the image model in settings:
+To avoid fallback delays, update your model setting before a sunset date.
+
+### Q: How do I change the image generation model?
+
+A: Open **Settings**, search for `c4x.ai.imageModel`, and enter an image-capable Gemini model ID.
+
 ```json
 {
-  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview"  // Default: Nano Banana 2
+  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview"
 }
 ```
 
 **Available image models:**
-- `gemini-3.1-flash-image-preview` — Nano Banana 2 (4K, fast, cost-effective) ⚡
-- `gemini-3-pro-image-preview` — Nano Banana Pro (highest quality)
+| Model | Notes |
+|-------|-------|
+| `gemini-3.1-flash-image-preview` | **Default** -- Nano Banana 2 (fast, 4K output) |
+| `gemini-3-pro-image-preview` | Nano Banana Pro (highest quality, opt-in) |
+
+### Q: Do I need a paid Gemini API key?
+
+A: No. The `gemini-3-flash-preview` model is available on the free tier, though it is rate-limited. For heavier usage or access to `gemini-3.1-pro-preview`, a paid key removes rate limits and provides better throughput.
+
+- **Free key**: Go to [Google AI Studio](https://aistudio.google.com/apikey) and create one in seconds.
+- **Enterprise key**: Use your Google Cloud Console > APIs & Services > Credentials, with the Generative Language API enabled.
+
+### Q: Does the AI feature cost money?
+A: The C4X extension itself is free. AI features use your own Google Gemini API key. Free-tier keys (from AI Studio) work within rate limits. Paid keys (Vertex AI or paid AI Studio tiers) incur standard Google Cloud charges. `gemini-3.1-pro-preview` costs approximately $2 per 1M input tokens and $12 per 1M output tokens.
+
+### Q: Is my code private when using AI?
+A: That depends on your key type:
+- **Enterprise / Vertex AI**: Your data is handled according to your organization's Google Cloud Platform terms (typically **not** used for model training). Recommended for professional work.
+- **Personal / AI Studio**: Google may use your input for model training depending on current terms. **Do not use personal keys with private/sensitive company code.**
+
+### Q: My diagram generation is failing. What should I check?
+
+A: Work through these steps:
+
+1. **Check your API key**: Open Settings, search for `c4x.ai.apiKey`, and verify it is set correctly. You can test your key at [Google AI Studio](https://aistudio.google.com/).
+2. **Check your model**: Ensure `c4x.ai.model` is set to a valid, non-sunset model. Try `gemini-3.1-pro-preview` (the default).
+3. **Check your network**: AI features require an internet connection. Verify you can reach `generativelanguage.googleapis.com`.
+4. **Check rate limits**: Free-tier keys have request limits. If you see 429 errors, wait a minute or upgrade your key.
+5. **Check the Output panel**: Open VS Code's Output panel (View > Output) and select "C4X" from the dropdown for detailed error messages.
+
+### Q: Can I use Claude or OpenAI models?
+A: Not currently. C4X uses the Google Generative AI SDK, which only supports Gemini models. Multi-provider support is on the roadmap. For now, any valid Gemini model ID will work.
+
+### Q: Why do different diagram levels scan different depths?
+A: This is part of **Smart Context Tuning** (v1.3.0):
+- **System Context (C1)**: Scans **1 level deep**. High-level overview -- shallow scan prevents implementation noise.
+- **Container (C2)**: Scans **2 levels deep**. Medium depth to discover services, apps, and databases.
+- **Component (C3)**: Scans **3 levels deep**. Detailed structure requires deep scan for classes, modules, and dependencies.
+
+Higher abstraction = shallower scan, lower abstraction = deeper scan.
+
+### Q: How does the AI decide which diagram type to recommend?
+A: When you use "Diagram from Selection", Gemini analyzes your text before showing the menu:
+- **External Systems** or high-level actors -> suggests **System Context (C1)**.
+- **Classes, Code, or Functions** -> suggests **Component (C3)**.
+
+The recommended option appears at the top with a star.
+
+### Q: Why does my diagram sometimes generate Horizontally (LR) and sometimes Vertically (TB)?
+A: The **Smart Layout Engine** (v1.1.3+) optimizes for readability:
+- **Small Diagrams (4 nodes or fewer)**: Defaults to **Horizontal (Left-Right)** to save vertical space.
+- **Large Diagrams (5+ nodes)**: Defaults to **Vertical (Top-Bottom)** to avoid horizontal scrolling.
+- **Input Matching**: If your text looks like a horizontal flow (`A -> B -> C`), the AI matches that direction.
+
+### Q: Does the AI validate its own output?
+A: Yes. C4X implements **Self-Validation with Auto-Correction**:
+1. Generated diagrams are parsed using the C4X syntax validator.
+2. If syntax errors are detected, the error message is fed back to the model.
+3. The model attempts to self-correct (up to 3 retries).
+4. If validation still fails, a clear error message guides you to check model settings.
+
+### Q: What is Visual Diagram Generation?
+A: This feature (v1.2.0+, updated v1.3.0) uses Gemini image models to generate **PNG images** of C4 diagrams directly from text descriptions, without writing any DSL code.
+
+The default image model is `gemini-3.1-flash-image-preview` (Nano Banana 2). You can switch to `gemini-3-pro-image-preview` (Nano Banana Pro) for higher quality output via the `c4x.ai.imageModel` setting.
 
 **How it differs from C4X-DSL:**
 
-| C4X-DSL (Default) | Visual Generation (Preview) |
-|-------------------|----------------------------|
+| C4X-DSL (Default) | Visual Generation |
+|-------------------|-------------------|
 | Outputs SVG via parser | Outputs PNG via AI |
 | Deterministic | Slight variations between runs |
 | Requires DSL syntax | Natural language input |
 | Works offline | Requires API + network |
 | Editable code | Non-editable image |
 
-**[📘 Read the Full Visual Diagram Guide](./DIAGRAM-WITH-GEMINI-IMAGE.md)**
+See the [Visual Diagram Guide](./DIAGRAM-WITH-GEMINI-IMAGE.md) for details.
 
 ### Q: How do I use Visual Diagram Generation?
 A:
-1. Select text describing your architecture in a markdown file
-2. Right-click → "C4X: Preview - Visual Diagram (Gemini)"
-3. The AI generates a PNG and embeds it in your markdown
+1. Select text describing your architecture in a markdown file.
+2. Right-click and choose "C4X: Preview - Visual Diagram (Gemini)".
+3. The AI generates a PNG and embeds it in your markdown.
 
 The AI automatically detects the C4 level (C1/C2/C3) from your context.
 
 ### Q: Why is my visual diagram Vertical instead of Horizontal?
 A: C4X v1.2.8+ uses a **Smart Layout Algorithm**:
-- **≤ 4 Entities**: Defaults to **Horizontal (Left-Right)** to emphasize flow.
-- **≥ 5 Entities**: Defaults to **Vertical (Top-Bottom)** to manage density.
-- **Linear Flows**: If your text describes a sequence (e.g. "A -> B -> C"), it strictly follows that direction.
+- **4 entities or fewer**: Defaults to **Horizontal (Left-Right)** to emphasize flow.
+- **5+ entities**: Defaults to **Vertical (Top-Bottom)** to manage density.
+- **Linear Flows**: If your text describes a sequence (e.g. "A -> B -> C"), it follows that direction.
 
 ## Troubleshooting
 

@@ -80,7 +80,7 @@ Start
           }
         }
       }
-      return { viewType, elements, relationships, boundaries, classDefinitions };
+      return { viewType, direction, elements, relationships, boundaries, classDefinitions };
     }
 
 Directive

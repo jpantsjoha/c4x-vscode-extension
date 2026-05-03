@@ -28,6 +28,8 @@ graph TB
     App --> DB2
 ```
 
+![C2 Diagram](./c4x-visual-c2-1772631469330.png)
+
 ````
 ### Result (Simulated)
 ### Result

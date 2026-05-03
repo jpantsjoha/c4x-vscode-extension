@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "publisher": "jpantsjoha",
   "author": {
     "name": "Jaroslav Pantsjoha",
@@ -71,7 +71,7 @@
       },
       {
         "command": "c4x.exportPng",
-        "title": "C4X: Export PNG",
+        "title": "C4X: Export Diagram as PNG",
         "category": "C4X"
       },
       {
@@ -115,6 +115,21 @@
       ],
       "editor/context": [
         {
+          "command": "c4x.exportPng",
+          "group": "c4x_export",
+          "when": "resourceLangId == c4x"
+        },
+        {
+          "command": "c4x.exportSvg",
+          "group": "c4x_export",
+          "when": "resourceLangId == c4x"
+        },
+        {
+          "command": "c4x.copySvg",
+          "group": "c4x_export",
+          "when": "resourceLangId == c4x"
+        },
+        {
           "command": "c4x.ai.generateFromMarkdown",
           "group": "c4x_ai",
           "when": "resourceLangId == markdown"
@@ -135,6 +150,16 @@
           "when": "resourceLangId == markdown",
           "command": "c4x.exportPdf",
           "group": "3_export@1"
+        },
+        {
+          "when": "resourceLangId == c4x",
+          "command": "c4x.exportPng",
+          "group": "3_export@2"
+        },
+        {
+          "when": "resourceLangId == c4x",
+          "command": "c4x.exportSvg",
+          "group": "3_export@3"
         }
       ]
     },
@@ -189,12 +214,14 @@
         "c4x.ai.apiKey": {
           "type": "string",
           "default": "",
-          "description": "Google Gemini API Key for AI generation features. \n\n⚠️ **SECURITY NOTICE**: \n- If using a **Personal/Retail Key**: Your code snippets may be used by Google for model training depending on terms. Use with caution for private code.\n- If using an **Enterprise/Vertex AI Key**: Data handling adheres to your organization's policies (usually private). \n\nEnsure you understand your API key's privacy terms before reducing."
+          "markdownDeprecationMessage": "**Deprecated**: API keys are now stored in VS Code's encrypted SecretStorage. Any key found here will be auto-migrated and this setting cleared.",
+          "deprecationMessage": "Deprecated: API keys are now stored securely. This setting will be auto-migrated and cleared.",
+          "description": "DEPRECATED: API keys are now stored in VS Code's encrypted SecretStorage. Any value here will be automatically migrated to secure storage and this setting cleared on next activation.\n\nTo enter a new key, use the 'Enter Key' prompt when running any C4X AI command."
         },
         "c4x.ai.model": {
           "type": "string",
-          "default": "gemini-3.1-pro-preview",
-          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nRecommended models (March 2026):\n- gemini-3.1-pro-preview — Best reasoning, 1M context\n- gemini-3-flash-preview — Fast, free tier available\n- gemini-2.5-pro — Stable (sunset June 2026)\n- gemini-2.5-flash — Cost-effective (sunset June 2026)\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
+          "default": "gemini-3-flash-preview",
+          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nRecommended models (May 2026):\n- gemini-3-flash-preview — Fast, free tier (default)\n- gemini-3.1-pro-preview — Best reasoning, 1M context (failover)\n- gemini-3.1-flash-lite-preview — Budget option, frontier performance\n- gemini-2.5-pro — Stable (sunset June 2026)\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
         },
         "c4x.ai.imageModel": {
           "type": "string",
@@ -236,49 +263,52 @@
     "vscode:prepublish": "pnpm run build",
     "build": "node esbuild.config.js",
     "watch": "node esbuild.config.js --watch",
-    "lint": "eslint src --ext ts",
+    "lint": "eslint src",
     "lint:md": "markdownlint *.md **/*.md --ignore node_modules --ignore out",
-    "generate:parser": "pegjs --format commonjs --output src/parser/c4x.generated.js src/parser/c4x.pegjs",
+    "generate:parser": "peggy --format commonjs --output src/parser/c4x.generated.js src/parser/c4x.pegjs",
     "validate:docs": "npm run lint:md && npx ts-node scripts/validate-c4x-examples.ts",
     "test:compile": "tsc -p ./",
     "pretest": "pnpm run test:compile && pnpm run build",
     "test": "node ./out/test/runTest.js",
-    "test:unit": "echo \"(stub) No unit tests defined yet\"",
+    "test:unit": "TS_NODE_PROJECT=tsconfig.unit.json mocha --config .mocharc.unit.yml",
+    "test:snapshot": "TS_NODE_PROJECT=tsconfig.unit.json mocha --config .mocharc.unit.yml --grep 'Diagram Snapshot|Diagram Geometric'",
+    "test:snapshot:update": "UPDATE_SNAPSHOTS=1 TS_NODE_PROJECT=tsconfig.unit.json mocha --config .mocharc.unit.yml --grep 'Diagram Snapshot'",
     "test:integration": "echo \"(stub) No integration tests defined yet\"",
     "test:e2e": "echo \"(stub) No end-to-end tests defined yet\"",
-    "coverage": "echo \"(stub) Coverage not configured yet\"",
+    "coverage": "TS_NODE_PROJECT=tsconfig.unit.json c8 --reporter=text --reporter=lcov --src=src mocha --config .mocharc.unit.yml",
     "bench": "echo \"(stub) Performance benchmarks not set up yet\"",
     "package": "vsce package --no-dependencies",
     "publish": "vsce publish"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@playwright/test": "^1.57.0",
+    "@types/dagre": "^0.7.53",
     "@types/glob": "^9.0.0",
+    "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.80.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
     "@vscode/test-electron": "^2.3.0",
     "@vscode/vsce": "^2.22.0",
+    "c8": "^11.0.0",
+    "elkjs": "^0.11.0",
     "esbuild": "^0.19.0",
-    "eslint": "^8.0.0",
+    "eslint": "^9.39.4",
     "eslint-plugin-security": "^3.0.1",
     "glob": "^11.0.3",
     "markdownlint-cli": "^0.46.0",
     "mocha": "^10.2.0",
-    "pegjs": "^0.10.0",
+    "peggy": "^5.1.0",
     "playwright": "^1.56.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.59.1"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.13.0",
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "@types/dagre": "^0.7.53",
-    "@types/markdown-it": "^14.1.2",
+    "@google/generative-ai": "^0.24.1",
     "dagre": "^0.8.5",
-    "elkjs": "^0.11.0",
     "markdown-it": "^14.1.0"
   }
 }

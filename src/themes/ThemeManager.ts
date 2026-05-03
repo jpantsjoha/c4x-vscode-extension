@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { C4Theme, ThemeName } from './Theme';
+import { C4StandardTheme } from './C4StandardTheme';
 import { ClassicTheme } from './ClassicTheme';
 import { ModernTheme } from './ModernTheme';
 import { MutedTheme } from './MutedTheme';
@@ -15,6 +16,7 @@ import { getAutoTheme } from './AutoTheme';
  * Registry of all available themes
  */
 const THEME_REGISTRY: Map<ThemeName, C4Theme> = new Map([
+    ['c4-standard', C4StandardTheme],
     ['classic', ClassicTheme],
     ['modern', ModernTheme],
     ['muted', MutedTheme],
@@ -32,9 +34,9 @@ export class ThemeManager {
     private currentTheme: C4Theme;
 
     private constructor() {
-        // Load theme from workspace settings or default to Classic
+        // Load theme from workspace settings or default to C4 Standard
         const savedThemeName = this.getPersistedTheme();
-        this.currentTheme = this.getThemeByName(savedThemeName) ?? ClassicTheme;
+        this.currentTheme = this.getThemeByName(savedThemeName) ?? C4StandardTheme;
     }
 
     /**
@@ -52,6 +54,7 @@ export class ThemeManager {
      */
     public static getAllThemes(): C4Theme[] {
         return [
+            C4StandardTheme,
             ClassicTheme,
             ModernTheme,
             MutedTheme,
@@ -111,10 +114,10 @@ export class ThemeManager {
 
         // Safety check for tests or environments where vscode.workspace is not available
         if (!vscode.workspace) {
-            return 'classic';
+            return 'c4-standard';
         }
         const config = vscode.workspace.getConfiguration();
-        return config.get<ThemeName>(CONFIG_KEY, 'classic');
+        return config.get<ThemeName>(CONFIG_KEY, 'c4-standard');
     }
 
     /**

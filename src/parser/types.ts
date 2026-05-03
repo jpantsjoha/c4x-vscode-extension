@@ -56,6 +56,9 @@ export interface RawBoundary {
 
 export interface ParseResult {
     viewType: C4ViewType;
+    direction: 'TB' | 'BT' | 'LR' | 'RL';
+    /** True when the user wrote an explicit `graph TB|LR|…` directive */
+    hasExplicitDirection: boolean;
     elements: RawElement[];
     relationships: RawRelationship[];
     boundaries?: RawBoundary[];

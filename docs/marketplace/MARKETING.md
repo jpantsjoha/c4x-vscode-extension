@@ -562,7 +562,7 @@ Rel(customer, banking, "Uses")
 ### Suggested Title
 **C4X Extension: AI-Powered Architecture Diagrams in VS Code (Powered by Gemini)**
 
-*(For public discoverability, we recommend using "Gemini" or "Google AI".)*
+*(Note: "Google Antigravity" is the internal codename. For public discoverability, we recommend using "Gemini" or "Google AI".)*
 
 ### Description (YouTube Safe)
 

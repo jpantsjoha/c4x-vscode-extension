@@ -31,40 +31,14 @@ describe('GeminiService Integration Test', () => {
         geminiService = new GeminiService(mockContext);
     });
 
-    it.skip('Should fallback to gemini-3.1-pro-preview if user model fails', async () => {
-        const calls: any[] = [];
-
-        // Mock getGenerativeModel
-        (geminiService as any).genAI = {
-            getGenerativeModel: (options: { model: string }) => {
-                calls.push(options);
-                return {
-                    generateContent: async () => {
-                        if (options.model === 'gemini-3-flash-preview') {
-                            throw new Error('404 Model Not Found');
-                        }
-                        return { response: { text: () => 'Fallback Result' } };
-                    }
-                };
-            }
-        };
-
-        // Simulates user selecting gemini-3-flash-preview
-        (geminiService as any).model = (geminiService as any).genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-
-        const prompt = "test prompt";
-        const result = await (geminiService as any).generateWithFallback(prompt);
-
-        assert.strictEqual(result, 'Fallback Result');
-
-        // Verify smart fallback elevates to gemini-3.1-pro-preview
-        assert.strictEqual(calls.length, 2, 'Should have called getGenerativeModel twice');
-        assert.strictEqual(calls[0].model, 'gemini-3-flash-preview', 'First call should be user model');
-        assert.strictEqual(calls[1].model, 'gemini-3.1-pro-preview', 'Second call should be smart fallback');
-    });
+    // DELETED: 'Should fallback to gemini-3.1-pro-preview if user model fails'
+    // Reason: generateWithFallback was refactored from a GeminiService method to a standalone
+    // function in FallbackStrategy.ts. The fallback logic is now quarantined in
+    // test/quarantine/fallback-strategy.test.ts until it can be properly tested with
+    // the refactored architecture. See DEBT-011.
 
     it('Should rigorously validate C1, C2, and C3 diagram syntax', async function () {
-        // Skip test in CI environments where no API key is present
+        // @skip-reason: Integration test requires GEMINI_API_KEY env var or c4x.ai.apiKey setting
         if (!process.env.GEMINI_API_KEY && !vscode.workspace.getConfiguration('c4x.ai').get<string>('apiKey')) {
             console.warn('⚠️ Skipping Gemini Integration Test: No API Key found.');
             this.skip();

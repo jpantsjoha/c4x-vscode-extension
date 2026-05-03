@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { GeminiService } from '../ai/GeminiService';
 import { CodeContextExtractor } from '../ai/CodeContextExtractor';
+import { ensureApiKey } from '../ai/AuthService';
 
 export class GenerateDiagramCommand {
     private geminiService: GeminiService;
@@ -28,8 +29,10 @@ export class GenerateDiagramCommand {
         // Check if verified
         const isReady = await this.geminiService.checkReady();
         if (!isReady) {
-            const authed = await this.handleAuthFlow();
-            if (!authed) { return; }
+            const key = await ensureApiKey(this.context);
+            if (!key) { return; }
+            await this.geminiService.saveKey(key);
+            vscode.window.showInformationMessage('Gemini connected successfully!');
         }
 
         let selectionText: string | undefined;
@@ -180,40 +183,5 @@ export class GenerateDiagramCommand {
         }
 
         return { text: selection.instruction, depth: selection.depth };
-    }
-
-    private async handleAuthFlow(): Promise<boolean> {
-        const choice = await vscode.window.showWarningMessage(
-            'Gemini API Key is missing. Connect to Google Gemini to proceed.',
-            'Get Free Key',
-            'Enter Key'
-        );
-
-        if (choice === 'Get Free Key') {
-            vscode.env.openExternal(vscode.Uri.parse('https://aistudio.google.com/app/apikey'));
-            // Don't return yet, let them loop or click Enter Key next time? 
-            // Better UX: Show InputBox immediately after opening browser?
-            return await this.promptForKey();
-        } else if (choice === 'Enter Key') {
-            return await this.promptForKey();
-        }
-
-        return false;
-    }
-
-    private async promptForKey(): Promise<boolean> {
-        const key = await vscode.window.showInputBox({
-            placeHolder: 'Paste your Google Gemini API Key here (starts with AIza...)',
-            prompt: 'Enter API Key to enable C4X AI Architect',
-            password: true,
-            ignoreFocusOut: true
-        });
-
-        if (key && key.trim().length > 0) {
-            await this.geminiService.saveKey(key.trim());
-            vscode.window.showInformationMessage('Gemini connected successfully!');
-            return true;
-        }
-        return false;
     }
 }

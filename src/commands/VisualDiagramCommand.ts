@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { GeminiService } from '../ai/GeminiService';
+import { ensureApiKey } from '../ai/AuthService';
 
 /**
  * Command to generate visual C4 diagrams as PNG images using Gemini Image model
@@ -21,8 +22,10 @@ export class VisualDiagramCommand {
         // Check if verified
         const isReady = await this.geminiService.checkReady();
         if (!isReady) {
-            const authed = await this.handleAuthFlow();
-            if (!authed) { return; }
+            const key = await ensureApiKey(this.context);
+            if (!key) { return; }
+            await this.geminiService.saveKey(key);
+            vscode.window.showInformationMessage('Gemini connected successfully!');
         }
 
         const selectionText = editor.document.getText(editor.selection);
@@ -112,38 +115,5 @@ export class VisualDiagramCommand {
                 console.error(error);
             }
         });
-    }
-
-    private async handleAuthFlow(): Promise<boolean> {
-        const choice = await vscode.window.showWarningMessage(
-            'Gemini API Key is missing. Connect to Google Gemini to proceed.',
-            'Get Free Key',
-            'Enter Key'
-        );
-
-        if (choice === 'Get Free Key') {
-            vscode.env.openExternal(vscode.Uri.parse('https://aistudio.google.com/app/apikey'));
-            return await this.promptForKey();
-        } else if (choice === 'Enter Key') {
-            return await this.promptForKey();
-        }
-
-        return false;
-    }
-
-    private async promptForKey(): Promise<boolean> {
-        const key = await vscode.window.showInputBox({
-            placeHolder: 'Paste your Google Gemini API Key here (starts with AIza...)',
-            prompt: 'Enter API Key to enable C4X AI Architect',
-            password: true,
-            ignoreFocusOut: true
-        });
-
-        if (key && key.trim().length > 0) {
-            await this.geminiService.saveKey(key.trim());
-            vscode.window.showInformationMessage('Gemini connected successfully!');
-            return true;
-        }
-        return false;
     }
 }

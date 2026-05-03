@@ -2,6 +2,40 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
+## [1.4.0] - 2026-05-03 — "Stability & Trust"
+
+### New Features
+- **Export Diagram as PNG**: Choose 1x, 2x, or 4x resolution. Canvas-based rendering — no Chromium dependency.
+- **Export SVG / Copy SVG / Change Theme**: These commands are now fully functional (previously stubs).
+- **Auto-layout direction**: 4 or fewer elements default to horizontal (LR); 5+ default to vertical (TB). Overridable per diagram.
+- **Runtime model validation**: Warns on unrecognized Gemini model IDs at activation.
+- **Sunset alerting**: Warns 30 days before a model's sunset date with migration guidance.
+- **Visual self-remediation**: Failed image generation automatically retries with a corrective prompt.
+- **C4 level-specific visual guidelines**: C1/C2/C3 produce visually distinct outputs with level-appropriate detail.
+- **C4 Standard theme**: New default theme using filled-box convention (Structurizr/C4-PlantUML).
+- **SVG renderer correctness**: Technology and description fields now render correctly. Database elements use cylinder shape. Boundary labels follow C4 top-left convention.
+
+### Bug Fixes
+- **Fixed Markdown preview glitch** — DiagnosticsManager was interfering with VS Code's internal virtual documents, causing preview corruption.
+- Fixed `initialize()` not awaited in retry path, causing intermittent failures.
+- Removed unused `acquireVsCodeApi()` call that could conflict with other extensions.
+- CSP hardened: replaced `unsafe-inline` with nonce-based style policy.
+- Per-document debounce in DiagnosticsManager (was single shared timer).
+
+### Quality
+- **398 unit tests** (parser 94%, model 98% coverage) with visual snapshot regression tests.
+- **GeminiService decomposed** from 767 to 293 LOC — extracted PromptBuilder, FallbackStrategy, SyntaxValidator.
+- **Default model changed** to `gemini-3-flash-preview` (free tier) with `gemini-3.1-pro-preview` failover.
+- **SvgBuilder decomposed** from 671 to 194 LOC — extracted ElementRenderer, BoundaryRenderer, EdgeRouter, LabelRenderer.
+- Layout improvements: Dagre centering, smooth bezier arrow curves, label backgrounds, larger arrowheads.
+- Dependency cleanup: removed Playwright and elkjs from production bundle.
+- ESLint 8 migrated to ESLint 9 flat config. API key migrated to SecretStorage.
+
+### Documentation
+- **24 new architecture pattern examples**: CQRS, event sourcing, saga, BFF, hexagonal, IoT, CI/CD, zero-trust, and more.
+- **All C4 view levels documented**: C1 through C4 + Dynamic diagrams with relationship type reference.
+- README streamlined from 628 to 255 lines. FAQ updated with model selection guidance.
+
 ## [1.3.0] - 2026-03-02
 
 ### 🧠 Gemini 3.1 Pro Migration (Breaking)
@@ -12,7 +46,6 @@ All notable changes to the "c4x" extension will be documented in this file.
 ### 🎛️ User-Configurable Model Selection
 - **Free-text model input**: The `c4x.ai.model` setting now accepts any Gemini model ID — no more restrictive dropdown.
 - **Future-proof**: New Google models can be used immediately without waiting for an extension update.
-- **ADR-015**: Documents the migration strategy and rationale.
 
 ### 🖼️ Nano Banana 2 Image Model (New)
 - **Default Image Model**: Visual PNG diagram generation now uses `gemini-3.1-flash-image-preview` (Nano Banana 2).
@@ -27,11 +60,6 @@ All notable changes to the "c4x" extension will be documented in this file.
   - **C3 (Component)**: 3 levels (was 1) — Deep scan for detailed class structure
 - **Rationale**: Higher abstraction = shallower scan; lower abstraction = deeper scan
 - **Impact**: "Generate Diagram Here" now captures appropriate context for each C4 level
-
-### 🤖 Agent Team Expansion
-- **GCP AI Architecture Agent**: Tracks Gemini model lifecycle, pricing, sunset dates, and architecture coherence.
-- **Delivery Manager Agent**: Manages sprint coordination, backlog priorities, roadmap updates, and feature shipping velocity.
-- **4 New Commands**: `/track-models`, `/audit-architecture`, `/delivery-status`, `/update-roadmap`.
 
 ### 🎨 Visual Customization (New)
 - **Visual Presets**: 5 built-in style presets for PNG diagrams: `default`, `dark`, `light`, `pastel`, `corporate`.
@@ -62,9 +90,9 @@ All notable changes to the "c4x" extension will be documented in this file.
 - **Default**: Falls back to `"Elegant, simple C4 model diagram against white background, logically organised and well spaced"`.
 - **Use Cases**: Customize colour schemes, backgrounds, styling, or add domain-specific context.
 
-### 🔒 Release Safety
-- **Improved release workflow**: Strict allowlisting excludes dev tooling and build artifacts from distribution.
-- **Post-release safety checks**: Automated verification ensures no unintended files are included.
+### 🔒 Sync Script Safety
+- **Hardened `publish-to-public.sh`**: Rewrote with strict allowlisting, excluding private dev tooling, ADRs, phase docs, agent configs, and build artifacts.
+- **Post-Sync Safety Check**: Script now auto-verifies no private files leaked and aborts if detected.
 
 ## [1.2.11] - 2025-12-21
 
@@ -151,9 +179,7 @@ All notable changes to the "c4x" extension will be documented in this file.
 - **[📘 Read the Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)**
 
 ### 📚 Documentation
-- **ADR 012**: Updated with new model strategy and rationale.
-- **ADR 013**: New - Visual diagram generation architecture decision.
-- **README/FAQ**: Added AI model configuration and visual generation sections.
+- Added AI model configuration and visual generation sections to README and FAQ.
 
 ## [1.1.9] - 2025-12-13
 ### 🔧 Reliability & Rendering
@@ -214,7 +240,6 @@ All notable changes to the "c4x" extension will be documented in this file.
 
 ### 🚀 New Features
 - **PlantUML Support**: Native rendering of standard PlantUML C4 syntax in markdown.
-- **PDF Export**: Browser-based print preview for high-fidelity PDF generation (`C4X: Export - Preview`).
 - **Marketing Example**: New multi-agent system example added to gallery.
 
 ### 📝 Documentation

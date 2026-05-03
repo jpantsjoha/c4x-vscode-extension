@@ -68,7 +68,7 @@ verify-docs:
 	@echo "📝 Verifying documentation..."
 	pnpm run validate:docs
 	@echo "🐍 Running strict C4X syntax check..."
-	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*")
+	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/_agents/*" -not -path "*/.claude/*")
 
 # Clean build artifacts
 clean:
@@ -83,6 +83,49 @@ package: build
 
 # Alias for package (create VSIX)
 vsix: package
+
+# Sync to public repo
+sync:
+	@if [ -z "$(DEST)" ]; then echo "Usage: make sync DEST=../path-to-public-repo"; exit 1; fi
+	@echo "🚀 Syncing to public repo: $(DEST)"
+	@./scripts/publish-to-public.sh "$(DEST)"
+
+# Pause iCloud sync (prevents ETIMEDOUT on node_modules file reads)
+icloud-pause:
+	@echo "⏸️  Pausing iCloud Drive sync processes..."
+	@killall bird 2>/dev/null && echo "  Stopped: bird" || echo "  bird not running"
+	@killall cloudd 2>/dev/null && echo "  Stopped: cloudd" || echo "  cloudd not running"
+	@echo "✅ iCloud paused. Processes will restart automatically or run 'make icloud-resume'"
+
+# Resume iCloud sync
+icloud-resume:
+	@echo "▶️  Resuming iCloud Drive sync..."
+	@killall -CONT bird 2>/dev/null || true
+	@launchctl kickstart -k gui/$$(id -u)/com.apple.bird 2>/dev/null || true
+	@launchctl kickstart -k gui/$$(id -u)/com.apple.cloudd 2>/dev/null || true
+	@echo "✅ iCloud resumed"
+
+# Package with iCloud paused (prevents ETIMEDOUT)
+package-safe: icloud-pause build
+	@echo "📦 Packaging VSIX (iCloud paused)..."
+	pnpm run package
+	@echo "✅ VSIX created. Resuming iCloud..."
+	@$(MAKE) icloud-resume
+
+# Package via /tmp to completely bypass iCloud filesystem (most reliable)
+# Uses include-only copy to avoid iCloud-dehydrated files causing mmap timeouts
+package-local:
+	@echo "📦 Copying to /tmp/c4x-build for packaging (bypasses iCloud)..."
+	@rm -rf /tmp/c4x-build && mkdir -p /tmp/c4x-build
+	@cp package.json pnpm-lock.yaml tsconfig.json esbuild.config.js .vscodeignore README.md CHANGELOG.md LICENSE /tmp/c4x-build/
+	@cp -R src syntaxes /tmp/c4x-build/
+	@mkdir -p /tmp/c4x-build/assets/marketplace && cp assets/marketplace/icon.png /tmp/c4x-build/assets/marketplace/
+	@test -d snippets && cp -R snippets /tmp/c4x-build/ || true
+	@cd /tmp/c4x-build && pnpm install --frozen-lockfile --prefer-offline 2>/dev/null && pnpm run package
+	@cp /tmp/c4x-build/c4x-*.vsix .
+	@rm -rf /tmp/c4x-build
+	@echo "✅ VSIX created: $$(ls c4x-*.vsix)"
+	@ls -lh c4x-*.vsix
 
 # Pre-commit checks (3m pattern: make, measure, monitor)
 pre-commit: lint verify-docs build test
@@ -111,10 +154,17 @@ help:
 	@echo "Publishing:"
 	@echo "  make package    - Create VSIX file for marketplace"
 	@echo "  make vsix       - Alias for 'make package'"
+	@echo "  make sync DEST=../public-repo - Sync to public repo"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean      - Remove build artifacts (dist, out, node_modules)"
 	@echo "  make pre-commit - Run all checks (lint + build + test)"
+	@echo ""
+	@echo "iCloud Drive:"
+	@echo "  make icloud-pause  - Kill bird/cloudd to prevent ETIMEDOUT on node_modules"
+	@echo "  make icloud-resume - Restart iCloud sync processes"
+	@echo "  make package-safe  - Pause iCloud, build VSIX, resume iCloud"
+	@echo "  make package-local - Copy to /tmp, build VSIX, copy back (most reliable)"
 	@echo ""
 	@echo "Quick Start:"
 	@echo "  1. make setup        (first time only)"

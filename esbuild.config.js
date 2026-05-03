@@ -1,20 +1,18 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const esbuild = require('esbuild');
-const pegjs = require('pegjs');
+const peggy = require('peggy');
 const fs = require('fs').promises;
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
 
 async function compilePeg() {
-    console.log('Compiling PEG.js grammar...');
+    console.log('Compiling Peggy grammar...');
     const grammar = await fs.readFile('src/parser/c4x.pegjs', 'utf8');
-    let parser = pegjs.generate(grammar, {
+    const parser = peggy.generate(grammar, {
         output: 'source',
         format: 'commonjs',
     });
-    // Fix PEG.js 0.10.0 bug: replace 'for (const i' with 'for (let i'
-    parser = parser.replace(/for \(const i = 0; i < /g, 'for (let i = 0; i < ');
     await fs.writeFile('src/parser/c4x.generated.js', parser);
 
     // Copy to out/ directory for tests (TypeScript doesn't copy .js files)
@@ -22,7 +20,7 @@ async function compilePeg() {
         await fs.mkdir('out/src/parser', { recursive: true });
         await fs.copyFile('src/parser/c4x.generated.js', 'out/src/parser/c4x.generated.js');
         await fs.copyFile('src/parser/c4x.generated.d.ts', 'out/src/parser/c4x.generated.d.ts');
-        console.log('PEG.js grammar compiled and copied to out/.');
+        console.log('Peggy grammar compiled and copied to out/.');
     } catch (err) {
         console.warn('Note: Could not copy to out/ (normal if out/ doesn\'t exist yet)');
     }
@@ -42,7 +40,7 @@ async function main() {
         sourcesContent: false,
         platform: 'node',
         outfile: 'dist/extension.js',
-        external: ['vscode', 'playwright-core', 'chromium-bidi/lib/cjs/bidiMapper/BidiMapper', 'chromium-bidi/lib/cjs/cdp/CdpConnection'],
+        external: ['vscode'],
         logLevel: 'info',
         treeShaking: true,
         metafile: true,

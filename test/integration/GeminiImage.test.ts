@@ -30,6 +30,7 @@ describe('Gemini Image Model Integration Test', function () {
         }
 
         if (!apiKey) {
+            // @skip-reason: Integration test requires GEMINI_API_KEY environment variable or .env file
             console.warn('⚠️ Skipping Gemini Image tests: No API Key found');
             skipTests = true;
             this.skip();
@@ -39,6 +40,7 @@ describe('Gemini Image Model Integration Test', function () {
         try {
             genAI = new GoogleGenerativeAI(apiKey);
         } catch (error) {
+            // @skip-reason: Integration test requires working GoogleGenerativeAI initialization
             console.warn('⚠️ Skipping Gemini Image tests: Failed to initialize GoogleGenerativeAI', error);
             skipTests = true;
             this.skip();
@@ -150,8 +152,6 @@ Create this as a high-quality diagram image.
         assert.ok(hasImage, 'Should generate container diagram image');
     });
 
-    it.skip('Should auto-detect C4 level from context', async function () {
-        // This test would verify the smart level detection
-        // Skipped for now as it requires more complex prompt engineering
-    });
+    // DELETED: 'Should auto-detect C4 level from context' -- empty stub, never implemented.
+    // Feature does not exist yet; will be added as a proper test when level detection is built.
 });

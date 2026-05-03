@@ -35,6 +35,8 @@ export interface C4Boundary {
 
 export interface C4View {
     type: C4ViewType;
+    /** User-specified layout direction, if any. Undefined means "auto-detect". */
+    direction?: 'TB' | 'BT' | 'LR' | 'RL';
     elements: C4Element[];
     relationships: C4Rel[];
     boundaries?: C4Boundary[];

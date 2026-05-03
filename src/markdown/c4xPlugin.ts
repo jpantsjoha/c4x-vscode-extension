@@ -81,7 +81,10 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
         const layout = dagreLayoutEngine.layoutSync(view);
 
         // 5. Render SVG
-        const svg = svgBuilder.build(layout);
+        const rawSvg = svgBuilder.build(layout);
+
+        // Strip XML declaration — not valid inside an HTML document
+        const svg = rawSvg.replace(/^\s*<\?xml[^?]*\?>\s*/, '');
 
         // Apply size overrides
         let style = '';

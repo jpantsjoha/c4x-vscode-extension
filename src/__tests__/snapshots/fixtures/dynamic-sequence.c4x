@@ -1,0 +1,11 @@
+%%{ c4: dynamic }%%
+graph TB
+    Customer[Customer<br/>Person]
+    WebApp[Web Application<br/>Software System]
+    API[API Server<br/>Software System]
+    DB[Database<br/>Software System]
+    Customer -->|Submits form| WebApp
+    WebApp -->|Forwards request to| API
+    API -->|Queries| DB
+    DB -.->|Returns results| API
+    API -.->|Returns response| WebApp

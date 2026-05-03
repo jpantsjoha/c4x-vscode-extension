@@ -4,13 +4,20 @@
 > **Can't see the diagrams?**
 > You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
 
-**Version**: 1.1.0
-**Last Updated**: 2025-12-01
+**Version**: 1.4.0
+**Last Updated**: 2026-05-03
 
-This document provides a comprehensive gallery of C4 diagrams created with C4X. These examples demonstrate the full capabilities of the extension, including the new visual style (white fill, colored borders, hollow/filled arrows), auto-scaling text, and support for complex architectures.
+This document provides a gallery of C4 diagrams created with C4X. These examples demonstrate the core capabilities of the extension, including filled-box C4 styling, auto-scaling text, and support for complex architectures.
 
 All examples use the `.c4x` DSL format unless otherwise noted.
-For PlantUML equivalents, see [Examples - PlantUML](./EXAMPLES-PLANTUML.md).
+
+**More examples**:
+- [All C4 View Levels](./EXAMPLES-VIEWS.md) -- C1 through C4 + Dynamic diagrams, relationship types, database variants
+- [Architecture Patterns](./EXAMPLES-PATTERNS.md) -- CQRS, event sourcing, saga, BFF, hexagonal, IoT, CI/CD, and more
+- [PlantUML Syntax](./EXAMPLES-PLANTUML.md) -- PlantUML C4 macro equivalents
+- [Layout Guide](./EXAMPLES-LAYOUT.md) -- Direction control, manual positioning, nested layouts
+- [Ordering Guide](./EXAMPLES-ORDERING.md) -- Controlling horizontal and vertical element placement
+- [Icons & AI](./EXAMPLES-with-ICONS.md) -- Cloud provider sprites, AI generation scenarios
 
 ---
 

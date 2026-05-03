@@ -1,0 +1,25 @@
+%%{ c4: component }%%
+graph TB
+    System_Boundary(api, "API Application") {
+        Component(SignIn, "Sign In Controller", "Spring MVC")
+        Component(Accounts, "Accounts Controller", "Spring MVC")
+        Component(Reset, "Reset Password Controller", "Spring MVC")
+        Component(Security, "Security Component", "Spring Bean")
+        Component(MainDB, "Main Database Facade", "Spring Bean")
+        Component(EmailComp, "E-mail Component", "Spring Bean")
+    }
+    Container(SPA, "Single-Page App", "JavaScript")
+    Container(DB, "Database", "PostgreSQL")
+    Container(MailSys, "E-Mail System", "Sendgrid")
+    Container_Ext(ExtAPI, "External API", "REST")
+    SPA -->|Makes API calls| SignIn
+    SPA -->|Makes API calls| Accounts
+    SPA -->|Makes API calls| Reset
+    SignIn -->|Uses| Security
+    Accounts -->|Uses| MainDB
+    Reset -->|Uses| Security
+    Reset -->|Uses| EmailComp
+    Security -->|Reads from| MainDB
+    MainDB -->|Reads from and writes to| DB
+    EmailComp -->|Sends emails using| MailSys
+    Security -->|Validates against| ExtAPI

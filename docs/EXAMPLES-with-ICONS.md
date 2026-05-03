@@ -4,9 +4,9 @@
 > **Can't see the diagrams?**
 > You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
 > **Navigation**:
-> [🏠 Back to README](../README.md) | [📚 Full Example Gallery](./EXAMPLES.md) | [📝 Syntax Guide](./c4x-syntax.md)
+> [Back to README](../README.md) | [Full Example Gallery](./EXAMPLES.md) | [Syntax Guide](./c4x-syntax.md)
 >
-> **Related**: [📐 Layout Guide](./EXAMPLES-LAYOUT.md) | [🔢 Ordering Guide](./EXAMPLES-ORDERING.md)
+> **Related**: [All C4 View Levels](./EXAMPLES-VIEWS.md) | [Architecture Patterns](./EXAMPLES-PATTERNS.md) | [Layout Guide](./EXAMPLES-LAYOUT.md) | [Ordering Guide](./EXAMPLES-ORDERING.md)
 
 This guide demonstrates how to use **Technology Icons** (`$sprite`) and **Generative AI** to build complex, professional cloud architectures.t the **Gemini AI generation**.
 

@@ -5,9 +5,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Claude Code
-.claude/
-CLAUDE.md
 
 # Build output
 dist/
@@ -20,8 +17,7 @@ test-output*
 # Build artifacts (packaged extensions)
 *.vsix
 
-# Agent configurations
-_agents/
+# Private agent configurations (Antigravity/Gemini)
 .gemini/
 local.gemini.md
 

@@ -41,4 +41,4 @@ export interface C4RelationshipColors {
     text: string;                 // Label text color
 }
 
-export type ThemeName = 'classic' | 'modern' | 'muted' | 'high-contrast' | 'auto';
+export type ThemeName = 'c4-standard' | 'classic' | 'modern' | 'muted' | 'high-contrast' | 'auto';
