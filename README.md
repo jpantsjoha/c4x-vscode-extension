@@ -8,6 +8,15 @@ Fast, offline C4 architecture diagrams with real-time preview and AI-powered gen
 
 <img src="assets/marketplace/images/c4x-system-context-v140.png" width="700" alt="C4X System Context Diagram" />
 
+### New in v1.4.0
+
+- **PNG export** -- Canvas-based at 1x/2x/4x resolution, no Chromium needed
+- **C4 Standard theme** -- Official filled-box convention as the new default
+- **Auto-layout** -- Smart direction: LR for small diagrams, TB for large
+- **24 architecture pattern examples** -- [CQRS, Saga, BFF, Hexagonal, IoT, CI/CD, Zero-Trust, and more](./docs/EXAMPLES-PATTERNS.md)
+- **All C4 view levels documented** -- [C1 through C4 + Dynamic diagrams](./docs/EXAMPLES-VIEWS.md)
+- **398 unit tests** with parser 94% and model 98% coverage
+
 ## Features
 
 - **Instant Preview** -- Sub-50ms rendering for 30-node diagrams, live as you type
