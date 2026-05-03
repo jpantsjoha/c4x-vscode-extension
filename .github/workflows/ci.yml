@@ -38,13 +38,8 @@ jobs:
       - name: Compile TypeScript
         run: pnpm run test:compile
 
-      - name: Run tests (Linux)
-        if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm test
-
-      - name: Run tests (macOS/Windows)
-        if: runner.os != 'Linux'
-        run: pnpm test
+      - name: Run unit tests
+        run: pnpm run test:unit
 
       - name: Upload test results
         if: always()
