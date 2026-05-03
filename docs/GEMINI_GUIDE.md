@@ -1,112 +1,157 @@
-# 🧠 C4X: Gemini-Powered Architecture Guide
+# C4X: Gemini AI Guide
 
-> **Your AI Pair Programmer for C4 Model Diagrams**
+> Your AI pair programmer for C4 architecture diagrams.
 
-The C4X extension integrates Google's **Gemini AI** to understand your code and visualize it. It is not just a drawing tool; it is an intelligent architect that parses your workspace to generate accurate C4 models.
-
-## 🚀 Getting Started
-
-### 1. Requirements
-*   **VS Code** (v1.80+)
-*   **Google Gemini API Key** (Free or Enterprise)
-
-### 2. Setting up your API Key
-You must provide an API key to enable AI features.
-1.  Open VS Code Command Palette (`Cmd/Ctrl + Shift + P`).
-2.  Type `C4X: Set Gemini API Key`.
-3.  Paste your key. It is stored securely in VS Code's **Secret Storage** (not on disk).
-
-> [!WARNING]
-> **Data Privacy**:
-> *   **Personal/Free Keys**: Google *may* use your input for model training. **Do NOT use with private/sensitive commercial code.**
-> *   **Enterprise/Vertex AI Keys**: Data handling adheres to your organization's Google Cloud agreement (typically zero retention). **Recommended for professional use.**
+C4X integrates Google Gemini to analyze your code and generate accurate C4 models. This guide covers setup, commands, AI behaviour, visual customization, and troubleshooting.
 
 ---
 
-## ⚡ Core Features
+## Setup
 
-### 1. Generate Diagram Here (Workspace Mode)
-**Best for**: "Visualize the architecture of this folder/file."
-*   **Action**: Right-click inside an open Markdown file -> `C4X: Generate Diagram Here (Gemini)`.
-*   **Workflow**:
-    1.  Click the command.
-    2.  **Select Diagram Type**:
-        *   `System Context (C1)`: Scans 1 level deep. High-level overview — best from root folders.
-        *   `Container (C2)`: Scans 2 levels deep. Find all services/apps — best from src/ or app root.
-        *   `Component (C3)`: Scans 3 levels deep. Detailed structure — best from specific module folders.
-    3.  The AI analyzes the file's location and neighbor files to generate the diagram.
+### 1. Get an API Key
 
-### 2. Diagram from Selection (Sketch Mode)
-**Best for**: "Turn this specific text into a diagram."
-*   **Action**: Select text in any editor -> Right Click -> `C4X: Diagram from Selection`.
-*   **Use Cases**:
-    *   Highlighting a list of requirements or user stories.
-    *   Selecting a block of pseudo-code or legacy documentation.
-    *   Visualizing a manually written "flow" (`A -> B -> C`).
+- **Personal / Free**: Get a key from [Google AI Studio](https://aistudio.google.com/). Data may be used for model training -- do not use with sensitive code.
+- **Enterprise**: Create a key in [Google Cloud Console](https://cloud.google.com/) (Vertex AI). Compliant with your GCP data privacy terms.
 
----
+### 2. Configure the Key
 
-## ⚠️ Caveats & "Gotchas"
+Run `C4X: Set Gemini API Key` from the Command Palette (`Cmd+Shift+P`). The key is stored in VS Code's encrypted **SecretStorage** (not on disk). Legacy plaintext settings keys are auto-migrated.
 
-### 1. Context Awareness & "Leaf Node" Issue
-The AI is not omniscient. It only "sees" relative to where you run it.
-*   **The Issue**: If you are in a deep sub-folder (e.g., `src/utils/helpers`) and ask for a **System Context (C1)**, the AI cannot see "up" to your database or external users. It will essentially be "blind" to the system architecture.
-    *   *Result*: It might generate a generic/hallucinated system or fail.
-*   **The Fix**: Always run high-level diagrams (C1/C2) from the **Root** of your workspace or the main entry point of your application.
+### 3. Choose a Model
 
-### 2. Scanning Depth & Location Strategy
-The "Generate Diagram Here" command scans **relative to the file you are editing**. This makes the **location** of your Markdown file critical.
+C4X defaults to `gemini-3-flash-preview` (free tier) with automatic fallback to `gemini-3.1-pro-preview`.
 
-#### How Scanning Works (Updated v1.3.0)
-*   **System Context (C1)**: Scans **1 level deep** from current folder.
-    *   *Requirement*: Must be run from the **Root** or `docs/` folder.
-    *   *Why*: High-level overview — shallow scan prevents implementation noise while capturing major systems.
-*   **Container (C2)**: Scans **2 levels deep**.
-    *   *Requirement*: Best run from `src/` or App Root.
-    *   *Why*: Medium depth discovers services/apps in nested folders (e.g., `src/services/payment/`).
-*   **Component (C3)**: Scans **3 levels deep**.
-    *   *Requirement*: Run inside the specific module (e.g., `src/auth/README.md`).
-    *   *Why*: Deep scan captures all classes, modules, and implementation details.
+```json
+{
+  "c4x.ai.model": "gemini-3-flash-preview"
+}
+```
 
-#### The "Reverse Order" Trap
-If you create a Markdown file deep in your project (e.g., `src/services/payment/README.md`) and ask for a **System Context (C1)**:
-1.  The AI looks for files *inside* `payment/`.
-2.  It cannot see "up" to the Database, UI, or other Services.
-3.  **Result**: It generates a "Micro-System" diagram of just the payment service, or fails to find any system boundaries.
+| Model | Use Case |
+|-------|----------|
+| `gemini-3-flash-preview` | **Default** -- fast, free tier |
+| `gemini-3.1-pro-preview` | Best reasoning, 1M context (automatic failover) |
+| Any valid Gemini model ID | Accepted immediately, no extension update needed |
 
-> **Rule of Thumb**:
-> *   **High-Level Diagrams (C1/C2)** -> Go in **Root** docs.
-> *   **Low-Level Diagrams (C3)** -> Go in **Module** docs.
+**Runtime validation**: C4X validates your model ID at activation and warns if unrecognised. If a model's sunset date is within 30 days, you'll see a migration notification.
 
-### 3. Depth Constraints
-*   **Scanning Limit**: To prevent token overflow...
-
-### 2. Strictly C4 Notation
-Gemini is instructed to be a **Strict C4 Architect**.
-*   It will **NOT** generate generic flowcharts, UML Class diagrams, or Sequence diagrams.
-*   It attempts to map everything to: `Person`, `Software System`, `Container`, or `Component`.
-*   *Caveat*: If you ask for a "Flowchart of this function", it will likely refuse or try to force it into a Component diagram.
-
-### 3. Hallucinations
-While we use advanced prompting (`GEMINI.md`) to ground the AI, it may occasionally:
-*   Invent relationships that don't exist (based on variable names).
-*   Misidentify a library as an external system.
-*   **Always verify the generated C4 DSL code manually.**
+**Smart fallback**: If your chosen model fails, C4X tries `gemini-3.1-pro-preview` (or `gemini-3-flash-preview` if already on 3.1-pro).
 
 ---
 
-## 🎨 Visual Diagram Customization (v1.3.0)
+## Commands
 
-### Overview
-C4X supports generating **presentation-ready PNG diagrams** using Gemini's image generation models. You have full control over the visual style, layout, and colors.
+### Generate Diagram Here (Workspace Mode)
 
-### Quick Start
-1. **Select text** describing your architecture (or use existing C4X code).
-2. **Right-click** → `C4X: Preview - Visual Diagram (PNG)`.
-3. The AI generates a PNG image and inserts it into your markdown.
+**Best for**: "Visualize the architecture of this codebase."
+
+1. Open a Markdown file in your project.
+2. Right-click -> `C4X: Generate Diagram Here (Gemini)`.
+3. Select the C4 level:
+
+| Level | Scan Depth | Best Location | What it captures |
+|-------|-----------|---------------|------------------|
+| **C1 System Context** | 1 level | Project root / `docs/` | High-level systems, external dependencies |
+| **C2 Container** | 2 levels | `src/` or app root | Services, databases, APIs |
+| **C3 Component** | 3 levels | Inside a specific module | Classes, modules, implementation details |
+
+The AI analyses the file's location and neighbouring files to generate valid C4X DSL, then inserts it at your cursor.
+
+**Self-correction**: All generated diagrams are parser-validated. If syntax errors are detected, the AI self-corrects and retries (up to 3 attempts).
+
+### Generate from Selection (Text/Sketch Mode)
+
+**Best for**: "Turn this text into a diagram."
+
+1. Select any text (requirements, ASCII art, notes, user stories).
+2. Right-click -> `C4X: Diagram from Selection` (or `Alt+V`).
+3. The AI generates a presentation-ready **PNG diagram**.
+
+**Multi-framework detection**: The AI auto-detects the best framework:
+- **C4 Model** -- structural architecture (systems, containers, components)
+- **Sequence** -- ordered interactions, API call flows
+- **Flowchart** -- decision logic, process steps, conditional branches
+
+Override with `[Framework: Sequence]` or `[Framework: Flowchart]` in your selection text.
+
+### Generate from Workspace
+
+**Best for**: "Analyse my entire codebase and create a C4 model."
+
+Run `C4X: Generate from Workspace` from the Command Palette. The AI scans workspace files (.ts, .java, .py, etc.) and generates a complete C4 model.
+
+---
+
+## C4X DSL: What the AI Generates
+
+The AI generates valid C4X DSL syntax. Understanding the syntax helps you verify and refine output.
+
+### View Types
+
+```text
+%%{ c4: system-context }%%      %% C1 -- high-level overview
+%%{ c4: container }%%           %% C2 -- building blocks
+%%{ c4: component }%%           %% C3 -- internal structure
+%%{ c4: deployment }%%          %% C4 -- infrastructure
+%%{ c4: dynamic }%%             %% Sequence/interaction flow
+```
+
+### Element Types
+
+```text
+Person(user, "End User")
+Container(api, "API Server", "Node.js")
+ContainerDb(db, "Database", "PostgreSQL")
+Component(auth, "Auth Module", "JWT")
+System_Ext(stripe, "Stripe", "Payment gateway")
+```
+
+### Relationship Types
+
+```text
+A -->|Uses| B           %% Standard dependency
+A ==>|Queries| B        %% Synchronous / blocking
+A -.->|Publishes event| B    %% Asynchronous / fire-and-forget
+```
+
+### Boundaries
+
+```text
+subgraph PaymentSystem {
+    Container(api, "Payment API", "Go")
+    ContainerDb(db, "Ledger DB", "PostgreSQL")
+}
+```
+
+### Auto-Layout Direction (v1.4.0)
+
+The layout engine automatically selects the best direction:
+- **4 or fewer elements**: Horizontal (`graph LR`)
+- **5+ elements**: Vertical (`graph TB`)
+- Override per diagram with `graph LR` or `graph TB`
+
+Full syntax reference: [c4x-syntax.md](./c4x-syntax.md)
+
+---
+
+## Visual Diagram Customization
+
+C4X can generate **presentation-ready PNG diagrams** using Gemini image models.
+
+### Image Model
+
+```json
+{
+  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview"
+}
+```
+
+| Image Model | Notes |
+|-------------|-------|
+| `gemini-3.1-flash-image-preview` | **Default** -- Nano Banana 2 (4K, better text) |
+| `gemini-3-pro-image-preview` | Highest quality (opt-in) |
 
 ### Visual Presets
-Control the overall aesthetic with built-in presets:
 
 ```json
 {
@@ -114,16 +159,15 @@ Control the overall aesthetic with built-in presets:
 }
 ```
 
-| Preset | Description | Best For |
-|--------|-------------|----------|
-| `default` | Clean white background, standard C4 colors | Professional documentation, technical specs |
-| `dark` | Dark background (#1a1a1a), neon accents | Presentations, slide decks, dark-theme environments |
-| `light` | Bright white, high contrast, sharp edges | Print-ready documents, formal reports |
-| `pastel` | Soft pastel palette, rounded corners | Creative presentations, gentle aesthetic |
-| `corporate` | Grey-blue palette, sharp edges | Business presentations, executive summaries |
+| Preset | Description |
+|--------|-------------|
+| `default` | Clean white background, standard C4 colors |
+| `dark` | Dark background, neon accents |
+| `light` | Bright white, sharp edges |
+| `pastel` | Soft colours, rounded corners |
+| `corporate` | Grey-blue palette, sharp edges |
 
 ### Layout Preferences
-Control diagram spacing and density:
 
 ```json
 {
@@ -131,95 +175,93 @@ Control diagram spacing and density:
 }
 ```
 
-| Preference | Description | Use Case |
-|------------|-------------|----------|
-| `balanced` | Standard spacing, medium arrow length | Most diagrams (default) |
-| `compact` | Tight spacing, short arrows | Fitting many elements on screen, complex systems |
-| `spacious` | Generous padding, long arrows | Presentations, readability focus, simple systems |
+| Preference | Description |
+|------------|-------------|
+| `balanced` | Standard spacing (default) |
+| `compact` | Tight spacing, fits more elements |
+| `spacious` | Generous padding, maximum readability |
 
 ### Custom Style Override
-For complete control, use `visualGroundingContext` (max 300 characters):
+
+For complete control, use `visualGroundingContext` (max 300 characters). This overrides the preset.
 
 ```json
 {
-  "c4x.ai.visualGroundingContext": "Cyberpunk aesthetic with neon purple and cyan accents, transparent background, glowing edges on all boxes"
+  "c4x.ai.visualGroundingContext": "Blueprint style, white lines on deep blue #003366"
 }
 ```
 
-**Examples**:
-- `"Hand-drawn sketch style, black pen on white paper, rough edges"`
-- `"Minimalist monochrome, thin lines, sans-serif labels, lots of white space"`
-- `"Blueprint style, white lines on deep blue background (#003366), technical drawing aesthetic"`
+### C4 Colour Enforcement
 
-> **Note**: Custom grounding context **overrides** the visual preset. Leave it empty to use the preset.
+C4X enforces the official C4 Model colour palette:
 
-### C4 Color Palette Enforcement
-C4X strictly enforces the official C4 Model color palette to ensure consistency across all generated diagrams:
+| Element | Fill | Text |
+|---------|------|------|
+| Person | `#08427B` | White |
+| System | `#1168BD` | White |
+| External | `#999999` | White |
+| Container | `#438DD5` | White |
+| Component | `#85BBF0` | Black |
 
-**Official Colors** (EXACT, MANDATORY):
-- **Person**: `#08427B` (Dark Blue) with White Text
-- **Software System**: `#1168BD` (Blue) with White Text
-- **External System**: `#999999` (Grey) with White Text
-- **Container**: `#438DD5` (Light Blue) with White Text
-- **Component**: `#85BBF0` (Lighter Blue) with Black Text
+Green/red/yellow are reserved for status indicators only.
 
-**Forbidden Colors** (for structural elements):
-- ❌ Green, Red, Yellow, Orange — Reserved for **status indicators only**
-- ✅ Status Colors:
-  - Green = Active/Success/Running
-  - Red = Error/Critical/Down
-  - Yellow = Warning/Degraded
+### Visual Self-Remediation (v1.4.0)
 
-### Configuration Example
-Complete visual customization setup:
-
-```json
-{
-  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview",  // Nano Banana 2
-  "c4x.ai.visualPreset": "corporate",                     // Grey-blue aesthetic
-  "c4x.ai.layoutPreference": "spacious",                  // Generous spacing
-  "c4x.ai.visualGroundingContext": ""                     // Empty = use preset
-}
-```
-
-### Best Practices
-1. **Use Presets First**: Try built-in presets before writing custom grounding.
-2. **Be Specific**: Custom grounding works best with concrete details ("neon purple #A855F7") not vague terms ("cool colors").
-3. **Respect C4 Colors**: Don't override structural element colors — maintain C4 Model standards.
-4. **Layout Matters**: Choose `compact` for complex systems (10+ elements), `spacious` for presentations (5-8 elements).
-5. **Iterate**: If output doesn't match expectations, refine your grounding context and regenerate.
-
-### Troubleshooting
-- **Colors Don't Match**: Ensure you're not using forbidden colors (green/red/yellow) for structural elements.
-- **Layout Too Crowded**: Switch to `spacious` layout preference.
-- **Style Ignored**: Check that `visualGroundingContext` is empty if you want to use presets.
-- **Text Unreadable**: Use high-contrast presets (`light` or `dark`) for better legibility.
+If image generation fails (API error, safety filter, model issue), C4X automatically retries with a corrective prompt. C1, C2, and C3 levels produce visually distinct outputs with level-appropriate detail.
 
 ---
 
-## 🤖 Advanced: Using the System Prompt
-We have open-sourced our **Expert System Prompt** so you can use it in your own workflows (e.g., Gemini Advanced, ChatGPT, Claude, Antigravity).
+## Scanning and Context
 
-### Why use it?
-If you want to generate diagrams manually in a chat interface, pasting our system prompt ensures the AI:
-*   Uses valid **C4X DSL** syntax.
-*   **Applies Icons Correctly**: Uses `$sprite="c4xicons..."` instead of hallucinated syntaxes.
-*   Follows layout rules (Vertical vs Horizontal).
-*   Theming and styling correctly.
+### Location Matters
 
-### How to use it:
-1.  Locate `GEMINI.md` in the extension root (or [view on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/GEMINI.md)).
-2.  Copy the entire content.
-3.  Paste it into your AI chat as the **System Instruction** or first message.
-4.  Paste your code or requirements.
-5.  Copy the output code block back into a `.md` file in VS Code.
+The AI only sees files relative to where you run it.
 
-> [!TIP]
-> This is perfect for complex refactoring discussions where you want to "visualize" the before/after state before writing code.
+**Rule of thumb**:
+- **C1/C2 diagrams** -> Run from **project root** or `docs/`
+- **C3 diagrams** -> Run from inside the specific **module** folder
+
+### The "Leaf Node" Trap
+
+If you're in a deep subfolder (e.g., `src/utils/helpers`) and ask for a System Context (C1), the AI cannot see "up" to your database, users, or external systems. It generates a micro-system diagram of just that folder.
+
+**Fix**: Run high-level diagrams from the root.
+
+### Hallucinations
+
+Gemini may occasionally:
+- Invent relationships based on variable names
+- Misidentify a library as an external system
+- Generate plausible-looking but wrong architecture
+
+Always verify generated diagrams against your actual code.
 
 ---
 
-## 📚 Examples & References
-*   [**Example Gallery**](docs/EXAMPLES.md): See what C4X can do.
-*   [**Layout Guide**](docs/EXAMPLES-LAYOUT.md): Learn how to control direction (`TB`, `LR`).
-*   [**Syntax Guide**](docs/c4x-syntax.md): Full DSL reference.
+## Examples & References
+
+| Guide | Content |
+|-------|---------|
+| [Example Gallery](./EXAMPLES.md) | Banking, Microservices, AI Agents |
+| [All C4 View Levels](./EXAMPLES-VIEWS.md) | C1 through C4 + Dynamic diagrams |
+| [Architecture Patterns](./EXAMPLES-PATTERNS.md) | CQRS, Saga, BFF, Hexagonal, IoT, CI/CD, Zero-Trust |
+| [Cloud Icons](./EXAMPLES-with-ICONS.md) | AWS, Azure, GCP sprites |
+| [Layout Guide](./EXAMPLES-LAYOUT.md) | Direction control, nested layouts |
+| [Visual Diagrams](./DIAGRAM-WITH-GEMINI-IMAGE.md) | AI-powered PNG generation |
+| [Syntax Reference](./c4x-syntax.md) | Complete DSL specification |
+| [Generation Guidelines](./C4X-GENERATION-GUIDELINES.md) | Advanced AI prompting |
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| "No API key found" | Run `C4X: Set Gemini API Key` from Command Palette |
+| Model not recognised | Check spelling. Any valid Gemini model ID is accepted |
+| Diagram has wrong structure | Run from the correct folder (root for C1, module for C3) |
+| Visual PNG colours wrong | Check that `visualGroundingContext` is empty if using presets |
+| Text unreadable in PNG | Switch to `light` or `dark` preset for higher contrast |
+| Generation fails silently | Check the Output panel (`View > Output > C4X`) for error details |
+| Layout too crowded | Switch to `spacious` layout preference |
+| AI generates flowchart instead of C4 | Add `[Framework: C4]` to your selection text |
