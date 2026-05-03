@@ -5,15 +5,14 @@ node_modules/**
 .vscode-test/**
 .git/**
 .github/**
-.agents/**
-.claude/**
+.githooks/**
 scripts/**
 mcp/**
 test/**
 coverage/**
 test-results/**
 
-# Docs not needed in extension (keep README, CHANGELOG, LICENSE, GEMINI.md)
+# Docs (keep README, CHANGELOG, LICENSE at root)
 docs/**
 examples/**
 samples/**
@@ -24,37 +23,22 @@ tsconfig.unit.json
 .mocharc.unit.yml
 esbuild.config.js
 eslint.config.mjs
-webpack.config.js
-playwright.config.ts
 .eslintrc.json
 .gitignore
+.gitattributes
 .markdownlint.json
-.githooks/**
 .mcp.json
 Makefile
 pnpm-lock.yaml
+*.code-workspace
 
-# Internal/private docs
-IMPROVEMENT-PLAN.md
-STATUS.md
-CLAUDE.md
-claude.md
-GEMINI.md
+# Non-shipping markdown
 CONTRIBUTING.md
-LINKEDIN-ANNOUNCEMENT.md
-ABOUT.md
-RELEASE.md
-local.gemini.md
-publish-vsce.md
-testing.md
-vsc-extension-quickstart.md
-c4model-vscode-extension.code-workspace
 
 # Test and temp files
 *.test.ts
 *.test.js
 out/test/**
-reproduce_error.js
 test_output*.log
 *.vsix
 .env
