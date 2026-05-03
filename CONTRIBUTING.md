@@ -8,7 +8,7 @@ This document provides guidelines for contributing to the project.
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](./CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior.
+By participating in this project, you are expected to treat others with respect and professionalism. Please report unacceptable behavior by opening a GitHub issue.
 
 ---
 
@@ -80,7 +80,7 @@ npx ts-node scripts/validate-gallery.ts
 
 This script:
 
-1. Generates SVGs for 7 different C4 scenarios defined in `docs/validation/GALLERY.md`.
+1. Generates SVGs for 7 different C4 scenarios.
 2. Checks that arrows are straight and aligned correctly (geometric analysis).
 3. Produces a report at `docs/validation/report.html`.
 

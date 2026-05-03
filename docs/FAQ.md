@@ -1,6 +1,6 @@
 # Frequently Asked Questions (FAQ)
 
-**Version**: 1.3.0
+**Version**: 1.4.0
 **Last Updated**: 2026-05-02
 
 This document answers common questions about the C4X extension.
@@ -31,7 +31,7 @@ A: No. C4X is designed to be completely offline-first. It bundles all necessary 
 
 ### Q: What layout engine does C4X use?
 
-A: C4X uses [Dagre.js (Eclipse Layout Kernel)](https://www.eclipse.org/elk/), a powerful, production-grade layout engine that excels at hierarchical diagram layout, which is perfect for C4 diagrams.
+A: C4X uses Dagre.js (hierarchical graph layout), a powerful, production-grade layout engine that excels at hierarchical diagram layout, which is perfect for C4 diagrams.
 
 ### Q: How does the Markdown integration work?
 
@@ -78,12 +78,11 @@ To use an icon, you MUST use the **Function/Macro Syntax** instead of the Bracke
 
 ### Q: What C4 levels are supported?
 
-A: As of v0.2.0, C4X has full support for:
+A: C4X has full support for:
 
 - **Level 1: System Context** diagrams (`system-context`)
 - **Level 2: Container** diagrams (`container`)
-
-Support for **Level 3: Component** diagrams is planned for a future release.
+- **Level 3: Component** diagrams (`component`) -- shipped in v1.0+
 
 ### Q: How do I create boundaries (like a System Boundary)?
 
@@ -112,7 +111,7 @@ A: C4X is available on the [VS Code Marketplace](https://marketplace.visualstudi
 
 ## AI & Gemini Integration
 
-> **See [GEMINI.md](../GEMINI.md)** for the complete AI Model Configuration guide and DSL reference.
+> **See [Gemini AI Guide](./GEMINI_GUIDE.md)** for the complete AI Model Configuration guide and DSL reference.
 
 ### Q: How do I change the AI model?
 

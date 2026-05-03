@@ -91,8 +91,7 @@ All notable changes to the "c4x" extension will be documented in this file.
 - **Use Cases**: Customize colour schemes, backgrounds, styling, or add domain-specific context.
 
 ### 🔒 Sync Script Safety
-- **Hardened `publish-to-public.sh`**: Rewrote with strict allowlisting, excluding private dev tooling, ADRs, phase docs, agent configs, and build artifacts.
-- **Post-Sync Safety Check**: Script now auto-verifies no private files leaked and aborts if detected.
+- Hardened `publish-to-public.sh` with strict file allowlisting and post-sync safety checks.
 
 ## [1.2.11] - 2025-12-21
 
@@ -163,7 +162,7 @@ All notable changes to the "c4x" extension will be documented in this file.
 ### Fixed
 - **Parser Resilience**: Enhanced AI self-correction to automatically fix "Expected E found" parser errors (increased retries to 3).
 - **Subgraph Syntax**: Improved AI prompting to strictly enforce correct `subgraph ID {` syntax.
-- **Documentation**: Clarified brace requirements in `GEMINI.md`.
+- **Documentation**: Clarified brace requirements in AI prompts.
 
 ## [1.2.1] - 2025-12-20
 ### 🧠 AI Model Upgrade
@@ -190,7 +189,7 @@ All notable changes to the "c4x" extension will be documented in this file.
 ### 📝 Documentation & Assets
 - **Verified Icon Library**: Updated `EXAMPLES-with-ICONS.md` with fully validated keys for AWS, GCP, and Azure.
 - **New GCP Icons**: Added 44+ high-quality Google Cloud icons including `vertexai`, `cloudrun`, and `cloudsql`.
-- **Docs Parity**: Synchronized `GEMINI.md` and `GEMINI_GUIDE.md` to match the internal AI logic perfectly.
+- **Docs Parity**: Synchronized AI prompt guidelines with documentation.
 
 ## [1.1.8] - 2025-12-13
 ### Fixed
@@ -213,7 +212,7 @@ All notable changes to the "c4x" extension will be documented in this file.
 - 🛡️ **Robust Fallback**: Automatic fallback to `gemini-2.5-pro` if the preview model is unstable.
 
 ## [1.1.5] - 2025-12-12
-### 🧠 Intelligent Assistance (Phase 9)
+### 🧠 Intelligent Assistance
 - **Generative Layout Control**: AI now enforces `graph LR` vs `TB` based on your input flow or explicit instruction.
 - **Smart Recommendations**: Automatically analyzes text selection to suggest "System Context" (C1) or "Container" (C2) diagrams.
 - **Self-Correction**: Robust error handling that fixes AI syntax mistakes automatically.
@@ -224,12 +223,12 @@ All notable changes to the "c4x" extension will be documented in this file.
 - **Marketplace Assets**: Updated README with video demos and screenshot examples.
 
 ## [1.1.0] - 2025-12-09
-### 📐 Advanced Layout Control (Phase 9)
+### 📐 Advanced Layout Control
 - **Recursive Layout Engine**: Completely rewritten layout engine to support hierarchical, independent sub-layouts.
 - **Nested Direction**: Support for `direction LR` inside subgraphs allows mixed-orientation diagrams (e.g. Horizontal Flows inside Vertical Systems).
 - **Manual Positioning**: New `$x` and `$y` attributes for pixel-perfect element positioning (e.g., `Component(..., $x="100", $y="200")`).
 
-### 🧠 Gemini AI Architect (Phase 10)
+### 🧠 Gemini AI Architect
 - **Text-to-Diagram**: Generate complete C4 architectures from your source code using Google Gemini.
 - **Auto-Detection**: Right-click any folder or markdown file to analyze code and detect technologies (React, AWS, etc.).
 - **Smart Syntax**: Outputs valid C4X DSL automatically.
@@ -289,13 +288,13 @@ C4X is now production-ready! This release focuses on a robust, offline-first exp
 - **Instant Preview**: Real-time visualization (< 50ms render time) as you type.
 - **5 Professional Themes**: Classic, Modern, Muted, High Contrast, and Auto (System theme).
 - **Export**: Save diagrams as SVG or PNG, or copy SVG directly to clipboard.
-- **Zero Dependencies**: No Java, no Graphviz, no Docker required. Everything is bundled in the extension.
+- **No External Servers Required**: No Java, no Graphviz, no Docker needed. Everything is bundled in the extension.
 
 ### 🛠️ Improvements
 - **Performance**: Extension activation time optimized to ~0.15ms.
 - **Validation**: Real-time syntax checking for `.c4x` files and markdown blocks.
 - **Visuals**: Standardized element sizes and auto-scaling text for better readability.
-- **Stability**: Comprehensive test suite (440+ tests) ensuring parser and renderer reliability.
+- **Stability**: Comprehensive test suite ensuring parser and renderer reliability.
 
 ### ⚠️ Changes
 - **Deferred**: Support for Structurizr DSL and PlantUML C4 has been deferred to v1.2 to ensuring visual parity and validation before release.

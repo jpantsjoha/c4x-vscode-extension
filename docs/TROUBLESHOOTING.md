@@ -1,25 +1,23 @@
 # Troubleshooting Guide
->
-> Status (2025-11-24): Current repository state is M0 (scaffolding). The preview shows a Hello C4X panel; full parsing/rendering and Markdown fenced blocks are landing in upcoming milestones. Use this guide with that context.
 
-**Version**: 0.2.1
-**Last Updated**: 2025-11-24
+**Version**: 1.4.0
+**Last Updated**: 2026-05-03
 
 This guide helps you resolve common issues with the C4X extension.
 
 ---
 
-## Preview Panel Issues (M0 baseline)
+## Preview Panel Issues
 
 ### Issue: The preview panel is blank, empty, or shows a loading indicator that never disappears
 
-**Cause**: In M0, the preview panel intentionally renders a Hello C4X panel. Parser/rendering errors only apply once the renderer is wired (M1+).
+**Cause**: The preview panel may fail to render if there are syntax errors in the diagram source or if the extension host is not running correctly.
 
 **Solution**:
 
-1. Confirm the extension is running: Execute “C4X: Open Preview” from the Command Palette.  
-2. Ensure you launched the Extension Development Host (F5) and built the bundle: `make build`.  
-3. Once the renderer is integrated (M1+), if you see parse errors, then:
+1. Confirm the extension is running: open a `.c4x` file or a Markdown file with a `c4x` fenced block.
+2. Ensure you have built the extension: `make build`.
+3. If you see parse errors:
     - Check `%%{ c4: ... }%%` view directive and `graph TB|BT|LR|RL`
     - Verify element syntax `ID[Label<br/>Type]` and relationship syntax `From -->|Label| To`
 
@@ -60,17 +58,17 @@ This guide helps you resolve common issues with the C4X extension.
 
 ---
 
-## Markdown Integration Issues (Deferred to v1.1)
+## Markdown Integration Issues
 
 ### Issue: The C4X diagram is not rendering in the Markdown preview; it just shows the code block
 
-**Cause**: Markdown fenced-block rendering is planned for v1.1; current builds don’t render diagrams inside Markdown.
+**Cause**: Markdown fenced-block rendering requires workspace trust and the correct code fence syntax.
 
 **Solution**:
 
-1. Use standalone `.c4x` or `.puml` files with the preview panel for now.  
-2. Track progress in `docs/ROADMAP.md` (Markdown async rendering milestone).  
-3. After v1.1 lands, verify code fences use exactly ```c4x and review workspace trust.
+1. Verify your code fences use exactly ` ```c4x ` (no extra spaces or characters).
+2. Ensure the workspace is trusted (VS Code may block extension scripts in untrusted workspaces).
+3. Try reloading the window: **Developer: Reload Window** from the Command Palette.
 
 ---
 

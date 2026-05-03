@@ -9,7 +9,14 @@ Welcome to C4X! This guide will get you creating your first C4 diagram in VS Cod
 
 ## Step 1: Installation
 
-> Note: Installing from source while marketplace listing is prepared.
+### Option A: VS Code Marketplace (Recommended)
+
+1. Open VS Code.
+2. Go to the Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`).
+3. Search for **"C4X"**.
+4. Click **Install**.
+
+### Option B: Install from Source
 
 1. **Clone the repository**:
 

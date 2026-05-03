@@ -1,7 +1,7 @@
 # C4X User Guide
 
-**Version**: 0.2.0
-**Last Updated**: 2025-10-19
+**Version**: 1.4.0
+**Last Updated**: 2026-05-03
 
 Welcome to the C4X User Guide. This document provides a comprehensive overview of all features available in the C4X VS Code extension.
 
@@ -23,7 +23,7 @@ Welcome to the C4X User Guide. This document provides a comprehensive overview o
 
 - **Mermaid-Inspired Syntax**: Write C4 diagrams with a familiar, intuitive syntax.
 - **Real-Time Preview**: See your diagrams update as you type, with a refresh time under 250ms.
-- **C4X-DSL Support**: Full support for System Context (C1) and Container (C2) diagrams.
+- **C4X-DSL Support**: Full support for System Context (C1), Container (C2), and Component (C3) diagrams.
 - **Offline-First**: No Java, servers, or Docker required. Everything runs locally within VS Code.
 - **Fast & Secure**: Renders typical diagrams in under 50ms and adheres to a strict Content Security Policy (CSP).
 - **Markdown Integration**: Embed C4X diagrams directly into your Markdown files.
@@ -57,10 +57,9 @@ The live preview panel shows you a real-time rendering of your C4X diagram.
 
 ### How to Open the Preview
 
-- **Command**: Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and run **C4X: Open Preview**.
-- **Keyboard Shortcut**: Press `Ctrl+K V` (or `Cmd+K V` on Mac).
+- **Keyboard Shortcut**: Press `Ctrl+K V` (or `Cmd+K V` on Mac) to open the preview alongside your editor.
 
-A new panel will open alongside your editor showing the rendered SVG diagram.
+A new panel will open showing the rendered SVG diagram.
 
 ### How it Works
 
@@ -135,7 +134,6 @@ C4X allows you to export your Markdown documents with valid diagrams to standard
 
 The C4X extension provides the following commands, which can be accessed from the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`):
 
-- **`C4X: Open Preview`**: Opens the live preview panel for the active `.c4x` file.
 - **`C4X: Export Markdown to HTML`**: Exports current markdown file to HTML.
 - **`C4X: Export - Preview`**: Opens print-optimized preview in browser.
 - **`C4X: Export SVG`**: Exports diagram to SVG file.

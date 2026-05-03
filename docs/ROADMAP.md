@@ -6,7 +6,7 @@
 >
 > **Last revised**: 2026-05-03 (post-SWOT roadmap reset)
 >
-> **Strategic lens**: This roadmap is optimised for a Google Developer Expert (GDE) building a real product that demonstrates Gemini capabilities at conferences, in the marketplace, and in enterprise settings. Features are prioritised by: (1) unique AI differentiation, (2) GDE demo/talk value, (3) developer adoption, (4) enterprise readiness.
+> **Strategic lens**: Features are prioritised by: unique AI differentiation, developer adoption, and enterprise readiness.
 
 ---
 
@@ -24,7 +24,7 @@ See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
 
 ## Shipped
 
-### Phase 1-8: Foundation & Core (2025)
+### Foundation & Core (2025)
 - C4 syntax parser (Person, System, Container, Component, Deployment partial)
 - Markdown integration via ` ```c4x ` code blocks
 - Theming (Classic / Modern / Muted / High Contrast / Auto)
@@ -72,10 +72,10 @@ See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
 
 ## Committed -- v1.4.1 "Polish & Sync" (target: May 2026, ~2 weeks)
 
-**Theme**: Land v1.4.0 cleanly on the public repo and marketplace. Fix anything that blocks a confident GDE demo.
+**Theme**: Land v1.4.0 on the marketplace. Fix anything that blocks a confident demo.
 
 ### Public release gate
-- **Execute public-repo sync** (WS-3) -- close issue #8
+- **Publish to VS Code Marketplace**
 - **Pre-publish validation**: verify marketplace listing and VSIX integrity
 - **Verify marketplace listing**: screenshots, description, and version match v1.4.0
 
@@ -85,7 +85,7 @@ See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
 - **Deployment View honesty**: remove "Deployment Diagrams" from roadmap claims until DeploymentNode parsing has tests and a working sample
 
 ### Documentation
-- **Update `GEMINI.md` and `FAQ.md`** with current model registry, v1.4.0 features
+- **Update documentation** with current model registry, v1.4.0 features
 - **Sync README version references** to v1.4.0 state (some sections still reference v1.3.0 features as "new")
 
 ### Quality
@@ -167,7 +167,6 @@ See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
 ### Telemetry & analytics (opt-in)
 - Anonymous usage metrics: feature usage, error rates, model selection distribution
 - Cost forecasting: estimated Gemini API spend based on usage patterns
-- DevOps/Telemetry agent added to the agent team
 
 ---
 
@@ -223,7 +222,6 @@ See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
 | Gemini model sunset blindsides users | MEDIUM | HIGH | Sunset alerting shipped in v1.4; free-text model IDs for easy migration |
 | Mermaid.js adds AI generation | LOW-MEDIUM | HIGH | Mermaid import bridge (v1.5) makes C4X the "upgrade path." C4-specific validation is the differentiator |
 | Google builds architecture diagramming into Cloud Console + Gemini | LOW | MEDIUM | C4X is docs-as-code, not a GUI. Different audience. Position as "the developer's choice" |
-| Public-repo / private-repo divergence | HIGH (today) | MEDIUM | WS-3: sync execution in v1.4.1, then automate via CI |
 | Model churn fatigue erodes user trust | MEDIUM | MEDIUM | FallbackStrategy + sunset alerts + free-text IDs already mitigate. Add automated model-availability check in v1.5 |
 | Dagre layout limit blocks complex enterprise diagrams | MEDIUM | HIGH | v1.5: ELK evaluation spike (TDR-003 escalation) |
 | Low marketplace install count limits discovery | MEDIUM | MEDIUM | GDE talk circuit, MCP server as standalone npm, SEO keywords, "Diagram of the Week" social |
@@ -244,6 +242,6 @@ See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
 
 | Version | Theme | Target | Key deliverables |
 |---|---|---|---|
-| **v1.4.1** | Polish & Sync | May 2026 | Public-repo sync, marketplace parity, README honesty, legacy test triage |
+| **v1.4.1** | Polish & Publish | May 2026 | Marketplace publishing, README honesty, legacy test triage |
 | **v1.5.0** | Copilot Chat & Import Bridge | Q3 2026 | `@c4x` Chat Participant, Mermaid import, Structurizr DSL import, ELK spike |
 | **v2.0.0** | Enterprise & Intelligence | Q1 2027 | Vertex AI integration, architecture critique mode, context caching, batch API, agent syntax |

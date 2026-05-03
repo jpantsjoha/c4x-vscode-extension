@@ -1,11 +1,11 @@
 # C4X Extension - Marketing Copy & Assets
 
-> Status (2025-11-24): Marketing copy reflects target v1.0 capabilities. Verify metrics and screenshots before publishing. See `docs/STATUS.md` for current state.
+> Marketing copy reflects current capabilities. Verify metrics and screenshots before publishing.
 
 **Product**: C4X - C4 Model Diagrams for VS Code
-**Version**: 1.0.0
+**Version**: 1.4.0
 **Target Audience**: Software architects, technical writers, engineering managers, educators
-**Positioning**: The Mermaid.js of C4 diagrams - fast, offline, zero dependencies
+**Positioning**: The Mermaid.js of C4 diagrams - fast, offline, no Java, no Docker required
 
 ---
 
@@ -26,7 +26,7 @@ C4X eliminates the complexity and dependencies of traditional C4 diagramming too
 
 ### Technical Value
 
-**Zero Dependencies**
+**No External Servers**
 - No Java runtime (vs PlantUML, Structurizr)
 - No Graphviz installation (vs PlantUML)
 - No Docker containers (vs Structurizr Lite)
@@ -53,7 +53,7 @@ C4X eliminates the complexity and dependencies of traditional C4 diagramming too
 **C4X - C4 Model Diagrams | Fast, Offline, Mermaid-Inspired**
 
 ### Short Description (max 120 characters)
-**Make C4 architectural diagrams as easy as Mermaid. Fast, offline, zero dependencies. 3 DSL formats supported.**
+**Make C4 architectural diagrams as easy as Mermaid. Fast, offline, no Java, no Docker required. 3 DSL formats supported.**
 
 ### Full Description
 
@@ -101,7 +101,7 @@ User -> System
 - ✅ **Instant Preview** - Press Ctrl+K V, see your diagram in < 50ms
 - ✅ **5 Themes** - Classic, Modern, Muted, High Contrast, Auto (matches VS Code)
 - ✅ **SVG/PNG Export** - Perfect for documentation, presentations, Figma/Sketch
-- ✅ **100% Test Coverage** - C4X (122/122) and PlantUML (58/58) parsers fully tested
+- ✅ **Comprehensive Test Suite** - Parsers and renderers thoroughly tested
 - ✅ **Lightweight** - 386KB bundle (vs 10-50MB alternatives)
 - ✅ **Offline-First** - No internet required, CSP-compliant
 
@@ -330,13 +330,13 @@ Emphasis: "NO JAVA REQUIRED" messaging
 
 1. "C4 diagrams, Mermaid simplicity, VS Code convenience."
 2. "Kill your Java dependency. Make C4 diagrams in VS Code."
-3. "0.15ms activation. 386KB bundle. Zero dependencies. C4 diagrams done right."
+3. "0.15ms activation. 386KB bundle. No Java, no Docker required. C4 diagrams done right."
 4. "PlantUML C4 without Java. Finally."
 5. "Architect faster. Diagram simpler. Ship better docs."
 
 ### Headline Options
 
-1. **Technical focus**: "C4 Model Diagrams for VS Code - Zero Dependencies, Instant Preview"
+1. **Technical focus**: "C4 Model Diagrams for VS Code - No External Servers, Instant Preview"
 2. **Speed focus**: "The Fastest C4 Diagram Tool - Sub-50ms Rendering in VS Code"
 3. **Simplicity focus**: "C4 Diagrams as Easy as Mermaid - Now in VS Code"
 4. **Developer focus**: "Skip Java. Skip Servers. Just Diagram - C4X for VS Code"
@@ -350,7 +350,7 @@ Emphasis: "NO JAVA REQUIRED" messaging
 - **"Export Anywhere"** - SVG for Figma, PNG for docs, clipboard for presentations
 - **"100% Offline"** - No internet, no servers, no external dependencies
 - **"Tiny Bundle"** - 386KB vs 10-50MB alternatives
-- **"Perfect Tests"** - 100% pass rate for C4X and PlantUML parsers
+- **"Comprehensive Tests"** - Thorough test suite for parsers and renderers
 
 ---
 
@@ -452,7 +452,7 @@ Emphasis: "NO JAVA REQUIRED" messaging
 - ✅ Multiple DSL formats (C4X, PlantUML, Structurizr)
 - ✅ Offline-first, no vendor lock-in
 
-**Message**: "Open-source C4 diagrams. No subscriptions, no servers, no dependencies."
+**Message**: "Open-source C4 diagrams. No subscriptions, no servers, no Java, no Docker required."
 
 ### vs. Mermaid (C4 support)
 
@@ -486,7 +486,7 @@ Emphasis: "NO JAVA REQUIRED" messaging
 🎨 5 built-in themes
 📝 3 DSL formats
 
-No Java. No servers. No dependencies.
+No Java. No Docker. No external servers.
 
 Install now: [marketplace link]
 
@@ -498,7 +498,7 @@ Install now: [marketplace link]
 ```
 🎉 Excited to announce C4X v1.0 - The easiest way to create C4 Model architectural diagrams!
 
-After weeks of development and 417 comprehensive tests, we're bringing C4 diagrams to VS Code with Mermaid-like simplicity.
+We're bringing C4 diagrams to VS Code with Mermaid-like simplicity, backed by a comprehensive test suite.
 
 Why C4X?
 • ⚡ 0.15ms activation (99.9% faster than target)
@@ -551,8 +551,8 @@ Rel(customer, banking, "Uses")
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: October 22, 2025
+**Document Version**: 1.4
+**Last Updated**: 2026-05-03
 **Status**: Ready for marketplace launch campaigns
 
 ---
@@ -561,8 +561,6 @@ Rel(customer, banking, "Uses")
 
 ### Suggested Title
 **C4X Extension: AI-Powered Architecture Diagrams in VS Code (Powered by Gemini)**
-
-*(Note: "Google Antigravity" is the internal codename. For public discoverability, we recommend using "Gemini" or "Google AI".)*
 
 ### Description (YouTube Safe)
 
