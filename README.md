@@ -8,7 +8,7 @@ Fast, offline C4 architecture diagrams with real-time preview and AI-powered gen
 
 <img src="assets/marketplace/images/c4x-system-context-v140.png" width="700" alt="C4X System Context Diagram" />
 
-### New in v1.4.0
+## New in v1.4.0
 
 - **PNG export** -- Canvas-based at 1x/2x/4x resolution, no Chromium needed
 - **C4 Standard theme** -- Official filled-box convention as the new default
