@@ -23,6 +23,8 @@ Fast, offline C4 architecture diagrams with a source-driven SVG preview and opti
 
 Diagrams stay text. You can now edit them by dragging.
 
+> **v1.6.2 highlights** · Drag an element and it stays where you drop it · Diagrams open centred and ready to edit · Edit, Save and Discard sit together at the top left
+
 - **Lay a diagram out by hand**: Drag elements until the picture reads the way you would draw it on a whiteboard, then save. Auto-layout gets you started; you decide where things go
 - **Edit an element without hunting through the source**: Click it and change its name, technology, description, tags or icon in the inspector. Rename it and every relationship that mentions it is updated too
 - **Draw a relationship**: Pick two elements and name the connection. Point an existing arrow somewhere else when the design moves on
