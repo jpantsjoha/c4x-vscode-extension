@@ -20,8 +20,9 @@ export class HtmlExporter {
             typographer: true,
         });
 
-        // Apply C4X plugin for diagram rendering
-        c4xPlugin(this.md);
+        // Apply C4X plugin for diagram rendering. Exports keep diagrams at
+        // intrinsic size — c4x.markdown.previewScale is preview-only (#128).
+        c4xPlugin(this.md, { applyPreviewScale: false });
     }
 
     /**

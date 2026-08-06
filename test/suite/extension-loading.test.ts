@@ -70,6 +70,8 @@ describe('Automated Extension Loading Tests', () => {
 
   describe('Command Registration', () => {
     const expectedCommands = [
+      'c4x.openPreview',
+      'c4x.refreshPreview',
       'c4x.exportPng',
       'c4x.exportSvg',
       'c4x.copySvg',
@@ -94,6 +96,31 @@ describe('Automated Extension Loading Tests', () => {
       }
 
       console.log(`✅ All ${expectedCommands.length} commands registered`);
+    });
+
+    it('should open and refresh the standalone preview', async function() {
+      this.timeout(10000);
+
+      const document = await vscode.workspace.openTextDocument({
+        language: 'c4x',
+        content: [
+          '%%{ c4: system-context }%%',
+          'graph TB',
+          'User[User<br/>Person]',
+          'System[System<br/>Software System]',
+          'User -->|Uses| System',
+        ].join('\n'),
+      });
+      await vscode.window.showTextDocument(document, { preview: false });
+
+      const opened = await vscode.commands.executeCommand<boolean>('c4x.openPreview');
+      assert.strictEqual(opened, true, 'Open Preview handler did not run');
+
+      const refreshed = await vscode.commands.executeCommand<boolean>('c4x.refreshPreview');
+      assert.strictEqual(refreshed, true, 'Refresh Preview did not find the open panel');
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
     });
   });
 

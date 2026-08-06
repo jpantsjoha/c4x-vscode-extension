@@ -21,6 +21,7 @@ test-output*
 # Private agent configurations (Antigravity/Gemini)
 .gemini/
 local.gemini.md
+.claude/worktrees/
 
 # IDE
 .vscode/settings.json

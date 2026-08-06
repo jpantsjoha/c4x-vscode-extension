@@ -1,247 +1,399 @@
 # C4X Product Roadmap
 
-> **Vision**: *C4X makes architecture diagrams as easy as Mermaid, native to Markdown, and intelligently AI-augmented through Gemini.*
->
-> **Philosophy**: Docs-as-code. Stateless. Deterministic. Embedded in the developer's existing flow. AI assists; the developer authors.
->
-> **Last revised**: 2026-05-03 (post-SWOT roadmap reset)
->
-> **Strategic lens**: Features are prioritised by: unique AI differentiation, developer adoption, and enterprise readiness.
-
----
+> **Vision**: C4X makes architecture diagrams as easy as Mermaid, native to VS Code and Markdown, with carefully bounded Gemini assistance.
+> **Product contract**: docs as code; deterministic output; source-controlled customisation; no hidden diagram truth.
+> **Last revised**: 2026-08-05 — v1.6.1 fast-follow COMPLETE (#137, #138, #66 all merged); `main` green on every local gate (quick-check exit 0, 1328 unit, 103/103 Playwright); release blocked only on Actions billing, #79 UAT evidence and the #46/#66 bundle-budget decision. Prior entry (2026-07-20): v1.6 release sprint code-complete on `main` (PRs #120–#135, #144); v1.6.1 fast-follow tranche (#137, #138, #66) in progress. Both P0 audit findings resolved: overlap-persistence fixed (#107/#109/#114), relationship label editing end-to-end (#114/#116). Layout spacing presets shipped (#115). v1.6 release sprint scoped 2026-07-18: eleven issues across six phases — #96, #97, #111, #119 (UX correctness; #119 edge-repaint fix implemented ahead of Phase 1, pending UAT), #98 (legend polish), #46 (bundle budget), #72 (Playwright closure), #74/#79/#82 (docs + UAT evidence), #118 (HLD/ADR coherence) — all assigned to milestone v1.6.0. Guided UAT can proceed. Wiki publication deferred to P3 [#76](https://github.com/jpantsjoha/c4x-vscode-extension/issues/76). Marketplace publish held pending v1.6 DoD.
 
 ## How to read this roadmap
 
-- **Shipped** = in a released version on the marketplace
-- **Committed** = scoped, owner-assigned, in the next named version
-- **Candidate** = directionally agreed but not yet scoped or scheduled
-- **Deferred** = previously planned, explicitly deprioritised with rationale
-- **Out of scope** = explicit non-goals -- recorded so we stop revisiting them
+- **Shipped** means released behaviour.
+- **Merged** means proven on private `main` but not necessarily released.
+- **Committed** means represented by an active GitHub milestone and scoped issues.
+- **Gated** means implementation may be built and reviewed but cannot merge until the stated dependency closes.
+- **Candidate** means valuable direction without a committed delivery slot.
+- **Out of scope** is an explicit non-goal.
 
-See the [CHANGELOG](../CHANGELOG.md) for detailed release notes.
+GitHub milestones and issues are the execution ledger. This file records product sequencing and acceptance boundaries; [`STATUS.md`](../STATUS.md) records the current snapshot.
 
----
+## 2026-07-16 (afternoon) checkpoint
 
-## Shipped
+### Maturity attained
 
-### Foundation & Core (2025)
-- C4 syntax parser (Person, System, Container, Component, Deployment partial)
-- Markdown integration via ` ```c4x ` code blocks
-- Theming (Classic / Modern / Muted / High Contrast / Auto)
-- C4-PlantUML legacy macro compatibility
-- Cloud icons (AWS, Azure, GCP, generic tech) -- 1500+ sprites with IntelliSense
-- Advanced layout (padding, nested nodes, label legibility, smart direction)
-- Sequence-style dynamic diagrams
-- Embedded gallery and visual examples
+**The original 15-item MVP slice is implemented (now merged to `main`), ready for guided native `.c4x` UAT.** The verified current path is **open a native `.c4x` standalone Preview → click "Edit C4 Diagram" → select a node → stage property, identifier, or position changes → Save Changes → source updates in-place.** All safety guarantees (SaveAnchor + revision race + overlap guard + inverse-WorkspaceEdit rollback) fire on every writeback.
 
-### v1.1.0 -- Intelligent Assistance (2025-12)
-- Text-to-diagram via Gemini ("Generate a C4 System Context for X")
-- Code-to-diagram (workspace-aware file scanning)
-- Layout heuristics and `FORCE LAYOUT` override directive
-- Self-correction: parser-validated retry loop (up to 3 attempts)
+Markdown `c4x` fences are no longer rendering-only: B18 (#77, merged) delivers the Markdown Preview edit entry and fence-scoped writeback at the same safety level as the native `.c4x` journey. Create/delete/connect and relationship authoring remain rendering-only and must not be represented as shipped.
 
-### v1.2.x -- Visual Generation (2025-12 to 2026-02)
-- PNG generation from text selections via Gemini image models
-- Multi-framework auto-detection (C4 / Sequence / Flowchart)
-- Visual grounding: multimodal prompts with reference PNG images
-- MCP C4X Validator server (`validate_c4x` tool + `c4x://guidelines` resources)
-- Visual customization: 5 presets, 3 layout preferences, custom grounding context
+- **Wave A (foundation)**: 5/5 merged and closed — #50, #51, #52, #53, #54.
+- **Wave C (audit hardening)**: 2/2 merged and closed — #62, #63.
+- **Wave B (UI capability)**: native MVP increments #55, #58, #56, #59, #70, and #72 are implemented on the integration worktree; add/delete/connect remain deferred.
+- Deferred beyond MVP (per stated user scope): #60, #66, #64, #68, #69 (palette + connect + delete).
 
-### v1.3.0 -- Gemini 3.1 Migration (2026-03-02)
-- Gemini 3.1 Pro Preview as primary; Nano Banana 2 default for images
-- User-configurable `c4x.ai.model` and `c4x.ai.imageModel` (free-text, future-proof)
-- Smart fallback chain with sunset-safe defaults
-- 113 validated example diagrams
+### Formal completion and release delta
 
-### v1.4.0 -- Stability & Trust (2026-05-03)
-- **PNG export**: Canvas-based at 1x/2x/4x resolution (no Chromium dependency)
-- **Export SVG / Copy SVG / Change Theme**: fully functional (were stubs)
-- **Auto-layout direction**: LR for <=4 elements, TB for 5+
-- **Runtime model validation (G3)**: warns on unrecognised model IDs at activation
-- **Sunset alerting (G4)**: 30-day-prior toast with migration guidance
-- **Visual self-remediation**: failed image generation retries with corrective prompt
-- **C4 level-specific visual guidelines**: C1/C2/C3 produce visually distinct outputs
-- **GeminiService decomposition**: 767 to 293 LOC (PromptBuilder, FallbackStrategy, SyntaxValidator, models.ts)
-- **398 unit tests** (parser 94%, model 98% coverage); visual snapshot regression tests
-- **Default model changed**: `gemini-3-flash-preview` (free tier) with `gemini-3.1-pro-preview` failover
-- **Critical bug fix**: Markdown preview glitch (DiagnosticsManager vs virtual documents)
-- **24 architecture pattern examples**: CQRS, saga, BFF, hexagonal, IoT, CI/CD, and more
-- **Dependency cleanup**: Removed Playwright/elkjs from production bundle
+- **#70 B15** — implementation and focused automated evidence are pushed; installed-extension source-round-trip evidence remains before formal tracker closure.
+- **#72 B17** — 14 browser-harness scenarios are locally green; installed-extension evidence and a decision on the now-native-only Markdown criterion remain before formal tracker closure.
+- **#73 D1** — superseded for active planning by P3 [#76](https://github.com/jpantsjoha/c4x-vscode-extension/issues/76): in-repository Wiki source is complete, but publication is deferred and does not block UAT.
+- **#74 D2** — documentation now matches the native `.c4x` implementation; real installed-VS Code screenshots remain an evidence gap.
 
----
+**B16 #71** conflict-recovery banner is nice-to-have (anchor-guard already fails closed at save; missing only the UI banner). Not blocking MVP but strongly recommended before marketplace.
 
-## Committed -- v1.4.1 "Polish & Sync" (target: May 2026, ~2 weeks)
+### PR #75 UAT-first completion order
 
-**Theme**: Land v1.4.0 on the marketplace. Fix anything that blocks a confident demo.
+1. Begin guided UAT on the native `.c4x` editor now; it does not depend on Wiki publication.
+2. Confirm the MCP generated-artifact reproducibility fix with green Node 20/26 checks, then obtain three-platform packaged-VSIX evidence.
+3. Capture installed-extension screenshots and source-round-trip evidence, then record architect and technical-writer UAT outcomes.
+4. Resolve Markdown editor scope and B16 recovery UX for Marketplace readiness.
+5. Complete P3 [#76](https://github.com/jpantsjoha/c4x-vscode-extension/issues/76) to publish the Wiki after UAT-critical work.
 
-### Public release gate
-- **Publish to VS Code Marketplace**
-- **Pre-publish validation**: verify marketplace listing and VSIX integrity
-- **Verify marketplace listing**: screenshots, description, and version match v1.4.0
+### Release gate
 
-### Demo-blocking fixes
-- **Fix "PDF Export" command label**: rename `exportPdf` to "C4X: Print Preview" or implement real PDF generation. The current "Export - Preview" label misleads users
-- **Remove PlantUML from feature claims**: README currently lists "PlantUML Support" under v1.1.0 but it is disabled (DEBT-009). Either re-enable or remove the claim
-- **Deployment View honesty**: remove "Deployment Diagrams" from roadmap claims until DeploymentNode parsing has tests and a working sample
+Do not estimate or announce a Marketplace date until full local validation, clean three-platform package CI, formal UAT, and the Markdown-entry scope decision are complete. Wiki publication is tracked separately as P3 #76.
 
-### Documentation
-- **Update documentation** with current model registry, v1.4.0 features
-- **Sync README version references** to v1.4.0 state (some sections still reference v1.3.0 features as "new")
+### Merged achievements
 
-### Quality
-- **DEBT-011 completion**: remaining legacy test noise triage (2 re-enabled, 3 deleted, 1 quarantined in v1.4.0; finish the rest)
-- **Integration test for fallback strategy**: at minimum, a mock-API test that exercises the primary -> fallback -> error path end-to-end
+| Outcome | Evidence | Result |
+|---|---|---|
+| Deterministic Extension Host gate | PR #35; Node.js 20/26, docs, unit and VSIX CI green | Merged; issue #34 closed |
+| Standalone preview restored | PR #36; open/refresh commands, menus, shortcut, recovery UX, unit and Extension Host coverage | Merged; issue #33 closed |
+| Real quality and clean-VSIX gate increment | PR #38; focused integration, P95 benchmark, honest all-source coverage, Node 20/26 and Ubuntu/macOS/Windows package smoke | Merged at `08da38a` |
+| Reproducible quality toolchain | PR #42 head `686ee9f`; exact Node/pnpm/VS Code inputs, immutable action commits, fixed runner families and fresh three-OS package proof | Merged at `cd24e6e` |
+| UI architecture and delivery checkpoint | PR #39; roadmap, status, HLD/LLD, proposed ADR-018, user guidance, validation decisions, runbooks, and launch guardrails | Merged at `b61fe28` |
+| P0 Harness Validation | `make validate-harness`, fail-closed validators, complete adapters/hooks aligned with `AGENTS.md` | Implementation merged; Epic #28 formal tracker closeout remains open |
+| Visual Layout Foundation (Core + Writeback) | Bounded `WorkspaceEdit` transaction layer, AST validation, rollback, coordinate reset, sidecar persistence, interactive canvas | PR #44 merged; Issues #21, #22, #23, #25 closed; #24 deferred post-v1.6 (2026-07-19); #30 closed 2026-07-19 as substantially delivered |
+| v1.6 audit-blocker remediation | Rollback via explicit inverse `WorkspaceEdit` + reparse verify; document.version re-check pre-`applyEdit`; overlap guard in write path; polite/assertive a11y live regions | PR #48 in flight (fix/v1.6-audit-blockers) |
+| ADR-019 + TDR-017 governance | ADR-019 formalises semantic-authoring scope; supersedes ADR-018 for authoring surface. TDR-017 documents Tier A/B coverage model. Restores intent + feature + how-to docs to `main` | PR #49 in flight (docs/adr-019-and-coverage-exemption) |
 
----
+### Completion assessment
 
-## Committed -- v1.5.0 "Copilot Chat & Import Bridge" (target: Q3 2026)
+The Visual C4 Editor is implemented on `main` through PR #117. **v1.6 as a marketplace release is not complete.** Remaining work is the v1.6 release sprint scoped 2026-07-18: five UX issues (#96, #97, #98, #111, #119 — #119 implemented, pending UAT), bundle budget (#46), test evidence (#72), documentation and UAT evidence (#74, #79, #82), and HLD/ADR coherence (#118) — sequenced in six phases in the 'v1.6 release sprint' section below.
 
-**Theme**: Make C4X discoverable to every VS Code user through Copilot Chat integration, and lower the adoption barrier with Mermaid import.
+| Capability | Evidence-backed state |
+|---|---|
+| Static preview baseline | Complete and merged |
+| Native source writeback (layout metadata) | Complete and merged; PR #48 closes the 4 audit blockers |
+| Sidecar persistence | Complete and merged; C11 residual hardening open |
+| Source-controlled controls/presets | Complete and merged; `c4x.resetLayout` operational |
+| Layout/routing/constraints | Implemented; C12 shape-agnostic a11y + Dagre NaN guard open |
+| Interactive canvas (layout mode) | Complete and merged: drag/select, zoom/pan, keyboard movement, ARIA announcements, bounded writeback |
+| **Edit C4 diagram entry point** | Native `.c4x` standalone Preview toolbar toggle and Markdown Preview entry (CodeLens, context menu, hover toolbar) both merged |
+| **Staged draft + Save/Cancel chrome** | Implemented for native `.c4x` and Markdown fence UAT; draft survives webview reload; close-while-dirty protection (#84) |
+| **Property inspector (read + writeback)** | Native label, technology, description, tags, sprite, and identifier rename implemented; lock toggle (#86) and live inline validation (#87) merged to `main`; relationship editing remains deferred |
+| **C4-legal palette (add elements)** | Not implemented — #60 (B10), #68 (B11) |
+| **Connect mode (add relationships)** | Not implemented — #66 (B12) |
+| **Delete element/relationship with cascade preview** | Not implemented — #64 (B13), #69 (B14) |
+| **External-change conflict recovery** | Merged to `main` — banner + Reload/Diff/Rebase (#71) |
+| **Source diff before Save** | Merged to `main` (#83) |
+| **Un-stage individual changes** | Merged to `main` (#85) |
+| **Zoom-to-fit + multi-select group move** | Merged to `main` (#88) |
+| **Theme/a11y sweep of editor chrome** | Merged to `main` (#90) |
+| **Edit-mode performance budget** | 120-node latency spec merged to `main` (#89) |
+| **Dependency CVE gate** | Restored via osv-scanner + bundle-size reporting, merged to `main` (#81/#46) |
+| **Semantic-editor E2E acceptance** | 14-scenario browser harness + refinement specs: 64 scenarios green after the #92 fix (`5c67507`); Phase 4 scenario additions for #96/#97/#98/#111 and installed-extension release proof remain (#72) |
+| **Wiki + living documentation** | Source/docs reconciled; Wiki publication and installed-extension screenshots remain |
+| Visual/a11y/performance/package release proof | Remote CI proves Node 20/26 and Linux/macOS/Windows clean-package smoke; UAT and release closeout remain |
 
-> This version pivots from the previous "Diagram Authoring" theme. The SWOT analysis shows that C4X's biggest opportunity (O1) is Copilot Chat integration, and the biggest adoption barrier is that users already have diagrams in Mermaid. v1.5 addresses both.
+### v1.6 release sprint (scoped 2026-07-18)
 
-### Copilot Chat participant (`@c4x`) -- HIGH PRIORITY
-- Register as a VS Code Chat Participant with the `@c4x` handle
-- Support intents: `@c4x describe this repo`, `@c4x generate a C2 for <system>`, `@c4x explain this diagram`
-- Delegate generation to the existing Gemini pipeline (PromptBuilder + FallbackStrategy + SyntaxValidator)
-- Render diagrams inline in the Chat panel using the existing SVG renderer
-- **GDE demo value**: "Ask Copilot about your architecture and get a rendered C4 diagram in the chat"
+The final sprint to marketplace release. All work items have detailed GH issues with acceptance criteria.
 
-### Mermaid import bridge -- HIGH PRIORITY
-- New command: `C4X: Import from Mermaid`
-- Uses Gemini to translate Mermaid `graph` and `flowchart` syntax into valid C4X DSL
-- Validates the output through the existing parser + self-correction loop
-- **GDE demo value**: "Bring your existing Mermaid diagrams into the C4 model world"
-- **Adoption value**: Lowers barrier for teams with existing Mermaid documentation
+**Phase 1 — UX Correctness: COMPLETE 2026-07-19**
+- #119 Edge repaint during node drag — merged (PR #120); E2E regression pin added (PR #127)
+- #97 Live canvas preview of staged text edits — merged (PR #122)
+- #96 Exit-edit-mode confirmation when dirty — merged (PR #122); visible discard status fix (PR #130)
+- #111 Auto-fit on open + adaptive content padding — merged (PR #122)
 
-### Structurizr DSL import
-- New command: `C4X: Import from Structurizr DSL`
-- Parse `.dsl` files and convert to C4X syntax (Gemini-assisted for complex cases)
-- DEBT-008: Grammar overhaul for string identifiers (parser enhancement, not just AI translation)
+**Phase 2 — UX Polish: COMPLETE 2026-07-19**
+- #98 Legend drag/reposition + contextual content — merged (PR #126)
+- #124 Markdown preview responsive scaling (UAT-found) — merged (PR #125)
+- #128 `c4x.markdown.previewScale` default 0.5 (maintainer-directed) — merged (PR #129)
 
-### Layout engine upgrade
-- **ELK evaluation spike** (TDR-003 escalation): evaluate elkjs as a Dagre replacement for hierarchical nested boundaries
-- If ELK proves viable: swap layout engine behind the existing API surface
-- If not: document the ceiling and add manual override escape hatches
+**Phase 3 — Bundle & Release Engineering: MERGED, target accepted**
+- #46 VSIX bundle budget remediation + .vscodeignore cleanup — merged (PR #123): VSIX 6.91MB → 3.61MB; TDR-006 revised (≤2.5MB VSIX / ≤3.5MB production bundle); further size optimization deferred to the marketplace-listing phase (maintainer decision, 2026-07-19)
 
-### Quality
-- **Custom local sprites**: `$sprite="./my-icon.png"` path resolution
-- **Live validation**: error squiggles for invalid relationships and syntax (semantic, not just lexical)
-- **Reference images for Flowchart & Sequence**: close the visual-consistency gap
+**Phase 4 — Test Evidence: COMPLETE 2026-07-19**
+- #72 B17 Playwright acceptance closure — CLOSED: 77 scenarios green (68 pre-existing + 9 new), closure table in the issue body (PRs #127, #130, #131)
 
----
+**Phase 5 — Documentation & Release Proof: DOCS COMPLETE, UAT PENDING**
+- #82 Doc micro-fixes — CLOSED (PR #135)
+- #118 HLD and ADR coherence update — CLOSED (PR #135)
+- #74 Living docs v1.6 reconciliation — docs merged (PR #135); CHANGELOG [Unreleased] → [1.6.0] promotion remains (Phase 6)
+- #79 UAT evidence: installed-VSIX walkthrough + real screenshots — PENDING (human gate)
 
-## Committed -- v2.0.0 "Enterprise & Intelligence" (target: Q1 2027)
+**UAT-found fixes (added to sprint scope):**
+- #132 "Waiting for render..." hang — negative layout origin rejected by webview validation — fixed and merged (PR #133)
+- #134 Editor initial zoom matches `c4x.markdown.previewScale` — merged (PR #144)
 
-**Theme**: Cross the chasm from individual-developer tool to team/enterprise tool. Add architecture intelligence that goes beyond diagram generation.
+**Phase 6 — Final Gate (~1 day):**
+- #46 Version bump 1.6.0-uat.4 → 1.6.0 + release closeout checklist (CHANGELOG promotion, ADR status flips, three-OS proof once CI is restored)
 
-> The v2.0 scope is narrowed compared to the previous roadmap. Multi-provider AI is **deferred** (see Deferred section). The focus is Vertex AI enterprise integration and architecture analysis -- the two features that only a GDE with Gemini access can credibly build and demo.
+**Elapsed: 2 days** for Phases 1–5 (scoped 2026-07-18, code-complete 2026-07-19) against the ~11-16 day estimate.
 
-### Vertex AI enterprise integration -- FLAGSHIP
-- **Settings**: `c4x.ai.vertexProject`, `c4x.ai.vertexLocation`, `c4x.ai.vertexEndpoint`
-- **Auth**: service account JSON, ADC (Application Default Credentials), and Workload Identity Federation
-- **Compliance**: zero-data-retention guarantees, regional model pinning
-- **Billing**: usage attribution through existing GCP billing
-- **GDE demo value**: "Architecture intelligence that stays in your VPC"
+### v1.6.1 — Editor authoring fast-follow (COMPLETE 2026-08-05)
 
-### Architecture analysis & critique mode -- FLAGSHIP
-- **Read-and-critique**: Gemini reads an existing C4X diagram and suggests improvements
-- **Bottleneck detection**: "Your API gateway is a single point of failure"
-- **Pattern matching**: "Consider separating read and write databases (CQRS)"
-- **Convention checking**: validate diagrams against team-defined ADRs/conventions
-- **GDE demo value**: "AI that reviews your architecture, not just generates it"
+Pulled forward by maintainer decision after UAT (reverses the ADR-019 first-release deferral for this tranche; milestone `v1.6.1 — Editor authoring fast-follow`). All three items merged:
 
-### Context caching for cost reduction
-- Use Gemini's context caching API for repeat-generation scenarios
-- Cache workspace file context between generation requests
-- Show cost reduction metrics in the output channel
+1. #137 Boundary frame reposition + resize — grammar → model → layout → payload → client → writeback chain — **merged (PR #148)**
+2. #138 Relationship property editing beyond label — technology, relType, endpoint re-assignment — **merged (PR #146)**
+3. #66 Connect mode — create relationships with legality-validated endpoints — **merged (PR #154)**
 
-### Batch API for multi-diagram generation
-- "Generate all C4 levels (C1 + C2 + C3) for this system" as a single command
-- Uses Gemini batch API to reduce latency and cost
+The 2026-08-05 delivery audit found #66's backend uncommitted in the `main` working tree with `feat/66-connect-mode` holding none of it, and no UI at all. Rescuing and completing it also surfaced two defects that would otherwise have shipped: a stale-range guard that checked geometry rather than identity (PR #152), and a structural-equivalence check that broke connect mode on any multi-view document (PR #154).
 
-### Agent syntax
-- First-class C4X support for `AI_Agent`, `Memory`, `Tool` element types
-- Extends the C4 vocabulary for the AI-native architecture era
+Milestone gates on `main`: `make quick-check` exit 0 · 1328 unit · 103/103 Playwright · 3/3 performance budgets.
 
-### Telemetry & analytics (opt-in)
-- Anonymous usage metrics: feature usage, error rates, model selection distribution
-- Cost forecasting: estimated Gemini API spend based on usage patterns
+**Deviation on record:** #66 set a ≤4 KB bundle-regression budget; the measured production regression is +18.5 KB (3443.8 → 3462.3 KB). Flagged for re-baselining alongside #46 rather than silently accepted.
 
----
+### Remaining before the v1.6.1 publish
 
-## Deferred (with rationale)
+No code work is outstanding. Two maintainer actions gate the release:
 
-### Multi-provider AI (Claude, OpenAI alongside Gemini)
-**Previously**: v2.0.0.
-**Deferred to**: v2.x or community contribution.
-**Rationale**: C4X's unique value is deep Gemini integration, not provider breadth. Adding Claude/OpenAI would dilute the GDE story, require a provider-pluggable abstraction layer (significant refactoring), and compete with tools that already do "AI + diagrams" with OpenAI (e.g., ChatGPT plugins). The Gemini-exclusive positioning is a strength, not a weakness.
+1. **Restore GitHub Actions billing** — every run has aborted in under six seconds since 2026-07-19, blocking the three-platform packaged-VSIX proof. The spend reductions in PR #150 take effect the moment it is restored.
+2. **#79 UAT evidence** — installed-VSIX walkthrough plus six real screenshots.
+3. ~~Bundle budget decision~~ — **resolved 2026-08-05.** VSIX cut 3.64 MB → **1.17 MB** (68%) by dropping a shipped source map and marketplace imagery that `vsce` already serves from GitHub. First time inside the TDR-006 2.5 MB target; the #66 in-bundle regression is immaterial at this size.
 
-### PlantUML rendering re-enable (DEBT-009)
-**Previously**: v1.5.0.
-**Deferred to**: v2.x or community contribution.
-**Rationale**: PlantUML rendering was disabled due to visual verification complexity. The adoption value is low -- users with PlantUML diagrams can use the existing PlantUML extensions. The Mermaid import bridge (v1.5) addresses the more common migration path.
+### Explicitly deferred (post-v1.6)
 
-### Deployment View completion
-**Previously**: v1.5.0.
-**Deferred to**: v2.x.
-**Rationale**: DeploymentNode parsing is partial and untested. Completing it requires parser grammar work, visual generation prompts, reference images, and test coverage. The effort is high relative to user demand. Revisit when Kubernetes/Terraform diagram generation becomes a stated user need.
+- #60/#68 Add element palette (B10/B11) — ADR-019 §16: "Not planned for first release"
+- ~~#66 Connect mode (B12)~~ — pulled into the v1.6.1 fast-follow and **shipped 2026-08-05 (PR #154)**
+- #64/#69 Delete element/relationship (B13/B14) — ADR-019 §16: "Not planned for first release"
+- #76 Wiki publication — P3, does not block UAT or marketplace release
+- #80 Repo hygiene — P2, no user impact
+- #110 Save latency on iCloud — already mitigated (sidecar read skip, fence cache)
+- #24 Hybrid layout/routing/constraint quality — large scope; removed from the v1.6 milestone (2026-07-19)
 
-### Refactoring tools ("Rename System")
-**Previously**: v1.5.0.
-**Deferred to**: v2.x.
-**Rationale**: Workspace-wide refactoring is a significant feature that requires a Language Server Protocol (LSP) implementation. The effort is disproportionate to the current user base. Focus v1.5 engineering time on Copilot Chat integration.
+## Current sequencing
 
-### AI determinism / "Loose Mode" toggle (DEBT-010)
-**Previously**: v1.5 (monitor).
-**Deferred to**: demand-driven.
-**Rationale**: No user pain signals have been reported. The self-correction loop already handles most non-determinism. Monitor; do not build.
+```text
+Visual Layout Foundation (MERGED on main via PR #44)
+       │
+       ▼
+PR #48 (audit blockers) ──> PR #49 (ADR-019 + TDR-017) ──> main
+       │
+       ▼
+Wave A — Foundation plumbing (parallel)
+  ├─ #50 A1 vscode-seam extraction for Tier A coverage
+  ├─ #51 A2 typed protocol schemas
+  ├─ #53 A3 SaveAnchor resolver
+  ├─ #52 A4 C4-legality validator
+  └─ #54 A5 webviewA11y module
+       │
+       ▼
+Wave B — UI capability (sequential)
+  ├─ #55 B6  Edit C4 diagram entry point (placeholder editor)
+  ├─ #58 B7  Read-only property inspector
+  ├─ #56 B8  Property inspector writeback (description)
+  ├─ #59 B9  Editor chrome (dirty state, changes list, Save/Cancel)
+  ├─ #60 B10 Palette: add-Container-in-System_Boundary
+  ├─ #68 B11 Palette: add remaining element types
+  ├─ #66 B12 Connect mode (add relationship)
+  ├─ #64 B13 Delete element with cascade preview
+  ├─ #69 B14 Delete relationship
+  ├─ #70 B15 Inspector remaining fields + safe identifier rename (supersedes #27)
+  ├─ #71 B16 External-change conflict recovery
+  └─ #72 B17 Playwright acceptance suite (full journey)
+       │
+       ▼
+Wave C — Residual audit hardening (parallel to A/B)
+  ├─ #63 C11 Sidecar hardening (precision, -0, newline, serialization, locked)
+  └─ #62 C12 Dagre NaN guard + shape-agnostic a11y selectors
+       │
+       ▼
+Documentation (rolls with Wave B)
+  ├─ #73 D1 Wiki: Visual C4 Editor page
+  └─ #74 D2 Capability matrix + how-to sync
+       │
+       ▼
+Refinement batch (MERGED to main, PRs #93–#117)
+  ├─ #83 source-diff panel · #84 draft survival · #85 un-stage · #71 conflict banner  ✓
+  ├─ #86 lock toggle · #87 inline validation · #88 zoom-fit/multi-select · #90 theme sweep  ✓
+  ├─ #81/#46 CVE gate restore · #89 perf budget · #91 docs/marketing sync  ✓
+  ├─ #92 regression fix · #105 relationship label editing · #111 spacing presets  ✓
+  └─ #107/#109/#114 audit P0 remediations (overlap pinning, containment, re-wrap)  ✓
+       │
+       ▼
+v1.6 release sprint (scoped 2026-07-18)
+  ├─ Phase 1 (parallel): #119 edge repaint on drag (fixed, in UAT) · #97 live canvas text preview · #96 exit-edit confirmation · #111 auto-fit on open + adaptive padding
+  ├─ Phase 2: #98 legend drag/reposition + contextual content (after Phase 1)
+  ├─ Phase 3 (parallel): #46 .vscodeignore cleanup + VSIX budget remediation
+  ├─ Phase 4: #72 Playwright acceptance closure for Phase 1–2 changes
+  ├─ Phase 5: #82 doc micro-fixes · #74 living docs · #79 UAT evidence · #118 HLD/ADR coherence
+  └─ Phase 6 (gate): version bump 1.6.0 + #46 release closeout → v1.6 Marketplace publish
+```
 
-### A11y & compliance agent
-**Previously**: v2.0.0.
-**Deferred to**: pre-EU launch (when there is a concrete compliance deadline).
-**Rationale**: WCAG 2.1 AA and GDPR/CCPA review are important but not blocking for current adoption. Sequence when an EU enterprise customer or a compliance audit creates urgency.
+All 21 sub-issues live under milestone `v1.6.0 — Visual Layout Mode` and epic #47. Labels: `codex` (Codex-ready), `wave-a-foundation`, `wave-b-ui-capability`, `wave-c-audit-hardening`.
 
----
+## Foundation gate — P0 Agent Harness 2.0
 
-## Out of scope (explicit non-goals)
+**Milestone**: P0 — Agent Harness 2.0
+**Epic**: #28
+**Purpose**: make CI authoritative and keep every supported coding surface aligned with one engineering contract.
 
-- **Standalone editor GUI** -- drag-and-drop conflicts with docs-as-code; would fragment the syntax-as-source-of-truth contract
-- **Standalone `.c4x` files as primary surface** -- supported, but the Markdown-embedded path is the headline UX
-- **Stateful diagrams** -- every diagram is a deterministic function of its source text; no hidden state, no migrations
-- **Localisation** -- defer until a non-English market becomes a stated business goal
-- **Provider-agnostic AI abstraction** -- C4X is a Gemini product. See Deferred section for rationale
+| Issue | Committed outcome | Checkpoint state |
+|---:|---|---|
+| #10 | Canonical cross-IDE skills and thin adapters | Open; body revised to vendor-neutral scope |
+| #15 | Canonical local, Git, and CI quality gates | Open; PR #38 increment merged; canonical Make/harness and >=80% coverage remain |
+| #17 | Harness schemas and self-validator | Open; fail-closed negative proof remains |
+| #18 | Reproducible Linux/macOS/Windows CI and clean-VSIX smoke | Open; PR #42 merged at `cd24e6e` after all six required jobs in run `29285494087` passed for head `686ee9f`, but the canonical Make-target failure path remains |
+| #19 | Diagram UX/Layout and DevEx ownership | Open |
+| #20 | Hook portability and documentation reconciliation | Open |
 
----
+### P0 exit criteria
 
-## Risk register (long-running)
+- `make quick-check`, `make check`, `make check-full`, and `make validate-harness` execute real commands.
+- Deliberately invalid fixtures prove validators and strict documentation checks return nonzero.
+- Unit, integration, coverage, benchmark, Extension Host, documentation, build, and package gates are reproducible.
+- CI toolchain inputs are pinned, resolved versions are logged, and a rerun can reproduce the declared environment.
+- A clean VSIX installs, activates, exposes the core commands, and opens the preview on Linux, macOS, and Windows.
+- Adapters and hooks remain repository-relative and cannot weaken the canonical contract.
+- CI is green and ADR-018 has the required Product, Engineering, QA, Security, and UX acceptance.
+
+## Committed — v1.6.0 Visual C4 Editor (full semantic authoring)
+
+**Milestone**: v1.6.0 — Visual Layout Mode
+**Epic**: #47 (Visual C4 Editor: source-authoritative user journey)
+**Governing decisions**: [ADR-018](adrs/018-source-controlled-visual-layout-mode.md) (foundation), [ADR-019](adrs/019-visual-c4-editor-semantic-authoring.md) (authoring scope), [TDR-017](adrs/TDR-017-coverage-tiering-and-exemptions.md) (coverage model), [intent doc](architecture/visual-c4-editor-intent-and-delivery-plan.md)
+**Product outcome (target, not current implementation)**: users select a rendered C4X diagram in Markdown Preview, click **Edit C4 diagram**, refine the C4 model visually (move, edit fields, add/delete elements + boundaries, add/change/delete relationships) in a staged draft with source diff and Save/Cancel, and see the persisted source re-render immediately after one atomic validated `WorkspaceEdit`.
+
+### Wave A — Foundation plumbing (parallel; no user-visible capability)
+
+| Issue | Outcome | Completion boundary |
+|---:|---|---|
+| #50 (A1) | Extract vscode boundary from WritebackTransaction + SidecarPersistence | Both files clear the Tier A c8 floor; extension-host tests unchanged |
+| #51 (A2) | Extend visualLayoutProtocol with typed semantic operations | Schemas + runtime validators for add/update/delete Element+Relationship + setPresentationOption; unit-tested |
+| #53 (A3) | SaveAnchor type + resolver | Anchor captured on open, re-resolved before every applyEdit; fails closed on uri/ordinal/fingerprint/model mismatch |
+| #52 (A4) | C4-legality validator | Pure function; 100% branch coverage; powers palette + preflight |
+| #54 (A5) | webviewA11y module | Polite/assertive live-region emitter extracted from previewClientScript; jsdom-tested |
+
+### Wave B — UI capability (sequential; each ships one visible increment)
+
+| Issue | Outcome | Completion boundary |
+|---:|---|---|
+| #55 (B6) | c4x.editDiagramInPreview command + Preview entry | Hover toolbar + context menu + keybinding; placeholder editor opens; anchor captured |
+| #58 (B7) | Read-only property inspector | Selection → inspector data flow proven; no writeback |
+| #56 (B8) | Property inspector writeback (description) | Full validation ladder end-to-end for one field; source diff pre-save |
+| #59 (B9) | Editor chrome (dirty state, changes list, Save/Cancel, reset-draft) | Staged draft container; wraps all operations |
+| #60 (B10) | Palette: add-Container-in-System_Boundary | Smallest add-element increment; palette → planner pipeline proven |
+| #68 (B11) | Palette: all remaining element types | Person/System/Component/Boundary/Node + _ext variants, C4-legality-gated |
+| #66 (B12) | Connect mode: add relationship | Source→target picking; typed emission; keyboard-operable |
+| #64 (B13) | Delete element with cascade preview | Confirmation modal; multi-edit atomic |
+| #69 (B14) | Delete relationship | Single-select delete |
+| #70 (B15) | Inspector remaining fields + safe identifier rename | name/technology/tags/sprite; id rename updates all Rel references atomically (supersedes #27) |
+| #71 (B16) | External-change conflict recovery | Banner + Reload/Diff/Rebase actions; assertive announcement — merged to `main` (see refinement batch below) |
+| #72 (B17) | Playwright acceptance suite | 14-scenario E2E; keyboard-only path; visual snapshots |
+
+### Wave C — Residual v1.6 audit hardening (independent)
+
+| Issue | Outcome |
+|---:|---|
+| #63 (C11) | Sidecar precision + `-0` + trailing newline + write serialization + `locked` preservation |
+| #62 (C12) | Dagre `Number.isFinite` guard + shape-agnostic selection/lock CSS |
+
+### Documentation (rolling)
+
+| Issue | Outcome |
+|---:|---|
+| #73 (D1) | GitHub Wiki: Visual C4 Editor page + link from docs index |
+| #74 (D2) | Capability confirmation matrix + how-to sync with shipped UI (living docs) |
+
+### Refinement batch (post-MVP hardening for UAT) — MERGED
+
+Sequential UI tickets R1–R8 plus toolchain/perf work. All merged to `main` (PRs #93–#117). The #92 regression was fixed at `5c67507`.
+
+| Issue | Outcome | Definition of done |
+|---:|---|---|
+| #83 (R1) | Source-diff panel before Save | Collapsible sidebar diff of the pending writeback; unit + host coverage |
+| #84 (R2) | Close-while-dirty protection + draft survival | Staged draft survives webview reload; explicit discard path; unit coverage |
+| #85 (R3) | Un-stage individual changes | Per-entry remove in the changes list; Save applies only remaining edits |
+| #71 (B16/R4) | External-change conflict banner | Reload/Diff/Rebase recovery actions; assertive a11y announcement |
+| #86 (R5) | Lock toggle in property inspector | Locked checkbox round-trips through writeback; locked elements non-movable |
+| #87 (R6) | Live inline validation in inspector | Field-level messages as-you-type; invalid edits never stage |
+| #88 (R7) | Zoom-to-fit + multi-select group move | Toolbar Fit button; group drag + keyboard move for multi-selection |
+| #90 (R8) | Theme sweep of new editor chrome | Static audit: no unapproved hardcoded hex; focus-visible per control; three-theme contrast via theme tokens |
+| #81/#46 (T4) | Restore dependency CVE gate | osv-scanner gate + bundle-size reporting in Make/CI (TDR-006/TDR-007) |
+| #89 (R9) | Edit-mode performance budget | 120-node interaction latency spec in the Playwright suite |
+| #91 (R10) | Docs + marketing sync | STATUS/ROADMAP/CHANGELOG/how-to/feature doc reflect the batch; Medium draft staged under `docs/marketplace/` |
+| #92 | Regression fix: 6 B17 scenarios | All 24 `visual-c4-editor` scenarios green; root cause in commit body |
+
+### Definition of done (v1.6 marketplace publish)
+
+Per epic #47 (mirrored here as the release gate). Marketplace publish requires ALL of:
+
+- All 21 sub-issues (A1-A5, B6-B17, C11-C12, D1, D2) merged into `main`.
+- ADR-019 approval evidence recorded: Product Owner, Diagram UX/Layout, Code Reviewer + Security Auditor, Delivery Manager, TDR-006 bundle-budget recheck.
+- Extension Host + Playwright suites cover the full journey (B17).
+- Keyboard-only completion of the journey passes (B17 scenario 12).
+- Screen-reader announcements verified with VoiceOver + NVDA for selection, dirty state, validation errors, save success, and conflict banner.
+- UAT: at least one architect and one technical writer complete the journey without a runbook (per epic #47 DoD).
+- CHANGELOG, README, docs/README, feature doc, how-to, Wiki reflect actual shipped behaviour (D2).
+- Three-OS clean-VSIX smoke + package-budget under TDR-006 (recheck required if bundle grows >10%).
+- #46 release-closeout checklist complete.
+
+## Shipped product foundation
+
+### v1.4.0 — Stability and Trust
+
+- C4X parser and C1/C2/C3/dynamic rendering.
+- Markdown fenced-diagram integration.
+- Dagre-based automatic layout and SVG rendering.
+- Classic, Modern, Muted, High Contrast, Auto, and C4 Standard themes.
+- SVG, PNG, clipboard, HTML, and print-preview workflows.
+- Gemini-assisted DSL and image generation with validation/fallback.
+- MCP C4X validator and bundled syntax/guideline resources.
+
+### Post-v1.4 merged baseline
+
+- Self-contained MCP bundle and deterministic protocol checks.
+- Node.js 26-compatible unit runner.
+- Deterministic offline Extension Host tests.
+- Restored standalone open/refresh preview commands and C4X grammar loading.
+- Real focused integration, P95 benchmark, honest all-source coverage, and three-OS clean-VSIX smoke gates.
+
+See the [changelog](../CHANGELOG.md) for detailed release history.
+
+## Parallel product candidates
+
+These remain valuable but do not displace the active P0 and v1.6 sequence:
+
+| Candidate | Product value | Re-entry condition |
+|---|---|---|
+| Copilot Chat participant | Discoverability and conversational architecture workflows | Separate milestone after the UI gate is stable |
+| Mermaid-to-C4X import | Lowers migration friction | Evidence of import demand and bounded validation design |
+| Architecture critique | Differentiated Gemini value | Product signal and explicit privacy/context boundary |
+| Standalone MCP package | Ecosystem reach | Release/publisher capacity |
+| Vertex AI enterprise integration | Regional and enterprise controls | Enterprise customer demand and security review |
+
+## Explicit non-goals
+
+Per ADR-019 §16:
+
+- A general-purpose drawing, wireframing, or presentation application.
+- Arbitrary HTML, image, script, filesystem, command, or text injection from the webview.
+- Auto-saving every gesture to the source document.
+- A persistent hidden canvas model or untracked temporary file.
+- Silent full-document or cross-document rewrites.
+- Loss of comments/formatting without an explicit reviewed replacement.
+- Full semantic editing of Structurizr/PlantUML in the first release (layout-only sidecar remains supported per ADR-018).
+- Automatic AI regeneration on Save without a user-visible source diff and normal validation.
+- Public mirror sync or marketplace publication as part of the current private-repository development session.
+
+## Risk register
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| GitHub Copilot adds native diagram generation | MEDIUM | HIGH | Ship `@c4x` Chat Participant in v1.5 before Copilot does it generically. C4 model discipline is the moat |
-| Gemini model sunset blindsides users | MEDIUM | HIGH | Sunset alerting shipped in v1.4; free-text model IDs for easy migration |
-| Mermaid.js adds AI generation | LOW-MEDIUM | HIGH | Mermaid import bridge (v1.5) makes C4X the "upgrade path." C4-specific validation is the differentiator |
-| Google builds architecture diagramming into Cloud Console + Gemini | LOW | MEDIUM | C4X is docs-as-code, not a GUI. Different audience. Position as "the developer's choice" |
-| Model churn fatigue erodes user trust | MEDIUM | MEDIUM | FallbackStrategy + sunset alerts + free-text IDs already mitigate. Add automated model-availability check in v1.5 |
-| Dagre layout limit blocks complex enterprise diagrams | MEDIUM | HIGH | v1.5: ELK evaluation spike (TDR-003 escalation) |
-| Low marketplace install count limits discovery | MEDIUM | MEDIUM | GDE talk circuit, MCP server as standalone npm, SEO keywords, "Diagram of the Week" social |
-| Test coverage gap masks regressions | LOW (today) | MEDIUM | 398 unit tests shipped; integration test stubs need filling in v1.4.1 |
+| Visual Layout Foundation is mistaken for the finished v1.6 release | High | High | ADR-018 marked superseded for authoring scope; ADR-019 formalises full scope; ROADMAP + STATUS + epic #47 name every missing capability; CHANGELOG deferred until v1.6 marketplace publish |
+| Scope expansion delays v1.6 marketplace publish indefinitely | High | High | 21 sub-issues under epic #47 with named DoD; Codex delegation for Wave A/B/C; weekly checkpoint against the sequencing diagram; #46 release closeout as the final gate |
+| Approval bottleneck holds Wave B before implementation | Medium | High | ADR-019 §Approval evidence enumerates all 5 required sign-offs; Product Owner + Delivery Manager can pre-approve Wave A (foundation-only) to run in parallel |
+| Source writeback corrupts user-authored text | Low (post-PR#48) | Critical | Parser-derived UTF-16 ranges, strict allowlist, revision re-check pre-`applyEdit`, overlap guard, one transaction, reparse + rollback (all landed in PR #48) |
+| Semantic writeback regresses layout writeback | Medium | High | Every Wave B PR runs the existing #26 layout regression suite; B17 adds semantic-editor E2E suite |
+| Webview messages cross the trust boundary unchecked | Low | High | Typed A2 protocol; runtime schema validation; every op re-validated in extension host; no free-form text posts |
+| Visual proof is synthetic or subjective | High | High | Production-backed browser/Extension Host tests, geometric assertions, snapshots, a11y with real screen readers, human UAT |
+| Bundle size regression breaks TDR-006 budget | Medium | Medium | Every Wave B issue names a bundle-size regression ceiling; TDR-006 recheck required before v1.6 publish |
+| Coverage regression hides in Tier B set | Medium | Medium | TDR-017 enforcement rules: exclude-list additions require Tier B row; A1 brings flagship files back into Tier A |
+| CI is green on one platform but package fails elsewhere | Medium | High | Three-OS clean-VSIX install/activation/preview smoke |
 
----
+## Governance
 
-## Key design decisions
-
-- **Dagre over ELK** -- Dagre selected for simplicity; ELK evaluation deferred to v1.5 spike
-- **Mermaid-inspired syntax** -- Accept friction for shorter learning curve vs custom DSL
-- **Gemini-exclusive AI** -- Deep integration over provider breadth; C4 model discipline is the moat
-- **SWOT-2026-05 roadmap reset** -- Copilot Chat and Mermaid import elevated to v1.5; multi-provider AI deferred; Vertex AI and architecture critique are v2.0 flagships
-
----
-
-## Milestone summary
-
-| Version | Theme | Target | Key deliverables |
-|---|---|---|---|
-| **v1.4.1** | Polish & Publish | May 2026 | Marketplace publishing, README honesty, legacy test triage |
-| **v1.5.0** | Copilot Chat & Import Bridge | Q3 2026 | `@c4x` Chat Participant, Mermaid import, Structurizr DSL import, ELK spike |
-| **v2.0.0** | Enterprise & Intelligence | Q1 2027 | Vertex AI integration, architecture critique mode, context caching, batch API, agent syntax |
+- The P0 harness workstream introduces the root `AGENTS.md` engineering contract; until that branch merges, accepted ADRs and this roadmap remain the visible policy on `main`.
+- Accepted ADRs define architectural boundaries.
+- This roadmap defines committed product scope and sequencing.
+- [`STATUS.md`](../STATUS.md) records evidence-backed state.
+- GitHub issues and PRs record acceptance, ownership, and closure evidence.

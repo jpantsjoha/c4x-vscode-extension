@@ -19,17 +19,17 @@ const DarkTheme: C4Theme = {
         person: {
             fill: '#569CD6',      // VS Code blue
             stroke: '#4EC9B0',
-            text: '#D4D4D4',
+            text: '#1E1E1E',      // Dark text - WCAG AA on the light-blue fill (5.65:1)
         },
         softwareSystem: {
             fill: '#4EC9B0',      // VS Code cyan
             stroke: '#569CD6',
-            text: '#D4D4D4',
+            text: '#1E1E1E',      // Dark text - WCAG AA on the cyan fill (8.18:1)
         },
         externalSystem: {
-            fill: '#6A737D',      // Muted gray
+            fill: '#4B5259',      // Muted gray, darkened so light text clears AA
             stroke: '#8E949A',
-            text: '#D4D4D4',
+            text: '#D4D4D4',      // WCAG AA on the darkened fill (5.35:1)
         },
         container: {
             fill: '#DCDCAA',      // VS Code yellow
@@ -39,7 +39,7 @@ const DarkTheme: C4Theme = {
         component: {
             fill: '#C586C0',      // VS Code purple
             stroke: '#D16969',
-            text: '#D4D4D4',
+            text: '#1E1E1E',      // Dark text - WCAG AA on the purple fill (5.99:1)
         },
         deploymentNode: {
             fill: '#252526',      // VS Code dark gray

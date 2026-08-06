@@ -1,12 +1,13 @@
 
 import * as assert from 'assert';
 import { GeminiService } from '../../src/ai/GeminiService';
+import { buildGenerationPrompt } from '../../src/ai/PromptBuilder';
 import * as vscode from 'vscode';
 
 describe('Gemini Issue Reproduction', () => {
     let geminiService: GeminiService;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         const mockContext = {
             globalState: {
                 get: () => 'fake-key',
@@ -20,6 +21,7 @@ describe('Gemini Issue Reproduction', () => {
         } as unknown as vscode.ExtensionContext;
 
         geminiService = new GeminiService(mockContext);
+        await geminiService.initialize();
 
         // MOCK THE MODEL to simulate what might be happening, 
         // OR better yet, if we can't make real calls, we inspect the Logic.
@@ -67,8 +69,7 @@ describe('Gemini Issue Reproduction', () => {
         const instruction = "Visualize this";
         const options = { direction: 'LR' as 'LR' };
 
-        // Access private method
-        const prompt = await (geminiService as any).buildPrompt(files, instruction, options);
+        const prompt = await buildGenerationPrompt(files, instruction, options);
 
         console.log("Generated Prompt Snippet:", prompt.substring(prompt.indexOf('CRITICAL SYNTAX RULES')));
 

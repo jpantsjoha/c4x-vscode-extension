@@ -1,4 +1,5 @@
 import { C4ViewType } from '../parser';
+import type { SourceRange, SourceId } from '../writeback/SourceRange';
 
 export type C4ElementType = 'Person' | 'SoftwareSystem' | 'Container' | 'Component' | 'DeploymentNode';
 
@@ -14,6 +15,10 @@ export interface C4Element {
     sprite?: string;
     children?: C4Element[];
     metadata?: Record<string, string>;
+    /** Source range in original file coordinates (native C4X only). */
+    sourceRange?: SourceRange;
+    /** Stable source identifier (native C4X only). */
+    sourceId?: SourceId;
 }
 
 export interface C4Rel {
@@ -24,6 +29,10 @@ export interface C4Rel {
     technology?: string;
     relType: RelType;
     order?: number; // Sequence order for dynamic diagrams
+    /** Source range in original file coordinates (native C4X only). */
+    sourceRange?: SourceRange;
+    /** Stable source identifier (native C4X only). */
+    sourceId?: SourceId;
 }
 
 export interface C4Boundary {
@@ -31,6 +40,11 @@ export interface C4Boundary {
     label: string;
     direction?: string;
     elements: string[]; // IDs of elements within this boundary
+    metadata?: Record<string, string>;
+    /** Source range in original file coordinates (native C4X only). */
+    sourceRange?: SourceRange;
+    /** Stable source identifier (native C4X only). */
+    sourceId?: SourceId;
 }
 
 export interface C4View {

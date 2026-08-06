@@ -12,14 +12,30 @@ import { svgBuilder } from '../render/SvgBuilder';
 import { parsePlantUMLtoC4Model } from '../parser/plantuml/PlantUMLAdapter';
 
 /**
+ * Options controlling how the plugin renders c4x blocks.
+ */
+export interface C4xPluginOptions {
+    /**
+     * Apply the `c4x.markdown.previewScale` factor to the wrapper max-width
+     * cap. True for the VS Code Markdown preview (default); exporters pass
+     * false so exported/printed diagrams keep their intrinsic size.
+     */
+    applyPreviewScale?: boolean;
+}
+
+/**
  * C4X MarkdownIt plugin
  * Registers a custom renderer for ```c4x fenced code blocks
  */
-export function c4xPlugin(md: MarkdownIt): MarkdownIt {
+export function c4xPlugin(md: MarkdownIt, options: C4xPluginOptions = {}): MarkdownIt {
+    const applyPreviewScale = options.applyPreviewScale ?? true;
     // Store reference to default fence renderer
     const defaultFence = md.renderer.rules.fence || function (tokens, idx, options, env, self) {
         return self.renderToken(tokens, idx, options);
     };
+
+    // Track c4x block ordinal across all fence tokens in one document render.
+    let c4xBlockOrdinal = 0;
 
     // Override fence renderer to intercept c4x blocks
     md.renderer.rules.fence = (tokens, idx, options, env, self) => {
@@ -43,11 +59,48 @@ export function c4xPlugin(md: MarkdownIt): MarkdownIt {
             }
         }
 
+        // Assign block ordinal for c4x fences (plantuml are skipped by FindC4xFencedBlocks).
+        const blockOrdinal = lang === 'c4x' ? c4xBlockOrdinal++ : -1;
+
         // Render C4X diagram
-        return renderC4XBlock(token.content, lang, attributes);
+        return renderC4XBlock(token.content, lang, attributes, blockOrdinal, applyPreviewScale);
     };
 
     return md;
+}
+
+// Bounds mirrored in package.json (c4x.markdown.previewScale) — a drift-pin
+// test in src/__tests__/markdown/c4xPlugin.test.ts keeps them in sync.
+export const PREVIEW_SCALE_DEFAULT = 0.5;
+export const PREVIEW_SCALE_MIN = 0.2;
+export const PREVIEW_SCALE_MAX = 1.0;
+
+/**
+ * Resolve the c4x.markdown.previewScale setting, falling back to the default
+ * when the vscode configuration API is unavailable (unit tests, exports) or
+ * the value is not a finite number within [0.2, 1.0].
+ * Exported so PreviewPanel can reuse the same validated read for the
+ * Markdown-bound editor's initial zoom (#134).
+ */
+export function readMarkdownPreviewScale(): number {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const vscodeApi = require('vscode');
+        if (!vscodeApi.workspace) {
+            return PREVIEW_SCALE_DEFAULT;
+        }
+        const config = vscodeApi.workspace.getConfiguration('c4x') as {
+            get<T>(key: string, defaultValue?: T): T | undefined;
+        };
+        const value = config.get<number>('markdown.previewScale', PREVIEW_SCALE_DEFAULT);
+        if (typeof value !== 'number' || !Number.isFinite(value) ||
+            value < PREVIEW_SCALE_MIN || value > PREVIEW_SCALE_MAX) {
+            return PREVIEW_SCALE_DEFAULT;
+        }
+        return value;
+    } catch {
+        return PREVIEW_SCALE_DEFAULT;
+    }
 }
 
 /**
@@ -55,9 +108,11 @@ export function c4xPlugin(md: MarkdownIt): MarkdownIt {
  * @param source C4X-DSL source code
  * @param lang Language identifier (c4x or plantuml)
  * @param attributes Optional rendering attributes (width, height, scale, zoom)
+ * @param blockOrdinal The zero-based ordinal of this c4x block in the document (-1 for plantuml)
+ * @param applyPreviewScale Whether to apply the c4x.markdown.previewScale factor to the width cap
  * @returns HTML string with inline SVG or error message
  */
-function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}): string {
+function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}, blockOrdinal = -1, applyPreviewScale = true): string {
     try {
         let model;
 
@@ -86,8 +141,16 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
         // Strip XML declaration — not valid inside an HTML document
         const svg = rawSvg.replace(/^\s*<\?xml[^?]*\?>\s*/, '');
 
-        // Apply size overrides
-        let style = '';
+        // Apply size overrides. Always cap the wrapper at the layout's
+        // intrinsic width scaled by c4x.markdown.previewScale (#128): the
+        // stylesheet gives the SVG width: 100%, so the diagram renders at the
+        // configured fraction of its natural size, shrinks further to fit
+        // narrow preview columns, but is never upscaled beyond the cap.
+        // A smaller explicit width= still wins — CSS resolves width and
+        // max-width to the minimum of the two. Exporters skip the scale so
+        // exported/printed diagrams keep their intrinsic size.
+        const scale = applyPreviewScale ? readMarkdownPreviewScale() : 1;
+        let style = `max-width: ${Math.round(layout.width * scale)}px;`;
         if (attributes['width']) {
             style += `width: ${attributes['width']};`;
         }
@@ -101,8 +164,21 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
         // Add zoom hint capability
         const zoomClass = attributes['zoom'] === 'false' ? '' : 'zoomable';
 
-        // 6. Wrap in container div
-        return `<div class="c4x-diagram ${zoomClass}" style="${style}">${svg}</div>`;
+        // Build "Edit C4 diagram" affordance for c4x blocks.
+        // The command: URI scheme is supported by VS Code Markdown Preview.
+        // The toolbar appears on hover via CSS defined in c4x.css.
+        const editAffordance = lang === 'c4x' && blockOrdinal >= 0
+            ? `<div class="c4x-edit-toolbar" role="toolbar" aria-label="C4 diagram actions">` +
+              `<a href="command:c4x.editMarkdownBlock?${encodeURIComponent(JSON.stringify([blockOrdinal]))}" ` +
+              `class="c4x-edit-button" title="Edit C4 diagram in visual editor" ` +
+              `aria-label="Edit C4 diagram in visual editor (opens visual editor panel)">` +
+              `✏ Edit C4 diagram` +
+              `</a>` +
+              `</div>`
+            : '';
+
+        // 6. Wrap in container div — SVG first, then optional edit toolbar.
+        return `<div class="c4x-diagram ${zoomClass}" style="${style}">${svg}${editAffordance}</div>`;
 
     } catch (error) {
         // Show error inline in the markdown preview

@@ -1,6 +1,5 @@
 
 import * as assert from 'assert';
-import * as vscode from 'vscode';
 import { GeminiService } from '../../src/ai/GeminiService';
 import { FileContext } from '../../src/ai/CodeContextExtractor';
 import * as fs from 'fs';
@@ -13,16 +12,9 @@ describe('GeminiService Integration Test', () => {
     const mockContext: any = {
         secrets: {
             store: async (key: string, value: string) => { },
-            get: async (key: string) => {
-                // Read from .env for test
-                const envPath = path.resolve(__dirname, '../../../.env');
-                if (fs.existsSync(envPath)) {
-                    const content = fs.readFileSync(envPath, 'utf-8');
-                    const match = content.match(/GEMINI_API_KEY=['"]?([^'"\n]+)['"]?/);
-                    return match ? match[1] : undefined;
-                }
-                return undefined;
-            }
+            get: async (key: string) => process.env.C4X_RUN_LIVE_AI_TESTS === '1'
+                ? process.env.GEMINI_API_KEY
+                : undefined,
         },
         subscriptions: []
     };
@@ -38,9 +30,9 @@ describe('GeminiService Integration Test', () => {
     // the refactored architecture. See DEBT-011.
 
     it('Should rigorously validate C1, C2, and C3 diagram syntax', async function () {
-        // @skip-reason: Integration test requires GEMINI_API_KEY env var or c4x.ai.apiKey setting
-        if (!process.env.GEMINI_API_KEY && !vscode.workspace.getConfiguration('c4x.ai').get<string>('apiKey')) {
-            console.warn('⚠️ Skipping Gemini Integration Test: No API Key found.');
+        // @skip-reason: Live AI tests require an explicit opt-in and an environment-only API key
+        if (process.env.C4X_RUN_LIVE_AI_TESTS !== '1' || !process.env.GEMINI_API_KEY) {
+            console.warn('⚠️ Skipping Gemini Integration Test: set C4X_RUN_LIVE_AI_TESTS=1 and GEMINI_API_KEY to opt in.');
             this.skip();
         }
 

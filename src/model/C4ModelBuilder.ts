@@ -102,6 +102,8 @@ export class C4ModelBuilder {
                 technology: element.technology,
                 description: element.description,
                 metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+                sourceRange: element.sourceRange,
+                sourceId: element.sourceId,
             };
 
             if (element.children && element.children.length > 0) {
@@ -138,14 +140,20 @@ export class C4ModelBuilder {
                 throw new C4XParseError(`Unsupported relationship arrow "${rel.arrow}"`, { line: index + 1, column: 1 });
             }
 
-            return {
+            const c4Rel: C4Rel = {
                 id: `rel-${index}`,
                 from: rel.from,
                 to: rel.to,
                 label: rel.label,
                 relType,
                 order: viewType === 'dynamic' ? index + 1 : undefined,
+                sourceRange: rel.sourceRange,
+                sourceId: rel.sourceId,
             };
+            if (rel.technology) {
+                c4Rel.technology = rel.technology;
+            }
+            return c4Rel;
         });
     }
 
@@ -156,6 +164,9 @@ export class C4ModelBuilder {
                 label: boundary.label,
                 direction: boundary.direction,
                 elements: boundary.elements.map(elem => elem.id), // elem is a RawElement with id property
+                metadata: boundary.metadata,
+                sourceRange: boundary.sourceRange,
+                sourceId: boundary.sourceId,
             };
         });
     }

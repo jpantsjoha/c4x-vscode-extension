@@ -32,7 +32,7 @@
         "directives": {
             "patterns": [
                 {
-                    "match": "%%\\{\\s*c4:\s*(system-context|container|component)\\s*\\}%%",
+                    "match": "%%\\{\\s*c4:\\s*(system-context|container|component)\\s*\\}%%",
                     "name": "keyword.control.directive.c4x"
                 }
             ]

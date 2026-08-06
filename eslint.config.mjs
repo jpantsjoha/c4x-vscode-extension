@@ -2,6 +2,8 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import security from 'eslint-plugin-security';
 
+const typescriptSourceFiles = ['src/**/*.ts', 'mcp/**/*.ts'];
+
 export default tseslint.config(
   // Global ignores (replaces ignorePatterns)
   {
@@ -19,21 +21,21 @@ export default tseslint.config(
 
   // Base configs — scoped to TypeScript files
   {
-    files: ['src/**/*.ts'],
+    files: typescriptSourceFiles,
     ...eslint.configs.recommended,
   },
   ...tseslint.configs.recommended.map(config => ({
     ...config,
-    files: ['src/**/*.ts'],
+    files: typescriptSourceFiles,
   })),
   {
-    files: ['src/**/*.ts'],
+    files: typescriptSourceFiles,
     ...security.configs.recommended,
   },
 
   // TypeScript source files — project-specific rules
   {
-    files: ['src/**/*.ts'],
+    files: typescriptSourceFiles,
     languageOptions: {
       parserOptions: {
         ecmaVersion: 2020,

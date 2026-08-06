@@ -24,6 +24,12 @@ interface SvgBuildOptions {
     viewType?: C4ViewType;
     /** Workspace name for the diagram title. */
     workspaceName?: string;
+    /**
+     * Render relationship arrows above nodes (edges on top). Defaults to the
+     * `c4x.edgesOnTop` setting (true): connectors stay visible over large
+     * containers and deployment nodes. Explicit option wins over the setting.
+     */
+    edgesOnTop?: boolean;
 }
 
 function getEdgeDasharray(edge: RoutedRelationship): string | undefined {
@@ -39,6 +45,46 @@ function getEdgeDasharray(edge: RoutedRelationship): string | undefined {
     }
 }
 
+/** Lateral offset (px) applied to each line of a bidirectional pair. */
+export const BIDIRECTIONAL_EDGE_OFFSET = 10;
+
+/**
+ * Ids of relationships that form a bidirectional pair: an edge A→B for which
+ * a reverse edge B→A also exists. Pure — exported for unit tests.
+ */
+export function findReversePairIds(relationships: RoutedRelationship[]): Set<string> {
+    const ids = new Set<string>();
+    for (let i = 0; i < relationships.length; i++) {
+        for (let j = i + 1; j < relationships.length; j++) {
+            const a = relationships[i].relationship;
+            const b = relationships[j].relationship;
+            if (a.from === b.to && a.to === b.from) {
+                ids.add(relationships[i].id);
+                ids.add(relationships[j].id);
+            }
+        }
+    }
+    return ids;
+}
+
+/**
+ * Shift a segment perpendicular to its own direction (to its right). Applied
+ * with the same sign to both directions of a bidirectional pair, the reversed
+ * geometry separates the two lines onto opposite sides of the shared channel.
+ * Pure — exported for unit tests.
+ */
+export function offsetPerpendicular(from: Point, to: Point, amount: number): { from: Point; to: Point } {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const nx = -dy / length;
+    const ny = dx / length;
+    return {
+        from: { x: from.x + nx * amount, y: from.y + ny * amount },
+        to: { x: to.x + nx * amount, y: to.y + ny * amount },
+    };
+}
+
 export class SvgBuilder {
     private labelTracker = new LabelCollisionTracker();
 
@@ -50,11 +96,12 @@ export class SvgBuilder {
         const elementCount = layout.elements.length;
         const isComplex = elementCount > 4;
 
-        // Reserve space for title and legend
+        // Reserve space for the title only. The legend is a draggable HTML
+        // overlay in the preview webview (#98), so the SVG no longer carries
+        // a legend box or reserves canvas space for one.
         const titleHeight = options.viewType ? 40 : 0;
-        const legendHeight = 130;
         const totalWidth = layout.width;
-        const totalHeight = layout.height + titleHeight + legendHeight;
+        const totalHeight = layout.height + titleHeight;
 
         // Smart Sizing: Use 100% for complex diagrams to allow responsive scaling
         // Keep fixed pixel size for small diagrams to ensure tightness
@@ -92,8 +139,13 @@ export class SvgBuilder {
         const elementMap = new Map<string, PositionedElement>();
         layout.elements.forEach(el => elementMap.set(el.id, el));
 
+        // Bidirectional pairs (A→B and B→A) share one channel; their edges
+        // and labels print on top of each other. Detect them so each line
+        // can be offset to its own side of the channel.
+        const bidirectionalIds = findReversePairIds(layout.relationships);
+
         // Pass complexity flag to renderEdge
-        const edgeSvg = layout.relationships.map(edge => this.renderEdge(edge, theme, elementMap)).join('\n');
+        const edgeSvg = layout.relationships.map(edge => this.renderEdge(edge, theme, elementMap, bidirectionalIds.has(edge.id))).join('\n');
 
         // Render boundaries if they exist
         const boundarySvg = layout.boundaries ?
@@ -102,8 +154,23 @@ export class SvgBuilder {
         // Render diagram title
         const titleSvg = this.renderTitle(options.viewType, options.workspaceName, totalWidth, theme);
 
-        // Render legend
-        const legendSvg = this.renderLegend(totalWidth, totalHeight, theme);
+        // Paint order: with edges on top (the c4x.edgesOnTop default),
+        // connectors render after nodes so they stay visible over large
+        // containers; legacy order paints nodes over edges.
+        const edgesOnTop = this.resolveEdgesOnTop(options);
+        const layeredContent = edgesOnTop
+            ? `    <g class="nodes">
+${nodeSvg}
+    </g>
+    <g class="edges">
+${edgeSvg}
+    </g>`
+            : `    <g class="edges">
+${edgeSvg}
+    </g>
+    <g class="nodes">
+${nodeSvg}
+    </g>`;
 
         return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}" role="img">
@@ -114,15 +181,36 @@ export class SvgBuilder {
     <g class="boundaries">
 ${boundarySvg}
     </g>
-    <g class="edges">
-${edgeSvg}
-    </g>
-    <g class="nodes">
-${nodeSvg}
-    </g>
+${layeredContent}
   </g>
-  ${legendSvg}
 </svg>`;
+    }
+
+    /**
+     * Resolves the edges-on-top flag: explicit option first, then the
+     * `c4x.edgesOnTop` setting (default true), falling back to true when the
+     * vscode configuration API is unavailable (unit tests).
+     */
+    private resolveEdgesOnTop(options: SvgBuildOptions): boolean {
+        if (options.edgesOnTop !== undefined) {
+            return options.edgesOnTop;
+        }
+        return this.readC4xBooleanSetting('edgesOnTop', true);
+    }
+
+    private readC4xBooleanSetting(key: string, fallback: boolean): boolean {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const vscodeApi = require('vscode');
+            if (!vscodeApi.workspace) {
+                return fallback;
+            }
+            const config = vscodeApi.workspace.getConfiguration('c4x') as { get<T>(key: string): T | undefined };
+            const value = config.get<boolean>(key);
+            return value ?? fallback;
+        } catch {
+            return fallback;
+        }
     }
 
     /**
@@ -164,58 +252,7 @@ ${nodeSvg}
         return `<text class="diagram-title" x="${titleX.toFixed(2)}" y="${titleY.toFixed(2)}" fill="${theme.colors.relationship.text}" text-anchor="middle" font-size="${fontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(titleText)}</text>`;
     }
 
-    /**
-     * Render a compact C4 notation legend at the bottom-right of the SVG.
-     */
-    private renderLegend(totalWidth: number, totalHeight: number, theme: C4Theme): string {
-        const legendWidth = 200;
-        const legendHeight = 120;
-        const padding = 10;
-        const legendX = totalWidth - legendWidth - padding;
-        const legendY = totalHeight - legendHeight - padding;
-        const fontSize = 10;
-        const lineHeight = 18;
-        const swatchSize = 12;
-        const textOffsetX = legendX + swatchSize + 8;
-
-        let currentY = legendY + 20; // Start below the "Legend" header
-
-        const items: string[] = [];
-
-        // Legend border
-        items.push(`<rect x="${legendX}" y="${legendY}" width="${legendWidth}" height="${legendHeight}" rx="4" ry="4" fill="${theme.colors.background}" stroke="${theme.colors.relationship.stroke}" stroke-width="1" opacity="0.9" />`);
-
-        // Legend header
-        items.push(`<text x="${(legendX + legendWidth / 2).toFixed(2)}" y="${(legendY + 14).toFixed(2)}" fill="${theme.colors.relationship.text}" text-anchor="middle" font-size="${fontSize + 1}" font-family="${theme.styles.fontFamily}" font-weight="bold">Legend</text>`);
-
-        // Person icon (small person silhouette)
-        items.push(`<circle cx="${(legendX + swatchSize / 2 + 2).toFixed(2)}" cy="${(currentY - 3).toFixed(2)}" r="3" fill="${theme.colors.person.fill}" />`);
-        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">Person</text>`);
-        currentY += lineHeight;
-
-        // Software System (blue box)
-        items.push(`<rect x="${(legendX + 2).toFixed(2)}" y="${(currentY - swatchSize + 2).toFixed(2)}" width="${swatchSize}" height="${swatchSize}" rx="2" ry="2" fill="${theme.colors.softwareSystem.fill}" />`);
-        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">Software System</text>`);
-        currentY += lineHeight;
-
-        // External System (grey box)
-        items.push(`<rect x="${(legendX + 2).toFixed(2)}" y="${(currentY - swatchSize + 2).toFixed(2)}" width="${swatchSize}" height="${swatchSize}" rx="2" ry="2" fill="${theme.colors.externalSystem.fill}" />`);
-        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">External System</text>`);
-        currentY += lineHeight;
-
-        // Boundary (dashed border)
-        items.push(`<rect x="${(legendX + 2).toFixed(2)}" y="${(currentY - swatchSize + 2).toFixed(2)}" width="${swatchSize}" height="${swatchSize}" rx="2" ry="2" fill="none" stroke="${theme.colors.relationship.stroke}" stroke-width="1" stroke-dasharray="3,2" />`);
-        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">System Boundary</text>`);
-        currentY += lineHeight;
-
-        // Relationship arrow
-        items.push(`<line x1="${(legendX + 2).toFixed(2)}" y1="${(currentY - 4).toFixed(2)}" x2="${(legendX + swatchSize + 2).toFixed(2)}" y2="${(currentY - 4).toFixed(2)}" stroke="${theme.colors.relationship.stroke}" stroke-width="1.5" stroke-dasharray="4,2" />`);
-        items.push(`<text x="${textOffsetX}" y="${currentY.toFixed(2)}" fill="${theme.colors.relationship.text}" font-size="${fontSize}" font-family="${theme.styles.fontFamily}">Relationship</text>`);
-
-        return `<g class="legend">\n    ${items.join('\n    ')}\n  </g>`;
-    }
-
-    private renderEdge(edge: RoutedRelationship, theme: C4Theme, elementMap?: Map<string, PositionedElement>): string {
+    private renderEdge(edge: RoutedRelationship, theme: C4Theme, elementMap?: Map<string, PositionedElement>, isBidirectional = false): string {
         const dasharray = getEdgeDasharray(edge);
         // Unique namespace for markers to prevent collisions in VS Code DOM
         const marker = edge.relationship.relType === 'async' ? 'c4x-arrow-async' : edge.relationship.relType === 'sync' ? 'c4x-arrow-sync' : 'c4x-arrow-uses';
@@ -231,10 +268,18 @@ ${nodeSvg}
             if (fromElement && toElement) {
                 // Use optimal edge routing for ALL diagrams to ensure arrows connect to edges
                 // This prevents arrows from being hidden behind nodes (center-to-center issue)
-                const connectionPoints = calculateOptimalConnectionPoints(
+                let connectionPoints = calculateOptimalConnectionPoints(
                     { x: fromElement.x, y: fromElement.y, width: fromElement.width, height: fromElement.height },
                     { x: toElement.x, y: toElement.y, width: toElement.width, height: toElement.height }
                 );
+
+                if (isBidirectional) {
+                    // Bidirectional pair: shift this line to its own side of the
+                    // shared channel so the two directions (and their labels)
+                    // no longer print on top of each other.
+                    const shifted = offsetPerpendicular(connectionPoints.from, connectionPoints.to, BIDIRECTIONAL_EDGE_OFFSET);
+                    connectionPoints = { ...shifted, mid: { x: (shifted.from.x + shifted.to.x) / 2, y: (shifted.from.y + shifted.to.y) / 2 } };
+                }
 
                 // Create direct path with optimal connection points
                 path = `M${connectionPoints.from.x.toFixed(2)},${connectionPoints.from.y.toFixed(2)} L${connectionPoints.to.x.toFixed(2)},${connectionPoints.to.y.toFixed(2)}`;
@@ -296,6 +341,7 @@ ${nodeSvg}
         }
 
         return `<g class="edge" data-id="${edge.id}">
+    <path class="edge-hit-area" d="${path}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
     <path d="${path}" fill="none" stroke="${theme.colors.relationship.stroke}" stroke-width="${theme.styles.borderWidth}" marker-end="url(#${marker})"${dasharray ? ` stroke-dasharray="${dasharray}"` : ''} />
     ${labelElement}
   </g>`;

@@ -44,14 +44,15 @@ describe('Theme System', () => {
 
         it('should return all available themes', () => {
             const themes = ThemeManager.getAllThemes();
-            assert.strictEqual(themes.length, 5);
-
             const themeNames = themes.map((t: { name: string }) => t.name);
-            assert.ok(themeNames.includes('classic'));
-            assert.ok(themeNames.includes('modern'));
-            assert.ok(themeNames.includes('muted'));
-            assert.ok(themeNames.includes('high-contrast'));
-            assert.ok(themeNames.includes('auto'));
+            assert.deepStrictEqual(themeNames, [
+                'c4-standard',
+                'classic',
+                'modern',
+                'muted',
+                'high-contrast',
+                'auto',
+            ]);
         });
 
         it('should persist theme selection', () => {

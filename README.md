@@ -1,38 +1,65 @@
 # C4X - C4 Model Diagrams for VS Code
 
+[![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/jpantsjoha.c4x?label=VS%20Code%20Marketplace&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/jpantsjoha/c4x?label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jpantsjoha/c4x)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/jpantsjoha.c4x?label=version)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
 ![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 ![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
 
-Fast, offline C4 architecture diagrams with real-time preview and AI-powered generation via Google Gemini. Mermaid-inspired DSL, C4-compliant SVG rendering, PNG export, and 1500+ cloud icons.
+Fast, offline C4 architecture diagrams with a source-driven SVG preview and optional AI-powered generation via Google Gemini. Mermaid-inspired DSL, C4-compliant rendering, PNG export, and 1500+ cloud icons.
 
-<img src="assets/marketplace/images/c4x-system-context-v140.png" width="700" alt="C4X System Context Diagram" />
+> **Trusted in production by thousands of developers** — installs and downloads are tracked live via the badges above ([VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x) · [Open VSX](https://open-vsx.org/extension/jpantsjoha/c4x)).
+
+<img src="assets/marketplace/screenshots/visual-editor-markdown-split.png" width="900" alt="C4X source in a Markdown file on the left, the live editable diagram on the right" />
+
+## Watch
+
+| [30s tour](https://youtu.be/qR1bbctj2rQ) | [Editing a diagram by dragging it](https://youtu.be/SjSg5LAIUwg) |
+|---|---|
+| [![Watch the C4X 30s tour](https://img.youtube.com/vi/qR1bbctj2rQ/mqdefault.jpg)](https://youtu.be/qR1bbctj2rQ) | [![Watch the C4X visual editor demo](https://img.youtube.com/vi/SjSg5LAIUwg/mqdefault.jpg)](https://youtu.be/SjSg5LAIUwg) |
+
+## New in v1.6: the Visual C4 Editor
+
+Diagrams stay text. You can now edit them by dragging.
+
+- **Lay a diagram out by hand**: Drag elements until the picture reads the way you would draw it on a whiteboard, then save. Auto-layout gets you started; you decide where things go
+- **Edit an element without hunting through the source**: Click it and change its name, technology, description, tags or icon in the inspector. Rename it and every relationship that mentions it is updated too
+- **Draw a relationship**: Pick two elements and name the connection. Point an existing arrow somewhere else when the design moves on
+- **Group things that belong together**: Move and resize a boundary and its contents travel with it
+- **See what you are about to change**: Every edit is listed, reversible one by one, and shown as a diff against your source before you save. Nothing is written until you say so
+- **Keep the source trustworthy**: A save that cannot be applied cleanly is rolled back rather than half-written, and you are warned if the file changed underneath you. Structurizr and PlantUML files are never rewritten; their layout is kept alongside them
+- **Edit the diagrams already in your docs**: Open the editor straight from a `c4x` block in any Markdown file, so the architecture in your README stays as current as the code
+- **Work without a mouse**: Every gesture has a keyboard equivalent, announced for screen readers
+
+### The editor
+
+| | |
+|---|---|
+| <img src="assets/marketplace/screenshots/visual-editor-element-inspector.png" alt="Element selected, with its properties in the inspector" /> | <img src="assets/marketplace/screenshots/visual-editor-relationship-inspector.png" alt="Relationship selected, with staged changes listed in the sidebar" /> |
+| Select an element to edit its properties | Select a relationship to re-target or relabel it. Every change is staged before it is saved |
 
 ## New in v1.4.0
 
-- **PNG export** -- Canvas-based at 1x/2x/4x resolution, no Chromium needed
-- **C4 Standard theme** -- Official filled-box convention as the new default
-- **Auto-layout** -- Smart direction: LR for small diagrams, TB for large
-- **24 architecture pattern examples** -- [CQRS, Saga, BFF, Hexagonal, IoT, CI/CD, Zero-Trust, and more](./docs/EXAMPLES-PATTERNS.md)
-- **All C4 view levels documented** -- [C1 through C4 + Dynamic diagrams](./docs/EXAMPLES-VIEWS.md)
-- **398 unit tests** with parser 94% and model 98% coverage
+- **PNG export**: Canvas-based at 1x/2x/4x resolution, no Chromium needed
+- **C4 Standard theme**: Official filled-box convention as the new default
+- **Auto-layout**: LR for small diagrams, TB for large
+- **24 architecture pattern examples**: [CQRS, Saga, BFF, Hexagonal, IoT, CI/CD, Zero-Trust, and more](./docs/EXAMPLES-PATTERNS.md)
+- **All C4 view levels documented**: [C1 through C4 + Dynamic diagrams](./docs/EXAMPLES-VIEWS.md)
 
 ## Features
 
-- **Instant Preview** -- Sub-50ms rendering for 30-node diagrams, live as you type
-- **AI Generation (Gemini)** -- Code-to-diagram, text-to-diagram, and visual PNG generation
-- **All C4 Levels** -- System Context, Container, Component, Deployment, and Dynamic views
-- **6 Themes** -- C4 Standard (default), Classic, Modern, Muted, High Contrast, Auto
-- **Export** -- PNG (1x/2x/4x), SVG, Copy SVG with theme preservation
-- **1500+ Icons** -- AWS, Azure, GCP with IntelliSense autocomplete (`$sprite` syntax)
-- **Markdown Integration** -- Render `c4x` blocks directly in README and architecture docs
-- **Auto-Layout** -- Smart direction selection: horizontal for small, vertical for large diagrams
-- **Self-Correcting AI** -- Parser-validated output with automatic retry and self-remediation
-- **MCP Server** -- Built-in validator for Claude, Cursor, and other AI assistants
-
-### Watch 30s Demo
-
-[![Watch C4X Demo](https://img.youtube.com/vi/qR1bbctj2rQ/maxresdefault.jpg)](https://youtu.be/qR1bbctj2rQ)
+- **Source-first Preview**: Open or refresh a deterministic SVG view from the supported diagram source
+- **Visual editing**: Drag elements, edit properties, draw relationships; every change written back to your source
+- **AI Generation (Gemini)**: Code-to-diagram, text-to-diagram, and visual PNG generation
+- **All C4 Levels**: System Context, Container, Component, Deployment, and Dynamic views
+- **6 Themes**: C4 Standard (default), Classic, Modern, Muted, High Contrast, Auto
+- **Export**: PNG (1x/2x/4x), SVG, Copy SVG with theme preservation
+- **1500+ Icons**: AWS, Azure, GCP with IntelliSense autocomplete (`$sprite` syntax)
+- **Markdown Integration**: Render `c4x` blocks directly in README and architecture docs
+- **Auto-Layout**: horizontal for small diagrams, vertical for large
+- **Self-Correcting AI**: Parser-validated output with automatic retry and self-remediation
+- **MCP Server**: Built-in validator for Claude, Cursor, and other AI assistants
 
 ## Quick Start
 
@@ -136,7 +163,7 @@ C4X uses Google Gemini to generate diagrams from code, text, or selections.
 
 **Setup**: Get a free API key from [Google AI Studio](https://aistudio.google.com/) or use a [Google Cloud](https://cloud.google.com/) Vertex AI key for enterprise compliance. Keys are stored in VS Code's encrypted SecretStorage.
 
-**Default model**: `gemini-3-flash-preview` (free tier) with automatic fallback to `gemini-3.1-pro-preview`. Configure any Gemini model via `c4x.ai.model` in settings.
+**Default model**: `gemini-3.5-flash`, with automatic failover to `gemini-3.1-pro-preview`. Set any Gemini model id in `c4x.ai.model`; retired preview ids are redirected to their replacements rather than failing.
 
 | Command | What it does |
 |---------|-------------|
@@ -194,26 +221,41 @@ Change via Command Palette (`C4X: Change Theme`) or settings (`"c4x.theme": "mod
 | [Cloud Icons](./docs/EXAMPLES-with-ICONS.md) | AWS, Azure, GCP sprites with autocomplete |
 | [Layout Guide](./docs/EXAMPLES-LAYOUT.md) | Direction control, nested layouts, manual positioning |
 | [Ordering Guide](./docs/EXAMPLES-ORDERING.md) | Controlling element placement |
+| [Visual Editing Status](./docs/features/visual-c4-editor.md) | Verified capability matrix, current how-to, and Known Limitations |
+| [Visual C4 Editor Wiki](https://github.com/jpantsjoha/c4x-vscode-extension/wiki/Visual-C4-Editor) (in-repo source: [`wiki/Visual-C4-Editor.md`](./wiki/Visual-C4-Editor.md)) | v1.6 Visual C4 Editor overview — what ships today, what's planned, safety promises, try-it-locally steps |
 | [Visual Diagrams](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md) | AI-powered PNG generation |
 | [Syntax Reference](./docs/c4x-syntax.md) | Complete DSL specification |
 | [Generation Guidelines](./docs/C4X-GENERATION-GUIDELINES.md) | Advanced AI prompting |
 
 ## MCP Server
 
-C4X includes a Model Context Protocol server for AI assistant integration.
+A C4X source checkout includes a tracked, self-contained Model Context Protocol server for AI assistant integration. It starts without loading packages from `node_modules`, so it remains reliable in iCloud-backed workspaces and clean clones. The server is distributed with the source repository, not the Marketplace VSIX.
 
 ```json
 {
   "mcpServers": {
     "c4x-validator": {
       "command": "node",
-      "args": ["/path/to/c4x-vscode-extension/out/mcp/c4x-mcp-server.js"]
+      "args": ["/absolute/path/to/c4x-vscode-extension/mcp/c4x-mcp-server.bundle.cjs"]
     }
   }
 }
 ```
 
-**Tool**: `validate_c4x` -- validates syntax, returns line/column errors for auto-correction.
+For a trusted Codex project, use `.codex/config.toml`:
+
+```toml
+[mcp_servers.c4x-validator]
+command = "node"
+cwd = "/absolute/path/to/c4x-vscode-extension"
+args = ["mcp/c4x-mcp-server.bundle.cjs"]
+startup_timeout_sec = 10
+tool_timeout_sec = 10
+```
+
+Restart the MCP client after changing its configuration. Maintainers can regenerate and verify the bundle and its `THIRD_PARTY_NOTICES.txt` file with `pnpm run build:mcp` and `pnpm run verify:mcp`.
+
+**Tool**: `validate_c4x` validates syntax, returns line/column errors for auto-correction.
 **Resources**: `c4x://guidelines`, `c4x://syntax`, `c4x://examples/*`
 
 Works with Claude Desktop, Cursor, Windsurf, Cline, and any MCP-compatible client.
@@ -227,19 +269,18 @@ Works with Claude Desktop, Cursor, Windsurf, Cline, and any MCP-compatible clien
 | Parse | < 50ms | **10ms** |
 | Preview Render | < 250ms | **55ms** |
 
-Tested with 30-node diagrams. 398 unit tests with 94% parser and 98% model coverage.
+These are historical v1.4 measurements from a 30-node fixture. Current development and release claims use the evidence gates recorded in [`STATUS.md`](./STATUS.md) and [`docs/ROADMAP.md`](./docs/ROADMAP.md).
 
 ## Roadmap
 
-**Shipped**: v1.4.0 (May 2026) -- PNG export, auto-layout, 398 tests, C4-compliant renderer, model validation
+**Shipped**
 
-**Next**: v1.5.0 "Copilot Chat & Import Bridge" (Q3 2026)
-- `@c4x` VS Code Copilot Chat participant
-- Mermaid C4 import bridge
-- ELK layout engine for hierarchical boundaries
-- Custom local sprites (`$sprite="./logo.png"`)
+- **v1.6** (August 2026): Visual C4 Editor: drag-to-edit with guarded writeback, connect mode, boundary reposition/resize, staged changes with source diff
+- **v1.4.0** (May 2026): PNG export, auto-layout, C4-compliant renderer, model validation
 
-Full roadmap: [docs/ROADMAP.md](./docs/ROADMAP.md)
+**Deferred beyond v1.6**, and openly so: an element palette, and delete for elements and relationships. Both are authoring gestures whose writeback consequences deserve their own release rather than a corner of this one.
+
+Known limitations are tracked in the [Visual Editing Status](./docs/features/visual-c4-editor.md) matrix. Full roadmap: [docs/ROADMAP.md](./docs/ROADMAP.md)
 
 ## Contributing
 
@@ -247,17 +288,17 @@ Contributions welcome via [GitHub Issues](https://github.com/jpantsjoha/c4x-vsco
 
 ## More from the Author
 
-- **[Pine Script (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** -- Syntax highlighting, snippets, and linting for TradingView's Pine Script
+- **[Pine Script (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)**: Syntax highlighting, snippets, and linting for TradingView's Pine Script
 
 ## License
 
-MIT -- see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
 
 ## Acknowledgments
 
 - [C4 Model](https://c4model.com/) by Simon Brown
-- [Mermaid.js](https://mermaid.js.org/) -- DSL syntax inspiration
-- [Dagre.js](https://github.com/dagrejs/dagre) -- Graph layout engine
+- [Mermaid.js](https://mermaid.js.org/): DSL syntax inspiration
+- [Dagre](https://github.com/dagrejs/dagre): Graph layout engine
 
 ---
 

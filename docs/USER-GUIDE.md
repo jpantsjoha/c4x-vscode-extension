@@ -1,168 +1,123 @@
 # C4X User Guide
 
-**Version**: 1.4.0
-**Last Updated**: 2026-05-03
+> **Version line**: v1.4.x
+> **Updated**: 2026-07-16
 
-Welcome to the C4X User Guide. This document provides a comprehensive overview of all features available in the C4X VS Code extension.
+C4X renders source-controlled C4 diagrams directly in VS Code without Java, Docker, or a rendering server. The public v1.4.x experience is source-first; the private v1.6 integration branch carries the UAT Visual C4 Editor.
 
----
+## Supported source files
 
-## Table of Contents
+| Source | Extension | Current preview behaviour |
+|---|---|---|
+| Native C4X | `.c4x` | Parse, model, automatic layout, SVG preview and C4X export commands |
+| Structurizr DSL | `.dsl` | Supported subset adapted into the common C4 model |
+| PlantUML C4 | `.puml` | Supported C4 macros adapted into the common C4 model |
+| Markdown | `.md` | `c4x` fenced blocks render through the Markdown extension path |
 
-1. [Features](#-features)
-2. [Creating C4X Diagrams](#-creating-c4x-diagrams)
-3. [Live Preview](#-live-preview)
-4. [C4X-DSL Syntax](#-c4x-dsl-syntax)
-5. [Markdown Integration](#-markdown-integration)
-6. [Commands](#-commands)
-7. [Troubleshooting](#-troubleshooting)
+Compatibility varies for foreign DSL features. Keep source in version control and review generated output.
 
----
+## Create a native C4X diagram
 
-## ✨ Features
-
-- **Mermaid-Inspired Syntax**: Write C4 diagrams with a familiar, intuitive syntax.
-- **Real-Time Preview**: See your diagrams update as you type, with a refresh time under 250ms.
-- **C4X-DSL Support**: Full support for System Context (C1), Container (C2), and Component (C3) diagrams.
-- **Offline-First**: No Java, servers, or Docker required. Everything runs locally within VS Code.
-- **Fast & Secure**: Renders typical diagrams in under 50ms and adheres to a strict Content Security Policy (CSP).
-- **Markdown Integration**: Embed C4X diagrams directly into your Markdown files.
-
----
-
-## 📝 Creating C4X Diagrams
-
-To create a C4 diagram, you need to create a file with a `.c4x` extension.
-
-1. Open a workspace in VS Code.
-2. Create a new file (e.g., `my-diagram.c4x`).
-3. Start writing your diagram using the [C4X-DSL syntax](#-c4x-dsl-syntax).
-
-### Example: A Simple System Context Diagram
+Create `banking.c4x`:
 
 ```c4x
 %%{ c4: system-context }%%
 graph TB
-    Customer[Customer<br/>Person]
-    BankingSystem[Internet Banking System<br/>Software System]
+    Person(customer, "Banking Customer", "Uses online banking")
+    System(banking, "Internet Banking", "Provides account services")
+    System_Ext(email, "E-mail System", "Sends notifications")
 
-    Customer -->|Uses| BankingSystem
+    customer -->|Uses| banking
+    banking -->|Sends notifications through| email
 ```
 
----
+See the [syntax reference](c4x-syntax.md) and [examples index](EXAMPLES.md) for C1, C2, C3, dynamic, boundary, icon, layout, and pattern examples.
 
-## 🖼️ Live Preview
+## Open and refresh the preview
 
-The live preview panel shows you a real-time rendering of your C4X diagram.
+With a `.c4x`, `.dsl`, or `.puml` document active, use any of these entry points:
 
-### How to Open the Preview
+- run **C4X: Open Preview** from the Command Palette;
+- use the editor context/title menu;
+- press `Ctrl+K V` on Windows/Linux or `Cmd+K V` on macOS.
 
-- **Keyboard Shortcut**: Press `Ctrl+K V` (or `Cmd+K V` on Mac) to open the preview alongside your editor.
+The preview follows the active supported document and schedules a render when the watched document changes or is saved. Run **C4X: Refresh Preview** to request a refresh explicitly.
 
-A new panel will open showing the rendered SVG diagram.
+Parse and render errors are shown inside the preview. If no supported document is active, open one and run the command again.
 
-### How it Works
+## Markdown diagrams
 
-The preview panel automatically updates whenever you make a change to the source `.c4x` file and save it. The update process is debounced to prevent excessive re-rendering while you type.
+Use a fenced `c4x` block:
 
-![C4X Preview Panel](https://raw.githubusercontent.com/jpantsjoha/c4x-vscode-extension/main/docs/images/c4x-preview-example.png)
+````markdown
+```c4x
+%%{ c4: system-context }%%
+graph LR
+    Person(user, "User", "Uses the application")
+    System(app, "Application", "Provides the service")
+    user -->|Uses| app
+```
+````
 
----
+Open VS Code's built-in Markdown preview. The extension replaces supported C4X fences with rendered SVG.
 
-## ✍️ C4X-DSL Syntax
+## Export and presentation commands
 
-C4X-DSL is the primary language for creating diagrams. For a complete reference, please see the [C4X-DSL Syntax Reference](./c4x-syntax.md).
+| Command | Purpose |
+|---|---|
+| **C4X: Export Markdown to HTML** | Export the active Markdown document with rendered diagrams |
+| **C4X: Export - Preview** | Open a print-oriented document for browser PDF printing |
+| **C4X: Export Diagram as PNG** | Export the current native C4X diagram as PNG |
+| **C4X: Export SVG** | Save the current SVG |
+| **C4X: Copy SVG To Clipboard** | Copy SVG source |
+| **C4X: Change Theme** | Select a supported diagram theme |
+| **C4X: Reset Visual Layout** | Remove native layout metadata or the selected sidecar overrides |
 
-### Key Concepts
+If an SVG-based export command has no current rendered diagram, it can offer to open the preview first.
 
-- **View Declaration**: `%%{ c4: <type> }%%` (e.g., `system-context`).
-- **Graph Direction**: `graph <dir>` (e.g., `TB` for top-to-bottom).
-- **Elements**: `ID[Label<br/>Type<br/>Tags]` (e.g., `Admin[Administrator<br/>Person]`).
-- **Relationships**: `FromID -->|Label| ToID`.
-- **Boundaries**: `subgraph <Label> ... end` for grouping elements in C2 diagrams.
+## Gemini-assisted commands
 
----
+Gemini features are optional and require their documented configuration. They are separate from deterministic local parsing and preview:
 
-## Ⓜ️ Markdown Integration
+- **C4X: Generate Diagram Here (Gemini)**;
+- **C4X: Diagram from Selection**;
+- **C4X: Preview - Visual Diagram (PNG)**.
 
-You can embed C4X diagrams directly within your Markdown files using fenced code blocks.
+Review AI-generated source or images before committing them. See the [Gemini guide](GEMINI_GUIDE.md).
 
-### How to Use
+## Visual Layout Mode status
 
-1. Create or open a Markdown (`.md`) file.
-2. Add a `c4x` code block:
+The Visual C4 Editor is merged to private `main` and distributed in `1.6.0-uat.N` prerelease builds pending UAT sign-off. It is not in the public v1.4.x Marketplace feature set. The build provides source-controlled drag, keyboard movement, staged native property editing with inline validation, safe identifier rename, relationship label editing, lock toggling, reset, native C4X writeback, and deterministic sidecar persistence for foreign formats.
 
-    ````markdown
-    ```c4x
-    %%{ c4: system-context }%%
-    graph LR
-        User[User<br/>Person]
-        System[My System<br/>Software System]
-        User --> System
-    ```
-    ````
+Follow [How to edit a C4 diagram visually](how-to/edit-a-c4-diagram-visually.md) for entering edit mode, pointer and keyboard movement, zoom/pan, persistence selection, reset, and recovery. Changes are staged and applied together with **Save Changes**; **Discard** abandons the draft. Source or an explicit versioned sidecar remains authoritative.
 
-3. When you open the built-in Markdown preview in VS Code, the C4X diagram will be rendered in place of the code block.
+See the [capability matrix and Known Limitations](features/visual-c4-editor.md) for the verified boundary and the planned semantic-editor journey. Native `.c4x` preview supports a staged property inspector and safe identifier rename; Markdown C4X fences expose the same staged editor through a CodeLens, the editor context menu, and the Markdown Preview toolbar (B18). Source-diff review (#83) and session-level conflict recovery (#71) are implemented. Direct node creation and relationship add/delete/connect are not implemented in the current mode.
 
-### How it Works
+## Troubleshooting
 
-The C4X extension includes a `MarkdownIt` plugin that detects `c4x` fenced code blocks and replaces them with the rendered SVG diagram during the Markdown rendering process.
+### Preview does not open
 
----
+- Confirm the active file is `.c4x`, `.dsl`, or `.puml`.
+- Run **C4X: Open Preview** from the Command Palette.
+- Check the Problems and Extension Host output for activation errors.
 
-## 📤 Export Documents
+### Preview reports a parse error
 
-C4X allows you to export your Markdown documents with valid diagrams to standard formats.
+- Check the view directive and `graph` declaration for native C4X.
+- Reduce the file to the smallest failing example.
+- Compare it with the [syntax reference](c4x-syntax.md).
 
-### Markdown to HTML
-- **Command**: `C4X: Export Markdown to HTML`
-- **Action**: Converts the current markdown file to a standalone HTML file with all diagrams rendered as inline SVGs.
-- **Use Case**: Offline sharing, static hosting.
+### Layout is unclear
 
-### Markdown to PDF (Preview)
-- **Command**: `C4X: Export - Preview`
-- **Action**: Opens a print-optimized version of your document in the default browser.
-- **Workflow**:
-  1. Run the command (or right-click file → "C4X: Export - Preview").
-  2. Browser opens with a blue banner.
-  3. Press `Cmd+P` (Mac) or `Ctrl+P` (Windows/Linux).
-  4. Select **"Save as PDF"** as the destination.
+- Choose an explicit `TB`, `BT`, `LR`, or `RL` graph direction.
+- Shorten very long labels.
+- Split diagrams that mix multiple abstraction levels.
+- Use the [layout examples](EXAMPLES-LAYOUT.md).
 
----
+### Markdown preview does not render
 
-## ⌨️ Commands
+- Use a `c4x` fenced code block exactly.
+- Confirm the C4X extension is active.
+- Reload the Markdown preview after correcting syntax.
 
-The C4X extension provides the following commands, which can be accessed from the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`):
-
-- **`C4X: Export Markdown to HTML`**: Exports current markdown file to HTML.
-- **`C4X: Export - Preview`**: Opens print-optimized preview in browser.
-- **`C4X: Export SVG`**: Exports diagram to SVG file.
-- **`C4X: Copy SVG to Clipboard`**: Copies SVG source to clipboard.
-- **`C4X: Change Theme`**: Switches the visual theme.
-
----
-
-## 🤕 Troubleshooting
-
-### Preview Panel is Blank or Shows an Error
-
-- **Check Syntax**: Ensure your `.c4x` file has valid syntax. The extension will report parsing errors in the preview panel.
-- **Check View Declaration**: Make sure you have a valid view declaration at the top of your file (e.g., `%%{ c4: system-context }%%`).
-- **Restart VS Code**: If all else fails, try restarting VS Code to ensure the extension is activated correctly.
-
-### Diagram Layout Looks Strange
-
-- **Check Graph Direction**: Make sure you have specified a `graph` direction (`TB`, `LR`, etc.).
-- **Simplify Labels**: Very long labels can sometimes cause layout issues. Try to keep them concise.
-
-### Markdown Preview Doesn't Render the Diagram
-
-- **Check the Fence**: Ensure your code block starts with ` ```c4x `.
-- **Trust the Workspace**: In some cases, you may need to trust the workspace for the Markdown preview to allow scripts to run.
-
----
-
-## Next Steps
-
-- **Examples**: Check out the `examples` directory in the project for more diagram ideas.
-- **Contribute**: We welcome contributions! See the [CONTRIBUTING.md](../../CONTRIBUTING.md) file for more information.
+For additional cases, see [Troubleshooting](TROUBLESHOOTING.md) and the [FAQ](FAQ.md).

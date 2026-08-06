@@ -12,9 +12,13 @@ export async function copySvgCommand(): Promise<void> {
     const svg = PreviewPanel.getCurrentSvg?.();
 
     if (!svg) {
-        vscode.window.showErrorMessage(
-            'No diagram to copy. Please open a C4X preview first.'
+        const action = await vscode.window.showErrorMessage(
+            'No diagram to copy. Open the C4X preview first.',
+            'Open Preview'
         );
+        if (action === 'Open Preview') {
+            await vscode.commands.executeCommand('c4x.openPreview');
+        }
         return;
     }
 

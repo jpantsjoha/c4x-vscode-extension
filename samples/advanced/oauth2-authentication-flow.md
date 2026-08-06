@@ -12,14 +12,14 @@ A mobile app authenticating users via Google OAuth to access a protected API.
 %%{ c4: system-context }%%
 graph TB
   %% Users
-  Person(user, "End User", "Mobile app user")
+  Person(user, "End User", "Mobile app user", $x="70", $y="40")
 
   %% Our Systems
   System(mobile_app, "Mobile App", "React Native application")
-  System(api_server, "API Server", "Protected resources")
+  System(api_server, "API Server", "Protected resources", $x="491", $y="541")
 
   %% External Systems
-  System_Ext(auth_provider, "OAuth Provider", "Google/Auth0/Okta")
+  System_Ext(auth_provider, "OAuth Provider", "Google/Auth0/Okta", $x="39", $y="702")
   System_Ext(user_db, "User Directory", "Google accounts")
 
   %% Relationships
@@ -37,10 +37,10 @@ graph TB
 %%{ c4: dynamic }%%
 graph TB
   %% Elements
-  Person(user, "User", "Mobile app user")
-  Container(app, "Mobile App", "React Native", "Client application")
-  Container(auth, "OAuth Provider", "Auth0", "Authorization server")
-  Container(api, "API Server", "Node.js", "Resource server")
+  Person(user, "User v2", "Mobile app user", $x="59", $y="0")
+  Container(app, "Mobile App", "React Native", "Client application", $x="524", $y="211")
+  Container(auth, "OAuth Provider", "Auth0", "Authorization server", $x="34", $y="461")
+  Container(api, "API Server", "Node.js", "Resource server", $x="229", $y="804")
 
   %% Flow (auto-numbered 1, 2, 3...)
   user -->|1. Taps "Login with Google"| app

@@ -156,10 +156,14 @@ export function renderNode(
         return renderIconNode(node, x, y, width, height, fill, stroke, textColor, theme, filter, spriteName);
     }
 
+    const isLocked = node.element.metadata?.locked === 'true';
+    const lockedClass = isLocked ? ' locked' : '';
+    const lockedAttr = isLocked ? ' data-locked="true"' : '';
+
     // Check if this is a database element — render as cylinder
     if (isDatabase(node)) {
         const textContent = renderC4ElementStructure(node, x, y, width, height, textColor, theme);
-        return `<g class="node database" data-id="${node.id}" ${filter}>
+        return `<g class="node database${lockedClass}" data-id="${node.id}"${lockedAttr} ${filter}>
     ${renderCylinder(x, y, width, height, fill, stroke, theme.styles.borderWidth)}
 ${textContent}
   </g>`;
@@ -168,7 +172,7 @@ ${textContent}
     // Render C4-PlantUML style element structure for non-Person elements
     const textContent = renderC4ElementStructure(node, x, y, width, height, textColor, theme);
 
-    return `<g class="node" data-id="${node.id}" ${filter}>
+    return `<g class="node${lockedClass}" data-id="${node.id}"${lockedAttr} ${filter}>
     <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${theme.styles.borderRadius}" ry="${theme.styles.borderRadius}" fill="${fill}" stroke="${stroke}" stroke-width="${theme.styles.borderWidth}" />
 ${textContent}
   </g>`;
@@ -234,7 +238,11 @@ function renderIconNode(
         iconSvg = `<g transform="translate(${translateX.toFixed(2)}, ${translateY.toFixed(2)}) scale(${scale.toFixed(4)})" ${fillAttr} stroke="none">${body}</g>`;
     }
 
-    return `<g class="node person" data-id="${node.id}" ${filter}>
+    const isLocked = node.element.metadata?.locked === 'true';
+    const lockedClass = isLocked ? ' locked' : '';
+    const lockedAttr = isLocked ? ' data-locked="true"' : '';
+
+    return `<g class="node person${lockedClass}" data-id="${node.id}"${lockedAttr} ${filter}>
     <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${theme.styles.borderRadius}" ry="${theme.styles.borderRadius}" fill="${fill}" stroke="${stroke}" stroke-width="${theme.styles.borderWidth}" />
     <g class="element-icon">
       ${iconSvg}
@@ -274,18 +282,18 @@ function renderC4ElementStructureForPerson(
     const textElements: string[] = [];
 
     if (title) {
-        textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${titleFontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(title)}</text>`);
+        textElements.push(`<text data-field="label" x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${titleFontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(title)}</text>`);
         currentY += lineHeight;
     }
 
     if (technology) {
         const techText = `[${technology}]`;
-        textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${techFontSize}" font-family="${theme.styles.fontFamily}" font-style="italic">${escapeXml(techText)}</text>`);
+        textElements.push(`<text data-field="technology" x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${techFontSize}" font-family="${theme.styles.fontFamily}" font-style="italic">${escapeXml(techText)}</text>`);
         currentY += lineHeight;
     }
 
     if (description) {
-        textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${descFontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(description)}</text>`);
+        textElements.push(`<text data-field="description" x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${descFontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(description)}</text>`);
     }
 
     return textElements.join('\n    ');
@@ -327,20 +335,20 @@ function renderC4ElementStructure(
 
     // Title (Bold, 14pt) - Primary identifier
     if (title) {
-        textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${titleFontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(title)}</text>`);
+        textElements.push(`<text data-field="label" x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${titleFontSize}" font-family="${theme.styles.fontFamily}" font-weight="bold">${escapeXml(title)}</text>`);
         currentY += lineHeight;
     }
 
     // Technology (Italic, 12pt) - In brackets
     if (technology) {
         const techText = `[${technology}]`;
-        textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${techFontSize}" font-family="${theme.styles.fontFamily}" font-style="italic">${escapeXml(techText)}</text>`);
+        textElements.push(`<text data-field="technology" x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${techFontSize}" font-family="${theme.styles.fontFamily}" font-style="italic">${escapeXml(techText)}</text>`);
         currentY += lineHeight;
     }
 
     // Description (Normal, 12pt) - Supporting information
     if (description) {
-        textElements.push(`<text x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${descFontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(description)}</text>`);
+        textElements.push(`<text data-field="description" x="${(x + width / 2).toFixed(2)}" y="${currentY.toFixed(2)}" fill="${textColor}" text-anchor="middle" font-size="${descFontSize}" font-family="${theme.styles.fontFamily}">${escapeXml(description)}</text>`);
     }
 
     return textElements.join('\n    ');
