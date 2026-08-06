@@ -1,10 +1,24 @@
 // Minimal vscode mock for unit tests that import modules depending on 'vscode'.
 // Only stubs the APIs actually used by the imported modules.
 
+// Test-controllable value for c4x.markdown.previewScale (#128).
+// `undefined` means "not set" — the configuration getter then returns the
+// caller-provided default, like the real Settings API does.
+let markdownPreviewScale: unknown;
+
+export function setMarkdownPreviewScaleForTests(value: unknown): void {
+    markdownPreviewScale = value;
+}
+
 export const workspace = {
     workspaceFolders: undefined as unknown,
     getConfiguration: (_section?: string) => ({
-        get: (_key: string) => undefined,
+        get: (key: string, defaultValue?: unknown) => {
+            if (key === 'markdown.previewScale' && markdownPreviewScale !== undefined) {
+                return markdownPreviewScale;
+            }
+            return defaultValue;
+        },
     }),
     fs: {
         readFile: async () => Buffer.from(''),

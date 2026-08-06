@@ -6,7 +6,6 @@
  */
 
 import * as assert from 'assert';
-import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -19,18 +18,17 @@ describe('Gemini Image Model Integration Test', function () {
     let skipTests = false;
 
     before(async function () {
-        // Load API key
-        const envPath = path.resolve(__dirname, '../../../.env');
-        let apiKey = process.env.GEMINI_API_KEY;
-
-        if (fs.existsSync(envPath)) {
-            const content = fs.readFileSync(envPath, 'utf-8');
-            const match = content.match(/GEMINI_API_KEY=['"]?([^'"\n]+)['"]?/);
-            if (match) apiKey = match[1];
+        if (process.env.C4X_RUN_LIVE_AI_TESTS !== '1') {
+            // @skip-reason: Live AI tests require an explicit opt-in to avoid network calls in normal gates
+            console.warn('⚠️ Skipping Gemini Image tests: set C4X_RUN_LIVE_AI_TESTS=1 to opt in');
+            skipTests = true;
+            this.skip();
+            return;
         }
 
+        const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
-            // @skip-reason: Integration test requires GEMINI_API_KEY environment variable or .env file
+            // @skip-reason: Opted-in live integration test also requires GEMINI_API_KEY
             console.warn('⚠️ Skipping Gemini Image tests: No API Key found');
             skipTests = true;
             this.skip();

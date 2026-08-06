@@ -125,14 +125,15 @@ BoundaryBlock
   = type:BoundaryType _ "(" _ id:Identifier _ "," _ label:QuotedString _ ")" _ "{" _ elements:SubgraphElementList _ "}" {
       const dirStmt = elements.find(function(el) { return el.type === 'style'; });
       // Include nested boundaries in 'elements' so the Start rule can traverse them
-      return { 
-        type: 'boundary', 
+      return {
+        type: 'boundary',
         id: id,
-        label: label, 
+        label: label,
         boundaryType: type,
         direction: dirStmt ? dirStmt.direction : undefined,
         elements: elements.filter(function(el) { return el.type === 'element' || el.type === 'boundary'; }),
-        relationships: elements.filter(function(el) { return el.type === 'relationship'; })
+        relationships: elements.filter(function(el) { return el.type === 'relationship'; }),
+        loc: location()
       };
     }
 
@@ -175,14 +176,22 @@ Comment
   = "%%" (!"\n" .)* _ { return { type: 'comment' }; }
 
 Subgraph
-  = "subgraph" _ label:Identifier _ "{" _ elements:SubgraphElementList _ "}" _ {
+  = "subgraph" _ label:Identifier _ kv:KVArgs? _ "{" _ elements:SubgraphElementList _ "}" _ {
       const dirStmt = elements.find(function(el) { return el.type === 'style'; });
+      const kvMap = kv || {};
+      const knownKeys = ['tags', 'sprite'];
+      const metadata = {};
+      Object.keys(kvMap).forEach(function(key) {
+        if (!knownKeys.includes(key)) metadata[key] = kvMap[key];
+      });
       return {
         type: 'boundary',
         label: label,
         direction: dirStmt ? dirStmt.direction : undefined,
         elements: elements.filter(function(el) { return el.type === 'element' || el.type === 'boundary'; }),
-        relationships: elements.filter(function(el) { return el.type === 'relationship'; })
+        relationships: elements.filter(function(el) { return el.type === 'relationship'; }),
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+        loc: location()
       };
     }
 
@@ -220,10 +229,10 @@ DeploymentNode
       const childrenElements = elements.filter(function(el) { return el.type === 'element'; });
       const internalRels = elements.filter(function(el) { return el.type === 'relationship'; });
 
-      return { 
-        type: 'element', 
-        id: props.id, 
-        label: props.label, 
+      return {
+        type: 'element',
+        id: props.id,
+        label: props.label,
         elementType: 'node',
         technology: props.technology,
         description: props.description,
@@ -231,7 +240,8 @@ DeploymentNode
         sprite: props.sprite,
         metadata: props.metadata,
         children: childrenElements,
-        internalRelationships: internalRels
+        internalRelationships: internalRels,
+        loc: location()
       };
     }
 
@@ -280,7 +290,8 @@ ElementCall
         tags: args.tags,
         sprite: args.sprite,
         metadata: args.metadata,
-        children: args.children // If any? (DeploymentNode logic is separate)
+        children: args.children, // If any? (DeploymentNode logic is separate)
+        loc: location()
       };
     }
 
@@ -344,7 +355,7 @@ QuotedString
   = "\"" chars:(!("\"") .)* "\"" { return chars.map(function(c) { return c[1]; }).join(''); }
 
 Element
-  = id:Identifier _ "[" _ body:ElementBody _ "]" {
+  = id:Identifier _ "[" _ body:ElementBody _ "]" _ kv:KVArgs? {
       if (body.length < 2) {
         const err = new Error("Elements must include label and type");
         err.location = location();
@@ -353,7 +364,24 @@ Element
       const label = body[0].trim();
       const type = body[1].trim();
       const tags = body.slice(2).map(function(l) { return l.trim(); }).filter(Boolean);
-      return { type: 'element', id: id, label: label, elementType: type, tags: tags };
+
+      const kvMap = kv || {};
+      const knownKeys = ['tags', 'sprite'];
+      const metadata = {};
+      Object.keys(kvMap).forEach(key => {
+        if (!knownKeys.includes(key)) metadata[key] = kvMap[key];
+      });
+
+      return {
+        type: 'element',
+        id: id,
+        label: label,
+        elementType: type,
+        tags: tags,
+        sprite: kvMap.sprite,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+        loc: location()
+      };
     }
 
 ElementBody
@@ -369,12 +397,19 @@ ElementLine
   = chars:(!("\n" / "[" / "]" / "<br/>") .)+ { return chars.map(function(c) { return c[1]; }).join('').trim(); }
 
 Relationship
-  = from:Identifier _ arrow:Arrow _ label:RelationshipLabel? _ to:Identifier {
-      return { type: 'relationship', from: from, arrow: arrow, label: label != null ? label.trim() : '', to: to };
+  = from:Identifier _ arrow:Arrow _ label:RelationshipLabel? _ technology:RelationshipTechnology? _ to:Identifier {
+      const result = { type: 'relationship', from: from, arrow: arrow, label: label != null ? label.trim() : '', to: to, loc: location() };
+      if (technology != null) {
+        result.technology = technology;
+      }
+      return result;
     }
 
 RelationshipLabel
   = "|" chars:(!"|" .)* "|" { return chars.map(function(c) { return c[1]; }).join(''); }
+
+RelationshipTechnology
+  = "\"" chars:(!"\"" .)* "\"" { return chars.map(function(c) { return c[1]; }).join(''); }
 
 Arrow
   = "-->" / "-.->" / "==>"

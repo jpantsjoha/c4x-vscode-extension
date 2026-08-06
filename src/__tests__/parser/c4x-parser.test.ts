@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import { C4XParser } from '../../parser/C4XParser';
 import { C4XParseError } from '../../parser/types';
+import { c4ModelBuilder } from '../../model/C4ModelBuilder';
 
 describe('C4XParser', () => {
     let parser: C4XParser;
@@ -266,6 +267,37 @@ describe('C4XParser', () => {
             assert.strictEqual(result.relationships[0].label, '');
         });
 
+        it('parses relationship with technology after the label', () => {
+            const input = `graph TB
+    A[Service A<br/>Software System]
+    B[Service B<br/>Software System]
+    A -->|Uses| "HTTP" B`;
+            const result = parser.parse(input);
+            assert.strictEqual(result.relationships[0].label, 'Uses');
+            assert.strictEqual(result.relationships[0].technology, 'HTTP');
+        });
+
+        it('parses relationship with technology but no label', () => {
+            const input = `graph TB
+    A[Service A<br/>Software System]
+    B[Service B<br/>Software System]
+    A --> "gRPC" B`;
+            const result = parser.parse(input);
+            assert.strictEqual(result.relationships[0].label, '');
+            assert.strictEqual(result.relationships[0].technology, 'gRPC');
+        });
+
+        it('propagates relationship technology through the model builder', () => {
+            const input = `%%{ c4: container }%%
+graph TB
+    A[Service A<br/>Container]
+    B[Service B<br/>Container]
+    A -->|Uses| "HTTP" B`;
+            const parseResult = parser.parse(input);
+            const model = c4ModelBuilder.build(parseResult, 'Test');
+            assert.strictEqual(model.views[0].relationships[0].technology, 'HTTP');
+        });
+
         it('parses multiple relationships', () => {
             const input = `graph TB
     User[User<br/>Person]
@@ -344,6 +376,24 @@ class Customer,BackOffice internal
             assert.ok(result.boundaries);
             assert.strictEqual(result.boundaries!.length, 1);
             assert.strictEqual(result.boundaries![0].label, 'Backend');
+        });
+
+        it('parses subgraph boundary geometry metadata ($x, $y, $w, $h)', () => {
+            const input = `graph TB
+    subgraph Backend $x="120", $y="80", $w="400", $h="300" {
+        API[API Server<br/>Software System]
+    }`;
+            const result = parser.parse(input);
+            assert.ok(result.boundaries);
+            assert.strictEqual(result.boundaries!.length, 1);
+            const boundary = result.boundaries![0];
+            assert.strictEqual(boundary.label, 'Backend');
+            assert.deepStrictEqual(boundary.metadata, {
+                x: '120',
+                y: '80',
+                w: '400',
+                h: '300',
+            });
         });
 
         it('parses BoundaryBlock (System_Boundary)', () => {

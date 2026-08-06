@@ -1,0 +1,10 @@
+{
+  "name": "c4x-vsix-smoke-host",
+  "displayName": "C4X VSIX Smoke Host",
+  "description": "Minimal development host used to test the separately installed C4X VSIX.",
+  "version": "0.0.0",
+  "publisher": "c4x-tests",
+  "engines": {
+    "vscode": "^1.80.0"
+  }
+}

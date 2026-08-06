@@ -6,8 +6,8 @@
 // Extracted from GeminiService.ts as part of WS-5 decomposition.
 // Model registry, validation, and sunset alerting added as part of G3/G4.
 
-/** Default text-generation model (fast, free-tier, best cost/performance). */
-export const DEFAULT_MODEL = 'gemini-3-flash-preview';
+/** Default text-generation model (fast, latest Gemini 3.5 Flash). */
+export const DEFAULT_MODEL = 'gemini-3.5-flash';
 
 /** Pro-tier text-generation model used as failover (best reasoning, 1M context). */
 export const PRO_MODEL = 'gemini-3.1-pro-preview';
@@ -36,7 +36,8 @@ export interface ModelInfo {
 
 /** Registry of all known models the extension has been tested with. */
 export const MODEL_REGISTRY: ModelInfo[] = [
-    { id: DEFAULT_MODEL, purpose: 'Primary DSL generation (fast, free-tier)', isDefault: true },
+    { id: DEFAULT_MODEL, purpose: 'Primary DSL generation (fast, latest frontier performance)', isDefault: true },
+    { id: 'gemini-3-flash-preview', purpose: 'Legacy primary model (previous default)' },
     { id: PRO_MODEL, purpose: 'Failover DSL generation (best reasoning)' },
     { id: 'gemini-3.1-flash-lite-preview', purpose: 'Budget option (user-selectable)' },
     { id: DEFAULT_IMAGE_MODEL, purpose: 'Default visual generation', isDefault: true },

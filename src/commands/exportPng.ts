@@ -28,9 +28,13 @@ export async function exportPngCommand(): Promise<void> {
 
     const svg = PreviewPanel.getCurrentSvg();
     if (!svg) {
-        void vscode.window.showErrorMessage(
-            'No rendered diagram found. Open the C4X preview first, then retry the export.'
+        const action = await vscode.window.showErrorMessage(
+            'No rendered diagram found. Open the C4X preview first, then retry the export.',
+            'Open Preview'
         );
+        if (action === 'Open Preview') {
+            await vscode.commands.executeCommand('c4x.openPreview');
+        }
         return;
     }
 

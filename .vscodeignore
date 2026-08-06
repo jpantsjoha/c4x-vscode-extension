@@ -3,6 +3,9 @@ src/**
 node_modules/**
 .vscode/**
 .vscode-test/**
+.codex/**
+.agents/**
+.claude/**
 .git/**
 .github/**
 .githooks/**
@@ -16,6 +19,22 @@ test-results/**
 docs/**
 examples/**
 samples/**
+wiki/**
+
+# Non-runtime assets (cloud icons are compiled inline into src/assets/*.ts)
+assets/cloud/**
+
+# Marketplace listing imagery. vsce rewrites every relative link in README.md
+# to https://github.com/<repo>/raw/HEAD/<path>, so the Marketplace and Open VSX
+# render these straight from GitHub and never read them out of the VSIX. Only
+# the icon declared in package.json ("icon") has to ship. Verified by
+# unpacking the VSIX: zero relative image links survive in the packaged README.
+assets/marketplace/**
+!assets/marketplace/icon.png
+
+# Source maps never ship. The extension bundle is deliberately unminified
+# (see esbuild.config.js), so a shipped .map buys nothing and cost 741 KB.
+**/*.map
 
 # Build config files
 tsconfig.json
@@ -26,6 +45,7 @@ eslint.config.mjs
 .eslintrc.json
 .gitignore
 .gitattributes
+.nvmrc
 .markdownlint.json
 .mcp.json
 Makefile
@@ -36,9 +56,22 @@ pnpm-lock.yaml
 CONTRIBUTING.md
 
 # Test and temp files
+.tmp/**
 *.test.ts
 *.test.js
 out/test/**
+out/**
 test_output*.log
 *.vsix
 .env
+
+# Private development harness and planning files
+CLAUDE.md
+claude.md
+GEMINI.md
+AGENTS.md
+STATUS.md
+IMPROVEMENT-PLAN.md
+playwright.config.ts
+audit/**
+audit_prompt_v1_6.md

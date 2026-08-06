@@ -10,7 +10,9 @@
 .c4x-diagram svg {
     display: block;
     margin: 0 auto;
-    max-width: 100%;
+    /* Fill the wrapper, which caps width at the diagram's intrinsic size
+       (inline max-width) — scales down to fit, never upscales. */
+    width: 100%;
     height: auto;
 }
 
@@ -137,4 +139,50 @@ body.vscode-high-contrast-light .c4x-diagram.lightbox {
     font-family: monospace;
     font-size: 12px;
     white-space: pre-wrap;
+}
+
+/* Edit toolbar — visible on hover/focus, keyboard-reachable */
+.c4x-diagram {
+    position: relative;
+}
+
+.c4x-edit-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+}
+
+.c4x-diagram:hover .c4x-edit-toolbar,
+.c4x-diagram:focus-within .c4x-edit-toolbar {
+    opacity: 1;
+}
+
+.c4x-edit-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    background: var(--vscode-button-background, #0e639c);
+    color: var(--vscode-button-foreground, #ffffff);
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.c4x-edit-button:hover,
+.c4x-edit-button:focus-visible {
+    background: var(--vscode-button-hoverBackground, #1177bb);
+    text-decoration: none;
+    outline: 2px solid var(--vscode-focusBorder, #007acc);
+    outline-offset: 2px;
+}
+
+body.vscode-high-contrast .c4x-edit-button {
+    border: 1px solid var(--vscode-contrastBorder, #6fc3df);
 }

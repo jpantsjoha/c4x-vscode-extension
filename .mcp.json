@@ -2,8 +2,9 @@
   "mcpServers": {
     "c4x-validator": {
       "command": "node",
+      "cwd": ".",
       "args": [
-        "out/mcp/c4x-mcp-server.js"
+        "mcp/c4x-mcp-server.bundle.cjs"
       ]
     }
   }

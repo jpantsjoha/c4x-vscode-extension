@@ -15,7 +15,9 @@
 }
 
 .c4x-diagram svg {
-    max-width: 100%;
+    /* Fill the wrapper, which caps width at the diagram's intrinsic size
+       (inline max-width) — scales down to fit, never upscales. */
+    width: 100%;
     height: auto;
     display: inline-block;
 }
@@ -106,14 +108,14 @@
 
 .vscode-dark .c4x-error,
 .vscode-high-contrast .c4x-error {
-    background: #3f1f1f;
-    border-color: #dc2626;
+    background: var(--vscode-inputValidation-errorBackground, #3f1f1f);
+    border-color: var(--vscode-inputValidation-errorBorder, #dc2626);
 }
 
 .vscode-dark .c4x-error-message,
 .vscode-high-contrast .c4x-error-message {
     background: var(--vscode-editor-background, #1e1e1e);
-    border-color: #7f1d1d;
+    border-color: var(--vscode-inputValidation-errorBorder, #7f1d1d);
 }
 
 /* Print styles for PDF/Print Preview */

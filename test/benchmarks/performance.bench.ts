@@ -5,6 +5,7 @@
  * - Total pipeline: < 200ms
  */
 
+import '../../scripts/mock-vscode';
 import { c4xParser } from '../../src/parser/C4XParser';
 import { PlantUMLParser } from '../../src/parser/plantuml/PlantUMLParser';
 import { c4ModelBuilder } from '../../src/model/C4ModelBuilder';
@@ -16,46 +17,23 @@ import { ClassicTheme } from '../../src/themes/ClassicTheme';
  * Sample C4X diagram for benchmarking
  */
 const SAMPLE_C4X = `
-graph BankingSystem
-
-// Elements
-person customer "Personal Banking Customer"
-person admin "Bank Administrator"
-system email "E-mail System" external
-system mainframe "Mainframe Banking System" external
-
-container webapp "Web Application" {
-  technology "JavaScript, Angular"
-  description "Provides banking functionality via web browser"
-}
-
-container api "API Application" {
-  technology "Java, Spring Boot"
-  description "Provides banking functionality via JSON/HTTPS API"
-}
-
-container db "Database" {
-  technology "Oracle Database"
-  description "Stores user registration, hashed credentials, access logs"
-}
-
-// Relationships
-customer -> webapp "Uses" https
-customer -> email "Receives email from"
-admin -> webapp "Uses" https
-webapp -> api "Makes API calls to" https
-api -> db "Reads from and writes to" jdbc
-api -> email "Sends email using" smtp
-api -> mainframe "Makes API calls to" xml
-
-// Views
-view system-context "System Context" {
-  include *
-}
-
-view container "Container View" {
-  include *
-}
+%%{ c4: container }%%
+graph TB
+  Person(customer, "Personal Banking Customer", "Uses online banking")
+  Person(admin, "Bank Administrator", "Operates the platform")
+  System_Boundary(banking, "Internet Banking System") {
+    Container(webapp, "Web Application", "Angular", "Browser experience")
+    Container(api, "API Application", "Java and Spring Boot", "JSON API")
+    ContainerDb(db, "Database", "Oracle", "Stores account data")
+  }
+  System_Ext(email, "E-mail System", "Sends notifications")
+  System_Ext(mainframe, "Mainframe Banking System", "Core banking")
+  customer -->|Uses| webapp
+  admin -->|Administers| webapp
+  webapp -->|Makes API calls to| api
+  api -->|Reads from and writes to| db
+  api -->|Sends e-mail using| email
+  api -->|Makes API calls to| mainframe
 `;
 
 /**
@@ -222,11 +200,13 @@ export function runBenchmarks(): void {
 
     console.log(`Target: Parse < ${parseTarget}ms`);
     console.log(`Actual: ${c4xResults.avg.toFixed(2)}ms (P95: ${c4xResults.p95.toFixed(2)}ms)`);
-    console.log(`Status: ${c4xResults.p95 < parseTarget ? '✅ PASS' : '❌ FAIL'}`);
+    const parsePassed = c4xResults.p95 < parseTarget;
+    console.log(`Status: ${parsePassed ? '✅ PASS' : '❌ FAIL'}`);
 
     console.log(`\nTarget: Pipeline < ${pipelineTarget}ms`);
     console.log(`Actual: ${pipelineResults.avg.toFixed(2)}ms (P95: ${pipelineResults.p95.toFixed(2)}ms)`);
-    console.log(`Status: ${pipelineResults.p95 < pipelineTarget ? '✅ PASS' : '❌ FAIL'}`);
+    const pipelinePassed = pipelineResults.p95 < pipelineTarget;
+    console.log(`Status: ${pipelinePassed ? '✅ PASS' : '❌ FAIL'}`);
 
     // 7. Comparison Table
     console.log('\n--- COMPARATIVE PERFORMANCE ---\n');
@@ -242,6 +222,10 @@ export function runBenchmarks(): void {
     console.log(`Total Pipeline                | ${pipelineResults.avg.toFixed(2).padStart(8)} | ${pipelineResults.p95.toFixed(2).padStart(8)} | 100.0%`);
 
     console.log('\n========================================\n');
+
+    if (!parsePassed || !pipelinePassed) {
+        throw new Error('Performance regression: one or more P95 targets were exceeded');
+    }
 }
 
 // Run benchmarks if executed directly

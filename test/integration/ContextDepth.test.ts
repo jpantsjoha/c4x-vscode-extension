@@ -26,13 +26,17 @@ describe('Context Depth & Ignore Integration Test', function () {
 
         // Assertions
         // 1. Check for absence of ignored files
-        const hasNodeModules = files.some(f => f.path.includes('node_modules'));
-        const hasTest = files.some(f => f.path.includes('test/'));
-        const hasGit = files.some(f => f.path.includes('.git'));
-        const hasDist = files.some(f => f.path.includes('dist/'));
+        const hasPathSegment = (filePath: string, segment: string): boolean =>
+            filePath.split('/').includes(segment);
+        const hasNodeModules = files.some(f => hasPathSegment(f.path, 'node_modules'));
+        const hasTest = files.some(f => hasPathSegment(f.path, 'test'));
+        const hasGit = files.some(f => hasPathSegment(f.path, '.git'));
+        const hasVsCodeTest = files.some(f => hasPathSegment(f.path, '.vscode-test'));
+        const hasDist = files.some(f => hasPathSegment(f.path, 'dist'));
 
         assert.strictEqual(hasNodeModules, false, 'Should ignore node_modules');
         assert.strictEqual(hasGit, false, 'Should ignore .git');
+        assert.strictEqual(hasVsCodeTest, false, 'Should ignore .vscode-test');
         assert.strictEqual(hasDist, false, 'Should ignore dist');
 
         // "test/" was added to ignore patterns in CodeContextExtractor.ts
@@ -59,10 +63,10 @@ describe('Context Depth & Ignore Integration Test', function () {
             // dir/dir/file -> 2 slashes
 
             // If we have dir/dir/dir/dir/file -> 4 slashes -> Should be excluded.
-            if (depth > 3) {
+            if (depth > 2) {
                 console.warn(`Found deep file: ${f.path}`);
             }
-            assert.ok(depth <= 3, `File ${f.path} is too deep (depth ${depth})`);
+            assert.ok(depth <= 2, `File ${f.path} is too deep (depth ${depth})`);
         });
     });
 });

@@ -1,36 +1,14 @@
 
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
 import { GeminiService } from '../../src/ai/GeminiService';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { C4XParser } from '../../src/parser/C4XParser';
 
 describe('Gemini Self-Correction Integration Test', function () {
     this.timeout(60000); // 60 seconds
     const parser = new C4XParser();
 
-    let context: vscode.ExtensionContext;
     let service: GeminiService;
-    let hasApiKey = false;
-
-    before(async function () {
-        // @skip-reason: Integration test requires GEMINI_API_KEY env var or .env file for live API tests
-        const envPath = path.resolve(__dirname, '../../../.env');
-        let apiKey = process.env.GEMINI_API_KEY;
-
-        if (fs.existsSync(envPath)) {
-            const content = fs.readFileSync(envPath, 'utf-8');
-            const match = content.match(/GEMINI_API_KEY=['"]?([^'"\n]+)['"]?/);
-            if (match) apiKey = match[1];
-        }
-
-        hasApiKey = !!apiKey;
-        if (!hasApiKey) {
-            console.warn('⚠️ Skipping Gemini Integration Test: No API Key found.');
-        }
-    });
 
     // Mock API that returns BAD then GOOD response
     class MockGenerativeModel {
@@ -113,7 +91,9 @@ graph TB
 
         service = new GeminiService(mockContext);
 
-        // Don't call initialize() - we're mocking everything below
+        // Let the constructor's asynchronous initialization settle before replacing
+        // its dependencies; otherwise it can overwrite the mock with a real model.
+        await service.initialize();
 
         // Inject mock genAI (needed for fallback mechanism)
         (service as any).genAI = {

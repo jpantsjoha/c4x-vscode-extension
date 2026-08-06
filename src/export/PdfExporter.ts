@@ -78,7 +78,9 @@ export class PdfExporter {
             linkify: true,
             typographer: true,
         });
-        c4xPlugin(md);
+        // Keep diagrams at intrinsic size for print — c4x.markdown.previewScale
+        // is preview-only (#128).
+        c4xPlugin(md, { applyPreviewScale: false });
 
         const bodyHtml = md.render(markdown);
 

@@ -13,9 +13,13 @@ export async function exportSvgCommand(): Promise<void> {
     const svg = PreviewPanel.getCurrentSvg?.();
 
     if (!svg) {
-        vscode.window.showErrorMessage(
-            'No diagram to export. Please open a C4X preview first.'
+        const action = await vscode.window.showErrorMessage(
+            'No diagram to export. Open the C4X preview first.',
+            'Open Preview'
         );
+        if (action === 'Open Preview') {
+            await vscode.commands.executeCommand('c4x.openPreview');
+        }
         return;
     }
 

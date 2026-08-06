@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { runTests, downloadAndUnzipVSCode } from '@vscode/test-electron';
+import packageJson from '../package.json';
 
 async function main() {
   let tempDir: string | null = null;
@@ -14,6 +15,8 @@ async function main() {
 
     // Path to test suite entry point
     const extensionTestsPath = path.resolve(__dirname, './suite/index');
+    const vscodeVersion = process.env.C4X_VSCODE_VERSION || packageJson.c4xToolchain.vscode;
+    console.log(`Pinned VS Code test version: ${vscodeVersion}`);
 
     // VS Code test electron has issues with paths containing spaces
     // Create symlinks in tmp directory if the path contains spaces
@@ -38,6 +41,7 @@ async function main() {
       const vscodeTestDir = path.join(os.tmpdir(), 'c4x-vscode-test-cache');
       console.log(`   Using VS Code cache at: ${vscodeTestDir}`);
       vscodeExecutablePath = await downloadAndUnzipVSCode({
+        version: vscodeVersion,
         cachePath: vscodeTestDir
       });
 
@@ -78,6 +82,7 @@ async function main() {
       extensionDevelopmentPath: effectiveExtensionPath,
       extensionTestsPath: effectiveTestsPath,
       vscodeExecutablePath,
+      version: vscodeVersion,
       launchArgs,
       extensionTestsEnv // Pass environment variables
     });

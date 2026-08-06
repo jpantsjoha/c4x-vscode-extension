@@ -10,6 +10,10 @@ import { exportPngCommand } from './commands/exportPng';
 import { exportSvgCommand } from './commands/exportSvg';
 import { copySvgCommand } from './commands/copySvg';
 import { changeThemeCommand } from './commands/changeTheme';
+import { PreviewPanel } from './webview/PreviewPanel';
+import { executeResetLayoutTransaction } from './writeback/WritebackTransaction';
+import { C4XCodeLensProvider } from './markdown/C4XCodeLensProvider';
+import { registerEditMarkdownBlockCommand } from './commands/EditMarkdownBlockCommand';
 
 /**
  * Activate the C4X extension
@@ -28,6 +32,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register commands
   context.subscriptions.push(
+    vscode.commands.registerCommand('c4x.openPreview', () => {
+      PreviewPanel.createOrShow(context);
+      return true;
+    }),
+    vscode.commands.registerCommand('c4x.refreshPreview', () => {
+      return PreviewPanel.refresh();
+    }),
     vscode.commands.registerCommand('c4x.exportHtml', async (uri?: vscode.Uri) => {
       await htmlExporter.export(uri);
     }),
@@ -52,7 +63,38 @@ export function activate(context: vscode.ExtensionContext) {
       if (vscode.window.activeTextEditor) {
         await visualDiagramCommand.generateVisualDiagram(vscode.window.activeTextEditor);
       }
+    }),
+    vscode.commands.registerCommand('c4x.resetLayout', async () => {
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor) {
+        try {
+          const success = await executeResetLayoutTransaction(activeEditor.document);
+          if (success) {
+            vscode.window.showInformationMessage('C4X: Layout coordinates reset successfully.');
+            await PreviewPanel.refresh();
+          }
+        } catch (error) {
+          vscode.window.showErrorMessage(`C4X: Failed to reset layout coordinates: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
     })
+  );
+
+  // Register the webview panel serializer so VS Code can restore the panel
+  // after an extension-host reload. The draft survives via webview setState/getState.
+  context.subscriptions.push(
+    vscode.window.registerWebviewPanelSerializer('c4xPreview', PreviewPanel.createSerializer(context))
+  );
+
+  // Register command for editing a specific Markdown fenced c4x block.
+  context.subscriptions.push(registerEditMarkdownBlockCommand(context));
+
+  // Register CodeLens provider: shows "Edit C4 diagram" above each fence in .md files.
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: 'markdown' },
+      new C4XCodeLensProvider()
+    )
   );
 
   // Register Completion Item Provider for icons
@@ -83,5 +125,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  // Resources disposed via subscriptions
+  PreviewPanel.dispose();
 }
