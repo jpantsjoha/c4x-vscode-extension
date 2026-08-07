@@ -109,7 +109,23 @@ A: C4X is available on the [VS Code Marketplace](https://marketplace.visualstudi
 
 ---
 
-## AI & Gemini Integration
+## AI & Gemini
+
+### Q: Where do I enter my Gemini API key?
+
+Press `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows and Linux) and run **`C4X: Set Gemini API Key`**.
+
+It is deliberately not a setting. VS Code settings are plain text and sync
+across machines, so the key lives in the editor's encrypted SecretStorage
+instead. The old `c4x.ai.apiKey` setting is deprecated and greyed out; any
+value left in it is migrated to secure storage on the next activation and the
+setting is cleared.
+
+To replace an expired key, run the same command again: it overwrites what is
+stored and the change takes effect immediately, without reloading the window.
+To remove a key entirely, run **`C4X: Clear Gemini API Key`**.
+
+ Integration
 
 > **See [Gemini AI Guide](./GEMINI_GUIDE.md)** for the complete AI Model Configuration guide and DSL reference.
 
@@ -119,11 +135,11 @@ A: Open **Settings** (Ctrl/Cmd + ,), search for `c4x.ai.model`, and enter any Ge
 
 ```json
 {
-  "c4x.ai.model": "gemini-3.1-pro-preview"
+  "c4x.ai.model": "gemini-3.6-flash"
 }
 ```
 
-The default is `gemini-3.1-pro-preview`.
+The default is `gemini-3.6-flash`.
 
 ### Q: Which models are supported?
 
@@ -131,13 +147,17 @@ A: C4X works with any Gemini model your API key supports. Here are the recommend
 
 | Model | Status | Best For |
 |-------|--------|----------|
-| `gemini-3.1-pro-preview` | **Default** | Best reasoning, 1M context ($2/$12 per 1M tokens) |
-| `gemini-3-flash-preview` | Supported | Fast responses, free tier available (rate-limited) |
-| `gemini-2.5-pro` | Sunset 2026-06-17 | Legacy -- migrate before sunset |
-| `gemini-2.5-flash` | Sunset 2026-06-17 | Legacy -- migrate before sunset |
+| `gemini-3.6-flash` | **Default** | Newest generally available flash model |
+| `gemini-3.5-flash` | Supported | Previous default, still generally available |
+| `gemini-3.1-flash-lite` | Supported | Budget option |
+| `gemini-3.1-pro-preview` | Failover | Best reasoning. A preview model: no generally available Pro exists in the 3.x line |
+| `gemini-2.5-pro` | Retires 2026-10-16 | Legacy, migrate before then |
+| `gemini-2.5-flash` | Retires 2026-10-16 | Legacy, migrate before then |
 
 **Removed models** (no longer available):
-- `gemini-3-pro-preview` -- sunset 2026-03-09
+- `gemini-3-pro-preview` -- retired 2026-03-09
+- `gemini-3-flash-preview`, `gemini-3.1-flash-image-preview`, `gemini-3-pro-image-preview` -- retired 2026-07-17
+- `gemini-3.1-flash-lite-preview` -- retired 2026-07-09
 
 See [Google AI Models](https://ai.google.dev/gemini-api/docs/models) for all available model IDs.
 
@@ -147,7 +167,7 @@ A: C4X has **smart fallback** built in. If your configured model fails for any r
 
 1. Your configured model (with up to 3 self-correction retries)
 2. `gemini-3.1-pro-preview` (if your model was different)
-3. `gemini-3-flash-preview` (if you were already on `gemini-3.1-pro-preview`)
+3. `gemini-3.6-flash` (if you were already on `gemini-3.1-pro-preview`)
 
 This happens transparently -- you will see a brief "Trying fallback..." message. If all models fail, you will get a clear error with guidance.
 
@@ -159,7 +179,7 @@ A: Open **Settings**, search for `c4x.ai.imageModel`, and enter an image-capable
 
 ```json
 {
-  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview"
+  "c4x.ai.imageModel": "gemini-3.1-flash-image"
 }
 ```
 
@@ -167,12 +187,13 @@ A: Open **Settings**, search for `c4x.ai.imageModel`, and enter an image-capable
 
 | Model | Notes |
 |-------|-------|
-| `gemini-3.1-flash-image-preview` | **Default** -- Nano Banana 2 (fast, 4K output) |
-| `gemini-3-pro-image-preview` | Nano Banana Pro (highest quality, opt-in) |
+| `gemini-3.1-flash-image` | **Default** -- Nano Banana 2 (fast, 4K output) |
+| `gemini-3.1-flash-lite-image` | Nano Banana 2 Lite (lowest latency and cost) |
+| `gemini-3-pro-image` | Nano Banana Pro (highest quality, opt-in) |
 
 ### Q: Do I need a paid Gemini API key?
 
-A: No. The `gemini-3-flash-preview` model is available on the free tier, though it is rate-limited. For heavier usage or access to `gemini-3.1-pro-preview`, a paid key removes rate limits and provides better throughput.
+A: No. The `gemini-3.6-flash` default is available on the free tier, though it is rate-limited. For heavier usage or access to `gemini-3.1-pro-preview`, a paid key removes rate limits and provides better throughput.
 
 - **Free key**: Go to [Google AI Studio](https://aistudio.google.com/apikey) and create one in seconds.
 - **Enterprise key**: Use your Google Cloud Console > APIs & Services > Credentials, with the Generative Language API enabled.
@@ -190,7 +211,7 @@ A: That depends on your key type:
 A: Work through these steps:
 
 1. **Check your API key**: Open Settings, search for `c4x.ai.apiKey`, and verify it is set correctly. You can test your key at [Google AI Studio](https://aistudio.google.com/).
-2. **Check your model**: Ensure `c4x.ai.model` is set to a valid, non-sunset model. Try `gemini-3.1-pro-preview` (the default).
+2. **Check your model**: Ensure `c4x.ai.model` is set to a valid, non-sunset model. Try `gemini-3.6-flash` (the default).
 3. **Check your network**: AI features require an internet connection. Verify you can reach `generativelanguage.googleapis.com`.
 4. **Check rate limits**: Free-tier keys have request limits. If you see 429 errors, wait a minute or upgrade your key.
 5. **Check the Output panel**: Open VS Code's Output panel (View > Output) and select "C4X" from the dropdown for detailed error messages.
@@ -229,7 +250,7 @@ A: Yes. C4X implements **Self-Validation with Auto-Correction**:
 ### Q: What is Visual Diagram Generation?
 A: This feature (v1.2.0+, updated v1.3.0) uses Gemini image models to generate **PNG images** of C4 diagrams directly from text descriptions, without writing any DSL code.
 
-The default image model is `gemini-3.1-flash-image-preview` (Nano Banana 2). You can switch to `gemini-3-pro-image-preview` (Nano Banana Pro) for higher quality output via the `c4x.ai.imageModel` setting.
+The default image model is `gemini-3.1-flash-image` (Nano Banana 2). You can switch to `gemini-3-pro-image` (Nano Banana Pro) for higher quality, or `gemini-3.1-flash-lite-image` for the lowest latency and cost, via the `c4x.ai.imageModel` setting.
 
 **How it differs from C4X-DSL:**
 
@@ -246,7 +267,7 @@ See the [Visual Diagram Guide](./DIAGRAM-WITH-GEMINI-IMAGE.md) for details.
 ### Q: How do I use Visual Diagram Generation?
 A:
 1. Select text describing your architecture in a markdown file.
-2. Right-click and choose "C4X: Preview - Visual Diagram (Gemini)".
+2. Right-click and choose "C4X: Preview - Visual Diagram (PNG)".
 3. The AI generates a PNG and embeds it in your markdown.
 
 The AI automatically detects the C4 level (C1/C2/C3) from your context.

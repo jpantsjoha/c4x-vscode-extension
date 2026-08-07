@@ -14,6 +14,15 @@ export class GenerateDiagramCommand {
         this.geminiService = new GeminiService(context);
         this.contextExtractor = new CodeContextExtractor();
     }
+    /**
+     * Rebuild the Gemini client after the stored key changes. Each command owns
+     * its own service instance, so both must be refreshed or one keeps a stale
+     * client and fails while the other works.
+     */
+    public async refreshCredentials(): Promise<void> {
+        await this.geminiService.refreshCredentials();
+    }
+
 
     public async generateFromMarkdown(editor: vscode.TextEditor) {
         await this.runGeneration(editor, 'folder');
@@ -113,13 +122,15 @@ export class GenerateDiagramCommand {
                 // Insert at cursor (or after selection for clarity)
                 const snippet = new vscode.SnippetString(`\n\`\`\`c4x\n${diagramCode}\n\`\`\`\n`);
 
-                if (mode === 'selection') {
-                    // Insert AFTER the selection
-                    const endPos = editor.selection.end;
-                    editor.insertSnippet(snippet, endPos);
-                } else {
-                    editor.insertSnippet(snippet);
-                }
+                // Always insert at an explicit position, never at "wherever the
+                // editor happens to be". insertSnippet() with no location
+                // targets the current selections and REPLACES them, so running
+                // this with text selected destroyed that text. Generating a
+                // diagram must only ever add to the document.
+                const insertAt = mode === 'selection'
+                    ? editor.selection.end
+                    : (editor.selection.isEmpty ? editor.selection.active : editor.selection.end);
+                await editor.insertSnippet(snippet, insertAt);
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (error: any) {

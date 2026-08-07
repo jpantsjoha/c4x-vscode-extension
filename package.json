@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.6.2",
+  "version": "1.6.4",
   "packageManager": "pnpm@10.18.3",
   "c4xToolchain": {
     "node": [
@@ -81,6 +81,16 @@
     ],
     "markdown.enableCommandUris": true,
     "commands": [
+      {
+        "command": "c4x.clearApiKey",
+        "title": "C4X: Clear Gemini API Key",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.setApiKey",
+        "title": "C4X: Set Gemini API Key",
+        "category": "C4X"
+      },
       {
         "command": "c4x.openPreview",
         "title": "C4X: Open Preview",
@@ -279,19 +289,19 @@
         "c4x.ai.apiKey": {
           "type": "string",
           "default": "",
-          "markdownDeprecationMessage": "**Deprecated**: API keys are now stored in VS Code's encrypted SecretStorage. Any key found here will be auto-migrated and this setting cleared.",
-          "deprecationMessage": "Deprecated: API keys are now stored securely. This setting will be auto-migrated and cleared.",
-          "description": "DEPRECATED: API keys are now stored in VS Code's encrypted SecretStorage. Any value here will be automatically migrated to secure storage and this setting cleared on next activation.\n\nTo enter a new key, use the 'Enter Key' prompt when running any C4X AI command."
+          "markdownDeprecationMessage": "**Deprecated**: keys live in VS Code's encrypted SecretStorage. Run **C4X: Set Gemini API Key** from the Command Palette. Any key left here is migrated automatically and this setting cleared.",
+          "deprecationMessage": "Deprecated: run 'C4X: Set Gemini API Key' from the Command Palette. A key left here is migrated automatically and this setting cleared.",
+          "description": "DEPRECATED. API keys are stored in VS Code's encrypted SecretStorage, not in settings.\n\nTo add or replace a key, run 'C4X: Set Gemini API Key' from the Command Palette (Cmd+Shift+P). To remove one, run 'C4X: Clear Gemini API Key'.\n\nAny value left here is migrated to secure storage and cleared on next activation."
         },
         "c4x.ai.model": {
           "type": "string",
-          "default": "gemini-3.5-flash",
-          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nRecommended models (May 2026):\n- gemini-3.5-flash — Fast, frontier performance (default)\n- gemini-3.1-pro-preview — Best reasoning, 1M context (failover)\n- gemini-3.1-flash-lite-preview — Budget option, frontier performance\n- gemini-2.5-pro — Stable (sunset June 2026)\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
+          "default": "gemini-3.6-flash",
+          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nVerified 2026-08-07:\n- gemini-3.6-flash — newest generally available flash (default)\n- gemini-3.5-flash — previous default, still generally available\n- gemini-3.1-flash-lite — budget option\n- gemini-3.1-pro-preview — best reasoning, used as failover. Preview: no generally available Pro exists in the 3.x line\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
         },
         "c4x.ai.imageModel": {
           "type": "string",
-          "default": "gemini-3.1-flash-image-preview",
-          "description": "Gemini model ID for visual PNG diagram generation. Enter any image-capable model ID your API key supports.\n\nRecommended image models (March 2026):\n- gemini-3.1-flash-image-preview — Nano Banana 2 (Fast, 4K, $67/1k images) ⚡\n- gemini-3-pro-image-preview — Nano Banana Pro (Highest quality)\n- gemini-2.5-flash-image — Previous Flash model\n\nSee https://ai.google.dev/gemini-api/docs/image-generation for details."
+          "default": "gemini-3.1-flash-image",
+          "description": "Gemini model ID for visual PNG diagram generation. Enter any image-capable model ID your API key supports.\n\nVerified 2026-08-07:\n- gemini-3.1-flash-image — Nano Banana 2, fast (default)\n- gemini-3.1-flash-lite-image — Nano Banana 2 Lite, lowest latency and cost\n- gemini-3-pro-image — Nano Banana Pro, highest quality\n\nSee https://ai.google.dev/gemini-api/docs/image-generation for details."
         },
         "c4x.ai.visualGroundingContext": {
           "type": "string",
@@ -375,7 +385,7 @@
     "lint": "eslint src mcp",
     "lint:md": "markdownlint *.md **/*.md --ignore node_modules --ignore out",
     "generate:parser": "peggy --format commonjs --output src/parser/c4x.generated.js src/parser/c4x.pegjs",
-    "validate:docs": "npm run lint:md && npx ts-node scripts/validate-c4x-examples.ts",
+    "validate:docs": "npm run lint:md && npx ts-node scripts/validate-c4x-examples.ts && npm run verify:doc-claims",
     "test:compile": "tsc -p ./",
     "pretest": "pnpm run test:compile && pnpm run build",
     "test": "node ./out/test/runTest.js",
@@ -395,7 +405,9 @@
     "verify:mcp": "node esbuild.config.js --check-mcp",
     "package": "vsce package --no-dependencies",
     "publish": "vsce publish",
-    "test:e2e": "node ./node_modules/@playwright/test/cli.js test test/playwright"
+    "test:e2e": "node ./node_modules/@playwright/test/cli.js test test/playwright",
+    "verify:doc-claims": "ts-node --transpile-only scripts/verify-doc-claims.ts",
+    "test:live": "ts-node --transpile-only scripts/test-live-generation.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

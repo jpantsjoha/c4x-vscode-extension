@@ -75,3 +75,8 @@ IMPROVEMENT-PLAN.md
 playwright.config.ts
 audit/**
 audit_prompt_v1_6.md
+
+# Local build archive. Gitignored, and must never ship: it holds old VSIX
+# builds and superseded marketplace imagery, which added 0.7 MB to a package
+# whose whole point is to stay small.
+.archive/**

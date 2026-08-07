@@ -2,6 +2,53 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
+## [1.6.4] - 2026-08-07 — "Where the key goes"
+
+### Added
+
+- **`C4X: Set Gemini API Key` and `C4X: Clear Gemini API Key`.** Adding a key had no entry point of its own. The only way in was to run an AI command, let it fail, and click "Enter Key" in the error toast, so replacing an expired key meant deliberately provoking an error and removing one was impossible. The `c4x.ai.apiKey` setting is deprecated, which VS Code greys out, so the settings page appeared to offer nothing. Both commands are now in the Command Palette, and the deprecated setting names them.
+
+### Changed
+
+- **A real generation example in the README.** The AI section showed nothing; the older screenshots had gone unreferenced entirely. It now shows a C4 component model generated from a source folder and arranged in the visual editor, which is the loop the extension actually offers.
+
+### Fixed
+
+- **A key change takes effect immediately.** The Gemini client is cached, and each command owned a separate instance, so storing a key was not the same as using it: the old client kept running until the window reloaded, and clearing a key left generation working. Setting or clearing now rebuilds every client.
+- **Documentation named a command that did not exist.** `docs/GEMINI_GUIDE.md` had been telling users to run `C4X: Set Gemini API Key` for some time. Six invented command names were corrected across the README, FAQ and guides, three of them in the README that serves as the Marketplace listing.
+
+## [1.6.3] - 2026-08-07 — "Model currency"
+
+### Fixed
+
+- **Image generation used a retired model.** The default `c4x.ai.imageModel` was `gemini-3.1-flash-image-preview`, which Google retired on 2026-07-17. It now defaults to `gemini-3.1-flash-image` (Nano Banana 2), and the Pro option to `gemini-3-pro-image`, both generally available.
+- **The text model is a version behind.** The default moves from `gemini-3.5-flash` to `gemini-3.6-flash`, the newest generally available flash model.
+- **Documentation contradicted the extension.** `docs/FAQ.md` told users the default was `gemini-3.1-pro-preview` and `docs/GEMINI_GUIDE.md` said `gemini-3-flash-preview`. Neither had been true for some time.
+
+### Added
+
+- **`gemini-3.1-flash-lite-image`** (Nano Banana 2 Lite) as a documented option for the lowest latency and cost.
+- **Retired models stay in the registry**, so anyone pinned to one is warned and told what replaced it, rather than seeing an unexplained failure.
+
+### Added
+
+### Also fixed
+
+- **Generating a diagram can no longer delete your text.** "Generate Diagram Here" inserted its snippet with no target position, which in VS Code means *replace the current selection*. Running it with any text selected destroyed that text. It now always inserts at an explicit position, and generation only ever adds to a document.
+- **Generation errors now name the actual cause.** Every failure previously read "AI generation failed with «model». Check your model selection", including failures that had nothing to do with the model. An expired API key sent users to change a setting that was already correct. The message now distinguishes a rejected key, a retired or ungranted model, an exhausted quota and an unreachable network, and passes anything unrecognised through in the API's own words instead of guessing.
+
+### Added
+
+- **A live generation gate** (`make test-live`). It calls the Gemini API for real against every model id the extension ships, parses the returned C4X with the extension's own parser, and checks the image models return actual image bytes. Every other gate mocks the model, which is exactly how a retired image model reached users. It skips without a key, so CI stays green, and runs as part of `make check-full`.
+
+### Internal
+
+- **The Extension Host suite is green again.** It had been red since 2026-08-05: PR #151 darkened element text colours to meet WCAG AA contrast, and three theme tests still asserted the old values. Eleven stale colour assertions corrected. `make quick-check` does not run this suite, which is why a red gate went unnoticed through a release.
+
+### Changed
+
+- **Defaults are now generally available models only.** Preview models are retired at short notice, so C4X will not ship one in a default position. The failover model remains `gemini-3.1-pro-preview` because no generally available Pro model exists in the Gemini 3.x line; it is labelled as preview wherever it appears.
+
 ## [1.6.2] - 2026-08-06 — "Editor polish"
 
 Laying a diagram out by hand now works the way you expect it to.

@@ -19,9 +19,15 @@ Fast, offline C4 architecture diagrams with a source-driven SVG preview and opti
 |---|---|
 | [![Watch the C4X 30s tour](https://img.youtube.com/vi/qR1bbctj2rQ/mqdefault.jpg)](https://youtu.be/qR1bbctj2rQ) | [![Watch the C4X visual editor demo](https://img.youtube.com/vi/SjSg5LAIUwg/mqdefault.jpg)](https://youtu.be/SjSg5LAIUwg) |
 
+## How it works
+
+1. **Generate.** Point C4X at your project folder and Gemini reads the code and writes the C4 model as text. Optional, and off until you add a key.
+2. **Fine-tune.** A generated model is complete and valid, but it does not know your style. Drag elements, group them into boundaries and arrange the layout until the diagram tells the story you want it to tell.
+3. **Keep it.** The diagram is text in your repo, so it reviews in pull requests and renders the same for everyone on the team.
+
 ## New in v1.6: the Visual C4 Editor
 
-Diagrams stay text. You can now edit them by dragging.
+Step 2 is what v1.6 added. Diagrams stay text. You can now arrange them by dragging.
 
 > **v1.6.2 highlights** · Drag an element and it stays where you drop it · Diagrams open centred and ready to edit · Edit, Save and Discard sit together at the top left
 
@@ -163,15 +169,27 @@ Full reference: [Syntax Guide](./docs/c4x-syntax.md)
 
 C4X uses Google Gemini to generate diagrams from code, text, or selections.
 
-**Setup**: Get a free API key from [Google AI Studio](https://aistudio.google.com/) or use a [Google Cloud](https://cloud.google.com/) Vertex AI key for enterprise compliance. Keys are stored in VS Code's encrypted SecretStorage.
+<img src="assets/marketplace/screenshots/generate-from-folder-component-diagram.png" width="900" alt="A C4 component diagram generated from a source folder, open in the visual editor with staged changes listed" />
 
-**Default model**: `gemini-3.5-flash`, with automatic failover to `gemini-3.1-pro-preview`. Set any Gemini model id in `c4x.ai.model`; retired preview ids are redirected to their replacements rather than failing.
+*Generated from a source folder, then arranged by hand. The diagram above is C4X's own `src/` directory: Gemini read the code and wrote the component model, and the layout is the part a person decided.*
+
+**Setup**
+
+1. Get a free API key from [Google AI Studio](https://aistudio.google.com/), or use a [Google Cloud](https://cloud.google.com/) Vertex AI key for enterprise compliance.
+2. In VS Code, press `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows and Linux) and run **`C4X: Set Gemini API Key`**.
+3. Paste the key. It is stored in VS Code's encrypted SecretStorage, never in your settings file or your repository.
+
+To replace an expired key, run the same command again. To remove it, run **`C4X: Clear Gemini API Key`**.
+
+> The key is **not** a setting. There is no box for it on the extension's settings page, by design: settings are stored in plain text and synced. If you are looking for `c4x.ai.apiKey`, it is deprecated and any value left there is migrated to secure storage automatically.
+
+**Default model**: `gemini-3.6-flash`, with automatic failover to `gemini-3.1-pro-preview`. Set any Gemini model id in `c4x.ai.model`; retired preview ids are redirected to their replacements rather than failing.
 
 | Command | What it does |
 |---------|-------------|
-| `C4X: Generate Diagram Here` | Generate C4X diagram at cursor from context |
-| `C4X: Generate from Selection` (`Alt+V`) | Generate visual PNG from highlighted text |
-| `C4X: Generate from Workspace` | Analyze code files and create C4 model |
+| `C4X: Generate Diagram Here (Gemini)` | Read the surrounding folder and write a C4 model at the cursor |
+| `C4X: Diagram from Selection` (`Alt+V`) | Generate a visual PNG from the highlighted text |
+| `C4X: Set Gemini API Key` | Store or replace your API key in encrypted storage |
 
 All AI-generated diagrams are parser-validated with up to 3 self-correction retries.
 
@@ -194,9 +212,9 @@ Full icon catalog: [Icons & Examples](./docs/EXAMPLES-with-ICONS.md)
 
 | Command | Format | Notes |
 |---------|--------|-------|
-| `C4X: Export PNG` | PNG | 1x, 2x, or 4x resolution. Canvas-based, no Chromium. |
+| `C4X: Export Diagram as PNG` | PNG | 1x, 2x, or 4x resolution. Canvas-based, no Chromium. |
 | `C4X: Export SVG` | SVG | Vector format for Figma, Sketch, Illustrator |
-| `C4X: Copy SVG to Clipboard` | SVG | Quick paste into other apps |
+| `C4X: Copy SVG To Clipboard` | SVG | Quick paste into other apps |
 
 Exported diagrams preserve your selected theme.
 
@@ -277,7 +295,7 @@ These are historical v1.4 measurements from a 30-node fixture. Current developme
 
 **Shipped**
 
-- **v1.6** (August 2026): Visual C4 Editor: drag-to-edit with guarded writeback, connect mode, boundary reposition/resize, staged changes with source diff
+- **v1.6.2** (August 2026): Visual C4 Editor on the Marketplace and Open VSX: drag-to-edit with guarded writeback, connect mode, boundary reposition/resize, staged changes with source diff
 - **v1.4.0** (May 2026): PNG export, auto-layout, C4-compliant renderer, model validation
 
 **Deferred beyond v1.6**, and openly so: an element palette, and delete for elements and relationships. Both are authoring gestures whose writeback consequences deserve their own release rather than a corner of this one.
@@ -289,6 +307,8 @@ Known limitations are tracked in the [Visual Editing Status](./docs/features/vis
 Contributions welcome via [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) and pull requests. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## More from the Author
+
+Built by **[Jaroslav Pantsjoha](https://jpantsjoha.com)**.
 
 - **[Pine Script (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)**: Syntax highlighting, snippets, and linting for TradingView's Pine Script
 
@@ -304,4 +324,4 @@ MIT. See [LICENSE](./LICENSE).
 
 ---
 
-**Made with [Gemini](https://blog.google/products/gemini/gemini-3/) for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)
+**Made with [Gemini](https://blog.google/products/gemini/gemini-3/) for architects who value simplicity** | [Jaroslav Pantsjoha](https://jpantsjoha.com) | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)

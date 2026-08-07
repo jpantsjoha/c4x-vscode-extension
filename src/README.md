@@ -91,23 +91,3 @@ graph TB
     ClipboardExporter -->|Writes Text| OSClipboard
 ```
 ## C3: component Diagram
-```c4x
-%%{ c4: container }%%
-graph TB
-  Person(architect, "Software Architect", "Designs and documents software architecture using C4X")
-
-  subgraph HostEnvironment {
-    System(c4x, "C4X VS Code Extension", "Parses, renders, AI-generates, and exports C4 model diagrams")
-  }
-
-  System_Ext(gemini, "Google Gemini API", "Generative AI (Gemini 3.1) for creating C4X DSL and visual diagrams from code context")
-  System_Ext(fs, "Local File System", "Stores workspace source code, markdown files, and exported diagrams")
-  System_Ext(clipboard, "System Clipboard", "Receives copied standalone SVG markup for external pasting")
-  System_Ext(browser, "System Browser", "Opens generated print-optimized HTML for PDF exports")
-
-  architect -->|Writes C4X DSL, invokes AI & exports| c4x
-  c4x -->|Sends file context & prompts| gemini
-  c4x -->|Reads code & writes export files| fs
-  c4x -->|Copies standalone SVG| clipboard
-  c4x -->|Opens print preview| browser
-```

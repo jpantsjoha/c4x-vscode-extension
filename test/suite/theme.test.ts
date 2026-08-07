@@ -7,6 +7,18 @@ import { HighContrastTheme } from '../../src/themes/HighContrastTheme';
 import { getAutoTheme } from '../../src/themes/AutoTheme';
 import { ThemeName } from '../../src/themes/Theme';
 
+/**
+ * These hex assertions pin the palette, not its readability. Element `text`
+ * is deliberately DARKER than `stroke` in every theme: a colour tuned for a
+ * 2px border is not readable as glyphs, and five of six themes shipped label
+ * text below 4.5:1 until #151 darkened them. The contrast guarantee itself is
+ * asserted in src/__tests__/render/theme-contrast.test.ts, which is the test
+ * to trust if these two ever disagree.
+ *
+ * These expectations went stale when #151 landed and left this suite red from
+ * 2026-08-05 until 2026-08-07 without anyone noticing, because `make
+ * quick-check` does not run the Extension Host suite.
+ */
 describe('Theme System', () => {
     describe('ThemeManager', () => {
         it('should return classic theme as default', () => {
@@ -97,7 +109,7 @@ describe('Theme System', () => {
         it('should have official C4 colors', () => {
             assert.strictEqual(ClassicTheme.colors.person.fill, '#FFFFFF'); // Changed to white fill
             assert.strictEqual(ClassicTheme.colors.person.stroke, '#438DD5'); // New border color
-            assert.strictEqual(ClassicTheme.colors.person.text, '#438DD5'); // New text color
+            assert.strictEqual(ClassicTheme.colors.person.text, '#2B76BF'); // Darkened for WCAG AA (#151)
 
             assert.strictEqual(ClassicTheme.colors.softwareSystem.fill, '#FFFFFF'); // Changed to white fill
             assert.strictEqual(ClassicTheme.colors.softwareSystem.stroke, '#1168BD'); // New border color
@@ -105,15 +117,15 @@ describe('Theme System', () => {
 
             assert.strictEqual(ClassicTheme.colors.container.fill, '#FFFFFF'); // Changed to white fill
             assert.strictEqual(ClassicTheme.colors.container.stroke, '#438DD5'); // New border color
-            assert.strictEqual(ClassicTheme.colors.container.text, '#438DD5'); // New text color
+            assert.strictEqual(ClassicTheme.colors.container.text, '#2B76BF'); // New text color
 
             assert.strictEqual(ClassicTheme.colors.component.fill, '#FFFFFF'); // Changed to white fill
             assert.strictEqual(ClassicTheme.colors.component.stroke, '#85BBF0'); // New border color
-            assert.strictEqual(ClassicTheme.colors.component.text, '#85BBF0'); // New text color
+            assert.strictEqual(ClassicTheme.colors.component.text, '#1974CD'); // New text color
 
             assert.strictEqual(ClassicTheme.colors.externalSystem.fill, '#FFFFFF'); // New
             assert.strictEqual(ClassicTheme.colors.externalSystem.stroke, '#999999'); // New
-            assert.strictEqual(ClassicTheme.colors.externalSystem.text, '#999999'); // New
+            assert.strictEqual(ClassicTheme.colors.externalSystem.text, '#757575'); // New
 
             assert.strictEqual(ClassicTheme.colors.relationship.stroke, '#707070'); // New
             assert.strictEqual(ClassicTheme.colors.relationship.text, '#707070'); // New
@@ -138,26 +150,26 @@ describe('Theme System', () => {
         it('should have vibrant colors', () => {
             assert.strictEqual(ModernTheme.colors.person.fill, '#FFFFFF');
             assert.strictEqual(ModernTheme.colors.person.stroke, '#6366F1');
-            assert.strictEqual(ModernTheme.colors.person.text, '#6366F1');
+            assert.strictEqual(ModernTheme.colors.person.text, '#4338CA'); // Darkened for WCAG AA (#151)
 
             assert.strictEqual(ModernTheme.colors.softwareSystem.fill, '#FFFFFF');
             assert.strictEqual(ModernTheme.colors.softwareSystem.stroke, '#3B82F6');
-            assert.strictEqual(ModernTheme.colors.softwareSystem.text, '#3B82F6');
+            assert.strictEqual(ModernTheme.colors.softwareSystem.text, '#1D4ED8');
 
             assert.strictEqual(ModernTheme.colors.container.fill, '#FFFFFF');
             assert.strictEqual(ModernTheme.colors.container.stroke, '#06B6D4');
-            assert.strictEqual(ModernTheme.colors.container.text, '#06B6D4');
+            assert.strictEqual(ModernTheme.colors.container.text, '#155E75');
 
             assert.strictEqual(ModernTheme.colors.component.fill, '#FFFFFF');
             assert.strictEqual(ModernTheme.colors.component.stroke, '#8B5CF6');
-            assert.strictEqual(ModernTheme.colors.component.text, '#8B5CF6');
+            assert.strictEqual(ModernTheme.colors.component.text, '#6D28D9');
 
             assert.strictEqual(ModernTheme.colors.externalSystem.fill, '#FFFFFF');
             assert.strictEqual(ModernTheme.colors.externalSystem.stroke, '#9CA3AF');
-            assert.strictEqual(ModernTheme.colors.externalSystem.text, '#9CA3AF');
+            assert.strictEqual(ModernTheme.colors.externalSystem.text, '#4B5563');
 
             assert.strictEqual(ModernTheme.colors.relationship.stroke, '#6B7280');
-            assert.strictEqual(ModernTheme.colors.relationship.text, '#6B7280');
+            assert.strictEqual(ModernTheme.colors.relationship.text, '#374151');
         });
 
         it('should have rounded corners', () => {
@@ -179,19 +191,19 @@ describe('Theme System', () => {
 
             assert.strictEqual(MutedTheme.colors.softwareSystem.fill, '#FFFFFF');
             assert.strictEqual(MutedTheme.colors.softwareSystem.stroke, '#718096');
-            assert.strictEqual(MutedTheme.colors.softwareSystem.text, '#718096');
+            assert.strictEqual(MutedTheme.colors.softwareSystem.text, '#67768B'); // Darkened for WCAG AA (#151)
 
             assert.strictEqual(MutedTheme.colors.container.fill, '#FFFFFF');
             assert.strictEqual(MutedTheme.colors.container.stroke, '#718096');
-            assert.strictEqual(MutedTheme.colors.container.text, '#718096');
+            assert.strictEqual(MutedTheme.colors.container.text, '#67768B');
 
             assert.strictEqual(MutedTheme.colors.component.fill, '#FFFFFF');
             assert.strictEqual(MutedTheme.colors.component.stroke, '#A0AEC0');
-            assert.strictEqual(MutedTheme.colors.component.text, '#A0AEC0');
+            assert.strictEqual(MutedTheme.colors.component.text, '#607590');
 
             assert.strictEqual(MutedTheme.colors.externalSystem.fill, '#FFFFFF');
             assert.strictEqual(MutedTheme.colors.externalSystem.stroke, '#A0AEC0');
-            assert.strictEqual(MutedTheme.colors.externalSystem.text, '#A0AEC0');
+            assert.strictEqual(MutedTheme.colors.externalSystem.text, '#607590');
 
             assert.strictEqual(MutedTheme.colors.relationship.stroke, '#4A5568');
             assert.strictEqual(MutedTheme.colors.relationship.text, '#4A5568');
