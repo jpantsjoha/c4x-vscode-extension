@@ -4,6 +4,7 @@ import { DiagnosticsManager } from './diagnostics/DiagnosticsManager';
 import { HtmlExporter } from './export/HtmlExporter';
 import { PdfExporter } from './export/PdfExporter';
 import { GenerateDiagramCommand } from './commands/GenerateDiagramCommand';
+import { promptForApiKey } from './ai/AuthService';
 import { VisualDiagramCommand } from './commands/VisualDiagramCommand';
 import { C4XCompletionItemProvider } from './completion/C4XCompletionItemProvider';
 import { exportPngCommand } from './commands/exportPng';
@@ -30,8 +31,44 @@ export function activate(context: vscode.ExtensionContext) {
   const generateDiagramCommand = new GenerateDiagramCommand(context);
   const visualDiagramCommand = new VisualDiagramCommand(context);
 
+  /**
+   * Rebuild every cached Gemini client from the key stored right now.
+   * Failures are swallowed deliberately: a missing key is the expected state
+   * after a clear, and must not surface as an error.
+   */
+  const refreshAllCredentials = async (): Promise<void> => {
+    await Promise.all([
+      generateDiagramCommand.refreshCredentials().catch(() => undefined),
+      visualDiagramCommand.refreshCredentials().catch(() => undefined),
+    ]);
+  };
+
   // Register commands
   context.subscriptions.push(
+    // Setting a key had no entry point of its own: the only way in was to run
+    // an AI command, let it fail, and click "Enter Key". A user whose key had
+    // expired therefore had to provoke an error to replace it, and the
+    // c4x.ai.apiKey setting is deprecated so VS Code greys it out of the
+    // settings UI. These two commands give the key a front door.
+    vscode.commands.registerCommand('c4x.setApiKey', async () => {
+      const key = await promptForApiKey(context);
+      if (!key) {
+        return false;
+      }
+      // Both command objects hold their own Gemini client, each caching a
+      // model built from the key that was current when it initialised. Storing
+      // a new key is not enough: without this, generation keeps using the old
+      // key until the window reloads.
+      await refreshAllCredentials();
+      vscode.window.showInformationMessage('C4X: Gemini API key saved to encrypted storage and now in use.');
+      return true;
+    }),
+    vscode.commands.registerCommand('c4x.clearApiKey', async () => {
+      await context.secrets.delete('c4x.ai.apiKey');
+      await refreshAllCredentials();
+      vscode.window.showInformationMessage('C4X: Gemini API key removed. You will be prompted next time you use an AI command.');
+      return true;
+    }),
     vscode.commands.registerCommand('c4x.openPreview', () => {
       PreviewPanel.createOrShow(context);
       return true;

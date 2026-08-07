@@ -15,6 +15,15 @@ export class VisualDiagramCommand {
         this.context = context;
         this.geminiService = new GeminiService(context);
     }
+    /**
+     * Rebuild the Gemini client after the stored key changes. Each command owns
+     * its own service instance, so both must be refreshed or one keeps a stale
+     * client and fails while the other works.
+     */
+    public async refreshCredentials(): Promise<void> {
+        await this.geminiService.refreshCredentials();
+    }
+
 
     public async generateVisualDiagram(editor: vscode.TextEditor) {
         if (!editor) { return; }

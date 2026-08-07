@@ -1,7 +1,7 @@
 # Visual C4 Diagrams with Gemini Image (Preview)
 
 > **Status**: 🧪 Preview Feature (v1.2.0+)
-> **Model**: `gemini-3.1-flash-image-preview`
+> **Model**: `gemini-3.1-flash-image`
 
 Generate **presentation-ready C4 diagrams as PNG images** directly from text descriptions using Google's Gemini Image model.
 
@@ -25,7 +25,7 @@ graph LR
 ```
 
 1. **Select context** in your markdown file (architecture description, notes, etc.)
-2. **Right-click** → "C4X: Preview - Visual Diagram (Gemini)"
+2. **Right-click** → "C4X: Preview - Visual Diagram (PNG)"
 3. **Choose C4 level** (or let AI auto-detect)
 4. **Receive PNG** saved to your folder and embedded in markdown
 
@@ -148,11 +148,11 @@ A professional C4 Container diagram PNG showing all components with proper styli
 ```json
 {
   "c4x.ai.apiKey": "YOUR_API_KEY",
-  "c4x.ai.model": "gemini-3.1-pro-preview"  // For DSL generation (any Gemini model ID)
+  "c4x.ai.model": "gemini-3.6-flash"  // For DSL generation (any Gemini model ID)
 }
 ```
 
-> **Note**: Visual generation uses `gemini-3.1-flash-image-preview` by default (configurable via `c4x.ai.imageModel`).
+> **Note**: Visual generation uses `gemini-3.1-flash-image` by default (configurable via `c4x.ai.imageModel`).
 
 ## Test Script
 
@@ -164,7 +164,7 @@ npx ts-node scripts/test-gemini-image.ts
 
 Expected output:
 ```
-✅ gemini-3.1-flash-image-preview is available
+✅ gemini-3.1-flash-image is available
 ✅ Image generated: ~500KB PNG
 ```
 

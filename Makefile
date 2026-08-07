@@ -55,7 +55,13 @@ check: quick-check verify-docs build
 	@echo "✅ Standard checks passed!"
 
 # Release-level gate (cve-scan is report-only: findings surface but do not fail the gate)
-check-full: check test coverage test-vsix-smoke package cve-scan
+# Live generation gate. Needs GEMINI_API_KEY; skips without one.
+# Every other gate mocks the model, which is how a retired image model shipped.
+test-live:
+	@echo "🌐 Live generation gate (real Gemini API calls)..."
+	pnpm run test:live
+
+check-full: check test coverage test-vsix-smoke test-live package cve-scan
 	@echo "✅ Full checks passed!"
 
 # CVE scan via osv-scanner (preferred) with pnpm audit fallback.
@@ -171,6 +177,7 @@ help:
 	@echo "  make test-e2e   - Run end-to-end tests"
 	@echo "  make test-mcp   - Run MCP handshake, tool, and resource tests"
 	@echo "  make test-perf  - Run performance benchmarks"
+	@echo "  make test-live       - Live Gemini generation gate (needs GEMINI_API_KEY)"
 	@echo "  make test-vsix-smoke - Package, install, activate, and smoke-test a clean VSIX"
 	@echo "  make test-all   - Run unit + MCP + integration + e2e + perf + vsix-smoke"
 	@echo "  make coverage   - Generate coverage report"

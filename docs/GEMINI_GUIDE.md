@@ -19,23 +19,28 @@ Run `C4X: Set Gemini API Key` from the Command Palette (`Cmd+Shift+P`). The key 
 
 ### 3. Choose a Model
 
-C4X defaults to `gemini-3-flash-preview` (free tier) with automatic fallback to `gemini-3.1-pro-preview`.
+C4X defaults to `gemini-3.6-flash` with automatic failover to `gemini-3.1-pro-preview`.
 
 ```json
 {
-  "c4x.ai.model": "gemini-3-flash-preview"
+  "c4x.ai.model": "gemini-3.6-flash"
 }
 ```
 
-| Model | Use Case |
+| Model | Use case |
 |-------|----------|
-| `gemini-3-flash-preview` | **Default** -- fast, free tier |
-| `gemini-3.1-pro-preview` | Best reasoning, 1M context (automatic failover) |
+| `gemini-3.6-flash` | **Default**. Newest generally available flash model |
+| `gemini-3.5-flash` | Previous default, still generally available |
+| `gemini-3.1-flash-lite` | Budget option |
+| `gemini-3.1-pro-preview` | Best reasoning, used as the automatic failover. A preview model, because no generally available Pro exists in the 3.x line |
 | Any valid Gemini model ID | Accepted immediately, no extension update needed |
+
+Defaults are only ever generally available models. Preview models are retired at
+short notice, so C4X does not ship one as a default.
 
 **Runtime validation**: C4X validates your model ID at activation and warns if unrecognised. If a model's sunset date is within 30 days, you'll see a migration notification.
 
-**Smart fallback**: If your chosen model fails, C4X tries `gemini-3.1-pro-preview` (or `gemini-3-flash-preview` if already on 3.1-pro).
+**Smart fallback**: If your chosen model fails, C4X tries `gemini-3.1-pro-preview`, or `gemini-3.6-flash` if you were already on the Pro model.
 
 ---
 
@@ -78,7 +83,7 @@ Override with `[Framework: Sequence]` or `[Framework: Flowchart]` in your select
 
 **Best for**: "Analyse my entire codebase and create a C4 model."
 
-Run `C4X: Generate from Workspace` from the Command Palette. The AI scans workspace files (.ts, .java, .py, etc.) and generates a complete C4 model.
+Run `C4X: Generate Diagram Here (Gemini)` from the Command Palette. The AI scans workspace files (.ts, .java, .py, etc.) and generates a complete C4 model.
 
 ---
 
@@ -142,14 +147,15 @@ C4X can generate **presentation-ready PNG diagrams** using Gemini image models.
 
 ```json
 {
-  "c4x.ai.imageModel": "gemini-3.1-flash-image-preview"
+  "c4x.ai.imageModel": "gemini-3.1-flash-image"
 }
 ```
 
-| Image Model | Notes |
+| Image model | Notes |
 |-------------|-------|
-| `gemini-3.1-flash-image-preview` | **Default** -- Nano Banana 2 (4K, better text) |
-| `gemini-3-pro-image-preview` | Highest quality (opt-in) |
+| `gemini-3.1-flash-image` | **Default**. Nano Banana 2, 4K output |
+| `gemini-3.1-flash-lite-image` | Nano Banana 2 Lite. Lowest latency and cost |
+| `gemini-3-pro-image` | Nano Banana Pro. Highest quality, opt-in |
 
 ### Visual Presets
 

@@ -30,7 +30,27 @@ export class GeminiService {
 
     public async saveKey(key: string): Promise<void> {
         await this.context.secrets.store('c4x.ai.apiKey', key);
+        await this.refreshCredentials();
+    }
+
+    /**
+     * Drop the cached client and rebuild it from whatever key is stored now.
+     *
+     * `checkReady()` short-circuits on a cached `model`, so a key changed
+     * underneath a live service was ignored until the window reloaded: setting
+     * a new key appeared to succeed while generation kept using the old one,
+     * and clearing a key left generation working. Any code path that changes
+     * the stored key must call this.
+     */
+    public async refreshCredentials(): Promise<void> {
+        this.genAI = undefined;
+        this.model = undefined;
         await this.initialize();
+    }
+
+    /** True when a usable client is cached. Does not prompt and does not initialise. */
+    public hasCredentials(): boolean {
+        return !!this.model;
     }
 
     public async initialize() {

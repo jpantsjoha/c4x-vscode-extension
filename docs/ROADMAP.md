@@ -1,5 +1,46 @@
 # C4X Product Roadmap
 
+## Shipped — August 2026
+
+| Version | Theme | What landed |
+|---|---|---|
+| **1.6.4** | Where the key goes | `C4X: Set Gemini API Key` and `C4X: Clear Gemini API Key`. Adding a key previously had no entry point: the only way in was to trigger an error and click a toast. A key change now takes effect without reloading the window. Six invented command names corrected across user docs |
+| **1.6.3** | Model currency | Default image model was retired by Google on 2026-07-17 and still shipping. Migrated every default to a generally available id, added `gemini-3.6-flash`, and a live generation gate that calls the real API against every shipped model |
+| **1.6.2** | Editor polish | Elements stay where you drop them, diagrams open centred, session controls grouped |
+| **1.6.0–1.6.1** | Visual C4 Editor | Drag-to-edit with guarded writeback, connect mode, boundary reposition and resize, staged changes with source diff |
+
+## Now: harness hardening
+
+The v1.6.x sequence shipped three defects that every gate passed. The gates
+tested parts; nobody walked the journey. The active backlog is in
+[`IMPROVEMENT-PLAN.md`](../IMPROVEMENT-PLAN.md), summarised here:
+
+| | Item | State |
+|---|---|---|
+| H1 | Retire the dead image models | **Done**, 1.6.3 |
+| H2 | Doc-claim linter, now six rules (R1–R6) | **Done**, gating `make verify-docs` |
+| H3 | Definition-of-Done hooks that actually fail | **Done** |
+| H4 | Journey and perception test rules in the QA skill | **Done** |
+| H5 | Schedule `/track-models`; R4 fails the build when the registry goes stale | Partly done |
+| H6 | Status-claim verifier, so a wrong sentence in STATUS.md cannot block a release | Open |
+| H7 | `VSCE_PAT` as a repo secret, red Node 20 matrix leg, mirror parity | Open |
+| H8 | Run the sync auditor in CI rather than by hand | Open |
+| H9 | Discover models at runtime instead of shipping ids | Open, wants its own release |
+
+## Next
+
+**H9 is the one that changes the shape of the product.** Model ids are shipped
+constants today, so every retirement needs a release. `models.list` can tell us
+what a user's key can actually reach, which removes that treadmill for
+everything except deprecation, since Google publishes no lifecycle state in the
+API. Design is recorded in `IMPROVEMENT-PLAN.md`.
+
+**Deferred beyond v1.6**, and openly so: an element palette, and delete for
+elements and relationships. Both are authoring gestures whose write-back
+consequences deserve their own release.
+
+## Historical detail
+
 > **Vision**: C4X makes architecture diagrams as easy as Mermaid, native to VS Code and Markdown, with carefully bounded Gemini assistance.
 > **Product contract**: docs as code; deterministic output; source-controlled customisation; no hidden diagram truth.
 > **Last revised**: 2026-08-05 — v1.6.1 fast-follow COMPLETE (#137, #138, #66 all merged); `main` green on every local gate (quick-check exit 0, 1328 unit, 103/103 Playwright); release blocked only on Actions billing, #79 UAT evidence and the #46/#66 bundle-budget decision. Prior entry (2026-07-20): v1.6 release sprint code-complete on `main` (PRs #120–#135, #144); v1.6.1 fast-follow tranche (#137, #138, #66) in progress. Both P0 audit findings resolved: overlap-persistence fixed (#107/#109/#114), relationship label editing end-to-end (#114/#116). Layout spacing presets shipped (#115). v1.6 release sprint scoped 2026-07-18: eleven issues across six phases — #96, #97, #111, #119 (UX correctness; #119 edge-repaint fix implemented ahead of Phase 1, pending UAT), #98 (legend polish), #46 (bundle budget), #72 (Playwright closure), #74/#79/#82 (docs + UAT evidence), #118 (HLD/ADR coherence) — all assigned to milestone v1.6.0. Guided UAT can proceed. Wiki publication deferred to P3 [#76](https://github.com/jpantsjoha/c4x-vscode-extension/issues/76). Marketplace publish held pending v1.6 DoD.
