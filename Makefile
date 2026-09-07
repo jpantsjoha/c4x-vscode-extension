@@ -1,4 +1,5 @@
-.PHONY: setup install build test lint clean package vsix typecheck quick-check check check-full validate-harness verify-mcp validate-toolchain
+# Public export: private harness and STATUS checks run in the master repository.
+.PHONY: setup install build test lint lint-file clean package vsix typecheck quick-check check check-full verify-mcp validate-toolchain
 .PHONY: test-unit test-integration test-e2e test-mcp test-perf test-vsix-smoke test-all coverage cve-scan
 
 # Complete setup (first time)
@@ -28,9 +29,6 @@ typecheck:
 	pnpm run test:compile
 
 # Validate skills, workflows, adapters, hooks, and canonical command references
-validate-harness:
-	@echo "🧭 Validating agent harness..."
-	node scripts/validate-agent-harness.js
 
 # Validate pinned toolchain consistency
 validate-toolchain:
@@ -47,37 +45,30 @@ test-mcp:
 	pnpm run test:mcp
 
 # Fast local development gate
-quick-check: typecheck lint test-unit validate-harness verify-mcp test-mcp validate-toolchain
+quick-check: typecheck lint test-unit verify-mcp test-mcp validate-toolchain
 	@echo "✅ Quick checks passed!"
 
 # Standard pull-request gate
 check: quick-check verify-docs build
 	@echo "✅ Standard checks passed!"
 
-# Release-level gate (cve-scan is report-only: findings surface but do not fail the gate)
-# Live generation gate. Needs GEMINI_API_KEY; skips without one.
+
+# Live generation gate. Set C4X_REQUIRE_LIVE=1 to fail without a working key.
 # Every other gate mocks the model, which is how a retired image model shipped.
 test-live:
 	@echo "🌐 Live generation gate (real Gemini API calls)..."
 	pnpm run test:live
 
-check-full: check test coverage test-vsix-smoke test-live package cve-scan
+check-full: check test coverage test-e2e test-perf test-vsix-smoke test-live package cve-scan
 	@echo "✅ Full checks passed!"
 
-# CVE scan via osv-scanner (preferred) with pnpm audit fallback.
-# Report-only: exits 0 regardless of findings to surface advisories without blocking
-# until the known high advisories in devDependencies are resolved (TDR-007).
-# To make this a hard gate, replace '|| true' with '&& echo "Clean"'.
+# A release-level invocation cannot claim success by skipping the live check.
+check-full: export C4X_REQUIRE_LIVE=1
+
+# Audit the complete lockfile, including build dependencies bundled into MCP.
 cve-scan:
-	@echo "🔒 Running CVE scan (report-only)..."
-	@if command -v osv-scanner >/dev/null 2>&1; then \
-	  echo "  Using osv-scanner v$$(osv-scanner --version 2>&1 | head -1 | awk '{print $$3}') against pnpm-lock.yaml"; \
-	  osv-scanner scan --lockfile pnpm-lock.yaml 2>&1 || true; \
-	else \
-	  echo "  osv-scanner not found; falling back to pnpm audit (report-only)"; \
-	  pnpm audit --prod 2>&1 || true; \
-	fi
-	@echo "ℹ️  CVE scan complete (report-only — see TDR-007 for triage status)"
+	@echo "🔒 Auditing dependencies (HIGH/CRITICAL block release)..."
+	pnpm audit --audit-level=high
 
 # Run tests
 test:
@@ -126,12 +117,17 @@ lint:
 	@echo "🔍 Linting code..."
 	pnpm run lint
 
+# Advisory IDE-hook entry point. C4X_LINT_FILE is validated by the adapter.
+lint-file:
+	@test -n "$(C4X_LINT_FILE)" || { echo "C4X_LINT_FILE is required" >&2; exit 2; }
+	pnpm exec eslint "$(C4X_LINT_FILE)" --no-error-on-unmatched-pattern
+
 # Verify documentation (Markdown lint + C4X syntax check)
 verify-docs:
 	@echo "📝 Verifying documentation..."
 	pnpm run validate:docs
 	@echo "🐍 Running strict C4X syntax check..."
-	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/.tmp/*")
+	python3 scripts/check_c4x_syntax.py $$(find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/_agents/*" -not -path "*/.claude/*" -not -path "*/.tmp/*")
 
 # Clean build artifacts
 clean:
@@ -146,6 +142,7 @@ package: build
 
 # Alias for package (create VSIX)
 vsix: package
+
 
 
 
@@ -166,10 +163,9 @@ help:
 	@echo "Development:"
 	@echo "  make build      - Build extension (compiles TypeScript + PEG.js parser)"
 	@echo "  make typecheck  - Compile source and tests without executing them"
-	@echo "  make quick-check - Typecheck + lint + unit/MCP tests + harness validation"
+	@echo "  make quick-check - Typecheck + lint + unit/MCP tests"
 	@echo "  make check      - Quick checks + documentation + build"
-	@echo "  make check-full - Standard checks + extension tests + coverage + package"
-	@echo "  make validate-harness - Validate skills, workflows, adapters, hooks, and commands"
+	@echo "  make check-full - Standard checks + host/browser/performance/coverage + clean VSIX + live + audit"
 	@echo "  make verify-mcp - Verify the tracked MCP bundle is current"
 	@echo "  make test       - Run default test suite"
 	@echo "  make test-unit  - Run unit tests"
@@ -183,7 +179,7 @@ help:
 	@echo "  make coverage   - Generate coverage report"
 	@echo "  make lint       - Run ESLint"
 	@echo "  make verify-docs - Verify documentation (markdown lint + C4X syntax)"
-	@echo "  make cve-scan   - Run CVE scan via osv-scanner (report-only, no gate)"
+	@echo "  make cve-scan   - Audit dependencies; HIGH/CRITICAL findings fail"
 	@echo ""
 	@echo "Publishing:"
 	@echo "  make package    - Create VSIX file for marketplace"
@@ -192,6 +188,7 @@ help:
 	@echo "Maintenance:"
 	@echo "  make clean      - Remove build artifacts (dist, out, node_modules)"
 	@echo "  make pre-commit - Run all checks (quick-check + docs + build)"
+	@echo ""
 	@echo ""
 	@echo "Quick Start:"
 	@echo "  1. make setup        (first time only)"

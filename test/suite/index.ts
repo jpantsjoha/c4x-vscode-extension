@@ -1,6 +1,7 @@
 import * as path from 'path';
 import Mocha from 'mocha';
 import { glob } from 'glob';
+import { writeFileSync } from 'node:fs';
 
 // Ensure deterministic theme during tests regardless of user workspace settings
 if (!process.env.C4X_FORCE_THEME) {
@@ -46,10 +47,20 @@ export function run(): Promise<void> {
     function runMocha() {
       try {
         // Run tests
-        mocha.run((failures: number) => {
+        const runner = mocha.run((failures: number) => {
           if (failures > 0) {
             reject(new Error(`${failures} tests failed.`));
+          } else if (!runner.stats?.passes) {
+            reject(new Error('Extension host completed without any passing tests.'));
           } else {
+            if (process.env.C4X_HOST_RECEIPT) {
+              writeFileSync(process.env.C4X_HOST_RECEIPT, JSON.stringify({
+                token: process.env.C4X_HOST_RECEIPT_TOKEN,
+                passes: runner.stats.passes,
+                pending: runner.stats.pending,
+                failures,
+              }));
+            }
             resolve();
           }
         });

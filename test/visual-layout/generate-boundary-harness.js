@@ -31,6 +31,11 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role=
             fill="none" stroke="#707070" stroke-width="2" stroke-dasharray="8,4" opacity="0.7" />
       <text x="330" y="360" fill="#111111" font-size="14" font-family="sans-serif" font-weight="bold">Backend</text>
     </g>
+    <g class="boundary" data-id="pinned-boundary" style="pointer-events: all;">
+      <rect x="60" y="230" width="220" height="150" rx="8" ry="8"
+            fill="none" stroke="#707070" stroke-width="2" stroke-dasharray="8,4" opacity="0.7" />
+      <text x="70" y="250" fill="#111111" font-size="14" font-family="sans-serif" font-weight="bold">Pinned</text>
+    </g>
     <g class="nodes">
       <g class="node" data-id="customer">
         <rect x="100" y="50" width="200" height="100" fill="#08427b" stroke="#052f58" stroke-width="2" />
@@ -44,6 +49,10 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role=
         <rect x="450" y="360" width="120" height="80" fill="#438dd5" stroke="#0b477f" stroke-width="2" />
         <text data-field="label" x="510" y="405" text-anchor="middle" fill="#ffffff">Database</text>
       </g>
+      <g class="node" data-id="worker">
+        <rect x="100" y="290" width="140" height="60" fill="#438dd5" stroke="#0b477f" stroke-width="2" />
+        <text data-field="label" x="170" y="325" text-anchor="middle" fill="#ffffff">Worker</text>
+      </g>
     </g>
   </g>
 </svg>`;
@@ -56,6 +65,7 @@ const payload = {
       { id: 'customer', label: 'Customer', type: 'Person', x: 100, y: 50, width: 200, height: 100 },
       { id: 'api', label: 'API', type: 'Container', x: 340, y: 360, width: 180, height: 80 },
       { id: 'database', label: 'Database', type: 'Container', x: 450, y: 360, width: 120, height: 80 },
+      { id: 'worker', label: 'Worker', type: 'Container', x: 100, y: 290, width: 140, height: 60 },
     ],
     boundaries: [
       {
@@ -68,6 +78,20 @@ const payload = {
         childNodeIds: ['api', 'database'],
         childBoundaryIds: [],
       },
+      // A frame the author pinned with $x/$y (#163). Its origin must survive a
+      // child drag, and a later keyboard nudge must start from it.
+      {
+        id: 'pinned-boundary',
+        label: 'Pinned',
+        x: 60,
+        y: 230,
+        width: 220,
+        height: 150,
+        childNodeIds: ['worker'],
+        childBoundaryIds: [],
+        manualX: true,
+        manualY: true,
+      },
     ],
     edges: [
       { id: 'edge-1', from: 'customer', to: 'api', label: 'Uses' },
@@ -79,7 +103,7 @@ const payload = {
     layoutTime: 8,
     renderTime: 3,
     totalTime: 16,
-    elements: 3,
+    elements: 4,
     relationships: 1,
   },
   settings: {
@@ -101,6 +125,8 @@ const vscodeStub = `
     window.__visualLayoutMessages = [];
     window.__visualLayoutRejectNextMove = false;
     const vscode = {
+      getState() { return window.__visualLayoutSavedState; },
+      setState(state) { window.__visualLayoutSavedState = state; },
       postMessage(message) {
         window.__visualLayoutMessages.push(message);
         if (message.type === 'visualLayout.applySemanticEdits') {

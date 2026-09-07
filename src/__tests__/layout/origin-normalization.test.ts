@@ -27,6 +27,18 @@ graph TB
     api --> db
 `;
 
+// A child pinned close to the origin ($x/$y smaller than rewrapNestedGroups'
+// own padding) forces the parent's re-wrapped box left of/above (0,0)
+// independently of any relationship label — this is the padding-underflow
+// trigger normalizeOrigin exists for (UAT 2026-07-19), decoupled from the
+// label-collision pinning fixed under #165 below.
+const NESTED_NEAR_ORIGIN = `%%{ c4: deployment }%%
+graph TB
+    Node(parent, "Parent", "cloud") {
+        Node(child, "Child", "small", $x="5", $y="5")
+    }
+`;
+
 function layoutOf(dsl: string) {
     const parsed = c4xParser.parse(dsl);
     const model = c4ModelBuilder.build(parsed, 'origin-normalization-test');
@@ -43,16 +55,27 @@ describe('layout origin normalization', () => {
     });
 
     it('shifts the whole layout uniformly when normalization is needed', () => {
-        const layout = layoutOf(NESTED_MANUAL_POSITIONS);
-        // The aws boundary previously wrapped to x=-10; after normalization
-        // the minimum element x must be exactly 0 and containment preserved.
+        // Regression note (#165 / SR-5): this test used to reuse
+        // NESTED_MANUAL_POSITIONS, whose "normalization needed" case was
+        // actually a downstream symptom of the label-collision pass nudging
+        // a pinned ($x/$y) `vpc` element away from a relationship label,
+        // which in turn dragged its re-wrapped parent (`aws`) to x=-10. Now
+        // that the label pass respects isPinned, `vpc` never drifts and that
+        // fixture no longer needs normalizing at all — proving the fix, not
+        // breaking this test. NESTED_NEAR_ORIGIN keeps this test meaningful
+        // by forcing a real negative origin through padding underflow alone.
+        const layout = layoutOf(NESTED_NEAR_ORIGIN);
         const minX = Math.min(...layout.elements.map(el => el.x));
-        assert.strictEqual(minX, 0);
-        const aws = layout.elements.find(el => el.id === 'aws');
-        const vpc = layout.elements.find(el => el.id === 'vpc');
-        assert.ok(aws && vpc);
-        assert.ok(aws.x <= vpc.x, 'aws must still contain vpc on x');
-        assert.ok(aws.x + aws.width >= vpc.x + vpc.width, 'aws must still contain vpc on width');
+        const minY = Math.min(...layout.elements.map(el => el.y));
+        assert.strictEqual(minX, 0, 'normalized layout must start at x=0');
+        assert.strictEqual(minY, 0, 'normalized layout must start at y=0');
+        const parent = layout.elements.find(el => el.id === 'parent');
+        const child = layout.elements.find(el => el.id === 'child');
+        assert.ok(parent && child);
+        assert.ok(parent.x <= child.x, 'parent must still contain child on x');
+        assert.ok(parent.y <= child.y, 'parent must still contain child on y');
+        assert.ok(parent.x + parent.width >= child.x + child.width, 'parent must still contain child on width');
+        assert.ok(parent.y + parent.height >= child.y + child.height, 'parent must still contain child on height');
     });
 
     it('leaves already-positive layouts untouched', () => {

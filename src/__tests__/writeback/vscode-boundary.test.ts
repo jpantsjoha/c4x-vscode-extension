@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import { C4Boundary, C4Element, C4Model, C4Rel } from '../../model/C4Model';
+import { C4XParser } from '../../parser/C4XParser';
 import { applyBoundedEdits, sourcePositionAt } from '../../writeback/SourceRange';
 import {
     applySidecarLayoutOverrides,
@@ -477,6 +478,146 @@ describe('WritebackTransaction boundary seam', () => {
         assert.strictEqual(transaction.calls.apply, 2);
         assert.strictEqual(transaction.calls.undo, 0);
         assert.strictEqual(document.getText(), initialText);
+    });
+
+    it('retries the rollback once when the first restoration attempt leaves the wrong text, then restores on the second attempt', async () => {
+        const initialText = 'graph TB\nPerson(User, "User")';
+        const document = new MemoryDocument(
+            fileUri('/workspace/system.c4x'),
+            'c4x',
+            '/workspace/system.c4x',
+            initialText,
+        );
+        // Call 1: the forward host edit produces garbage (bad host edit).
+        // Call 2: the first rollback attempt "succeeds" per the boundary's return
+        // value but leaves text that does not match the original — restoreDocument
+        // must retry rather than accept it.
+        // Call 3: the second rollback attempt uses the real applyBoundedEdits, so
+        // the inverse WorkspaceEdit actually restores the original text.
+        let applyCall = 0;
+        const transaction = createMemoryTransaction(
+            document,
+            createMemorySidecar().boundary,
+            'native',
+            (source, edits) => {
+                applyCall++;
+                if (applyCall === 1) { return 'graph TB\nPerson('; }
+                if (applyCall === 2) { return 'graph TB\nPerson(User, "Wrong")'; }
+                return applyBoundedEdits(source, edits);
+            },
+        );
+
+        await assert.rejects(
+            executeWritebackTransaction(document, move(document), undefined, transaction.boundary),
+            (error: unknown) => error instanceof WritebackTransactionError &&
+                error.code === 'validation_failed' &&
+                error.message.includes('Structural validation failed, rolled back changes'),
+        );
+        // The retry succeeded, so the error surfaced is the original structural
+        // failure, not a rollback-exhaustion error.
+        assert.strictEqual(document.getText(), initialText);
+        assert.strictEqual(transaction.calls.apply, 3);
+        assert.strictEqual(transaction.calls.undo, 0);
+    });
+
+    it('gives up and reports validation_failed after all three rollback attempts fail to restore the original text', async () => {
+        const initialText = 'graph TB\nPerson(User, "User")';
+        const document = new MemoryDocument(
+            fileUri('/workspace/system.c4x'),
+            'c4x',
+            '/workspace/system.c4x',
+            initialText,
+        );
+        // Call 1: the forward host edit produces garbage (bad host edit).
+        // Calls 2, 3, 4: every rollback attempt leaves text that does not match
+        // the original, exhausting all MAX_ATTEMPTS retries.
+        let applyCall = 0;
+        const transaction = createMemoryTransaction(
+            document,
+            createMemorySidecar().boundary,
+            'native',
+            () => {
+                applyCall++;
+                return applyCall === 1 ? 'graph TB\nPerson(' : 'graph TB\nPerson(User, "Wrong")';
+            },
+        );
+
+        await assert.rejects(
+            executeWritebackTransaction(document, move(document), undefined, transaction.boundary),
+            (error: unknown) => error instanceof WritebackTransactionError &&
+                error.code === 'validation_failed' &&
+                error.message.includes('3 attempts'),
+        );
+        // Every rollback attempt failed, so the document is left with whatever the
+        // last failed attempt wrote — never silently restored, and never reverted
+        // to a state nobody asked for.
+        assert.strictEqual(document.getText(), 'graph TB\nPerson(User, "Wrong")');
+        assert.strictEqual(transaction.calls.apply, 4);
+        assert.strictEqual(transaction.calls.undo, 0);
+    });
+
+    it('reports validation_failed after exactly one restore attempt when the byte-identical restored text fails to reparse', async () => {
+        // restoreDocument's post-restore check (WritebackTransaction.ts ~172-183) exists to
+        // catch a restore that matches the original text byte-for-byte but still cannot be
+        // reparsed. That branch is unreachable through the public API alone: by the time
+        // restoreDocument runs, the original text has already parsed cleanly at least once in
+        // this same call (the pre-flight parse), and a deterministic parser given identical
+        // input cannot then fail later on the same string. The module keeps its own `parser`
+        // instance private, but it is a plain C4XParser, and the anchor/model-identity machinery
+        // (SaveAnchor.ts) instantiates its own separate C4XParser too — so patching the shared
+        // prototype by call count is not selective enough; it would also catch the anchor's own
+        // legitimate parse. Instead the stub matches on the call site: it throws only when
+        // invoked from inside restoreDocument with the original text, and defers to the real
+        // parser for every other caller and every other input, including the anchor check, the
+        // pre-flight parse, and the garbage forward-edit text that must fail naturally.
+        const initialText = 'graph TB\nPerson(User, "User")';
+        const document = new MemoryDocument(
+            fileUri('/workspace/system.c4x'),
+            'c4x',
+            '/workspace/system.c4x',
+            initialText,
+        );
+        // Call 1: the forward host edit produces garbage (bad host edit), failing structural
+        // validation. Call 2: the rollback's own applyBoundedEdits call uses the real
+        // implementation, so the inverse WorkspaceEdit genuinely restores the original bytes.
+        let applyCall = 0;
+        const transaction = createMemoryTransaction(
+            document,
+            createMemorySidecar().boundary,
+            'native',
+            (source, edits) => {
+                applyCall++;
+                return applyCall === 1 ? 'graph TB\nPerson(' : applyBoundedEdits(source, edits);
+            },
+        );
+
+        const originalParse = C4XParser.prototype.parse;
+        C4XParser.prototype.parse = function (this: C4XParser, input: string): ReturnType<typeof originalParse> {
+            const calledFromRestore = (new Error().stack ?? '').includes('restoreDocument');
+            if (calledFromRestore && input === initialText) {
+                throw new Error('Simulated parser rejection of a byte-identical restore');
+            }
+            return originalParse.call(this, input);
+        };
+
+        try {
+            await assert.rejects(
+                executeWritebackTransaction(document, move(document), undefined, transaction.boundary),
+                (error: unknown) => error instanceof WritebackTransactionError &&
+                    error.code === 'validation_failed' &&
+                    error.message.includes('no longer parses cleanly') &&
+                    error.message.includes('Simulated parser rejection of a byte-identical restore'),
+            );
+        } finally {
+            C4XParser.prototype.parse = originalParse;
+        }
+
+        // The document itself was genuinely restored — only the post-restore parse check
+        // rejected it — and the loop never retries a parse failure: exactly one rollback
+        // attempt runs (the forward edit plus one restore), never a second or third.
+        assert.strictEqual(document.getText(), initialText);
+        assert.strictEqual(transaction.calls.apply, 2);
+        assert.strictEqual(transaction.calls.undo, 0);
     });
 
     it('resets native metadata and sidecar layout through the same injected boundary', async () => {

@@ -2,8 +2,62 @@ import { GoogleGenerativeAI, GenerativeModel, Part, InlineDataPart } from '@goog
 import * as vscode from 'vscode';
 import { FileContext } from './CodeContextExtractor';
 import { DEFAULT_MODEL, DEFAULT_IMAGE_MODEL, isKnownModel, getDaysUntilSunset, getSunsetDate } from './models';
+import { type DiscoveredModel } from './modelDiscovery';
+import {
+    announceModelChange,
+    healModelAfterFailure,
+    type ModelResolution,
+    readModelStrategy,
+    resolveModelForGeneration,
+} from './modelResolution';
 import { buildGenerationPrompt, buildRecommendationPrompt, buildFrameworkDetectionPrompt, buildVisualDiagramPrompt, buildVisualFixPrompt } from './PromptBuilder';
-import { generateWithFallback } from './FallbackStrategy';
+import { generateWithFallback, isModelUnavailableError } from './FallbackStrategy';
+
+/**
+ * How long the model list may take before discovery gives up.
+ *
+ * Discovery sits on the generation hot path: every generation resolves its
+ * model id first. An unreachable host fails in milliseconds, but a proxy or a
+ * captive portal that accepts the connection and then never answers would hang
+ * generation for as long as the user was willing to wait. Five seconds is
+ * generous for a list of 54 models and short enough that the fallback — call
+ * the configured id, as before discovery existed — is barely noticed.
+ */
+export const DISCOVERY_TIMEOUT_MS = 5000;
+
+/**
+ * Fetch the model list for a key. Never throws and never blocks for longer than
+ * `timeoutMs`; every failure, the timeout included, comes back as an empty list.
+ *
+ * A free function rather than a method so a test can drive it with a short
+ * timeout and a stubbed `fetch`, without a VS Code extension context.
+ */
+export async function fetchModelList(
+    apiKey: string,
+    timeoutMs: number = DISCOVERY_TIMEOUT_MS,
+): Promise<DiscoveredModel[]> {
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=200`,
+            { signal: AbortSignal.timeout(timeoutMs) }
+        );
+        if (!response.ok) {
+            return [];
+        }
+        const json = await response.json() as { models?: Array<{ name?: string; displayName?: string; supportedGenerationMethods?: string[] }> };
+        return (json.models ?? [])
+            .filter(m => typeof m.name === 'string')
+            .map(m => ({
+                id: m.name!.replace(/^models\//, ''),
+                displayName: m.displayName,
+                supportedGenerationMethods: m.supportedGenerationMethods,
+            }));
+    } catch {
+        // Offline, proxied, rate-limited, or timed out — an AbortError from the
+        // signal lands here like any other. The pinned defaults still work.
+        return [];
+    }
+}
 
 export class GeminiService {
     private genAI: GoogleGenerativeAI | undefined;
@@ -16,6 +70,9 @@ export class GeminiService {
 
     /** Prevents showing the plaintext-key migration notice more than once per session. */
     private keyMigrated = false;
+
+    /** Discovered model list, refreshed at most daily. */
+    private discoveryCache: { at: number; models: DiscoveredModel[] } | undefined;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
@@ -42,10 +99,65 @@ export class GeminiService {
      * and clearing a key left generation working. Any code path that changes
      * the stored key must call this.
      */
+    /**
+     * Ask the API which models this key can actually reach.
+     *
+     * Cached for a day: the list changes on Google's release cadence, not
+     * ours, and an extra network call on every activation buys nothing.
+     * Returns an empty array on any failure — discovery is an optimisation,
+     * and must never be the reason generation does not run.
+     *
+     * A failure is never cached. An empty result is a failure as far as this is
+     * concerned, so the next generation asks again rather than living with a
+     * blank list for a day.
+     */
+    public async discoverModels(force = false): Promise<DiscoveredModel[]> {
+        const DAY_MS = 86_400_000;
+        if (!force && this.discoveryCache && Date.now() - this.discoveryCache.at < DAY_MS) {
+            return this.discoveryCache.models;
+        }
+
+        const apiKey = await this.context.secrets.get('c4x.ai.apiKey');
+        if (!apiKey) {
+            return [];
+        }
+
+        const models = await fetchModelList(apiKey);
+        if (models.length > 0) {
+            this.discoveryCache = { at: Date.now(), models };
+        }
+        return models;
+    }
+
     public async refreshCredentials(): Promise<void> {
         this.genAI = undefined;
         this.model = undefined;
         await this.initialize();
+    }
+
+    /**
+     * The model id to call, resolved from the setting, `c4x.ai.modelStrategy`
+     * and what the key can actually reach.
+     *
+     * Runs before the first API call of a generation. Discovery is cached for a
+     * day, so this is a network call once per instance per day, and an empty
+     * list — no key, offline, rate-limited — returns the configured id
+     * unchanged.
+     */
+    private async resolveModelId(configured: string): Promise<ModelResolution> {
+        const models = await this.discoverModels();
+        return resolveModelForGeneration(configured, models, readModelStrategy());
+    }
+
+    /**
+     * Re-resolve after a call failed with "model not found".
+     *
+     * Forces a fresh list: the cached one is up to a day old and may be what
+     * sent us to a dead id in the first place.
+     */
+    private async healModelId(failed: string): Promise<ModelResolution | undefined> {
+        const models = await this.discoverModels(true);
+        return healModelAfterFailure(failed, models, readModelStrategy());
     }
 
     /** True when a usable client is cached. Does not prompt and does not initialise. */
@@ -181,9 +293,32 @@ export class GeminiService {
             // Log prompt for debugging transparency
             console.log('[GeminiService] GENERATED PROMPT PREVIEW:', prompt.substring(0, 500) + '...');
 
+            // Resolve the id before the first call: a pinned model the key can
+            // no longer reach is replaced here rather than failing, and
+            // auto-ga picks up a newer GA model without an extension update.
+            const configured = vscode.workspace.getConfiguration('c4x.ai').get<string>('model') || DEFAULT_MODEL;
+            const resolution = await this.resolveModelId(configured);
+            const modelName = resolution.model;
+            // Settings can change after initialization without rebuilding the
+            // cached readiness model. Bind this request to its resolved id.
+            const model = this.genAI!.getGenerativeModel({ model: modelName });
+
             try {
                 // Pass the progress object down to update status during validation/retry
-                const result = await generateWithFallback(this.genAI!, this.model!, prompt, progress);
+                const result = await generateWithFallback(this.genAI!, model, prompt, progress, {
+                    primaryModelName: modelName,
+                    heal: failed => this.healModelId(failed),
+                    onPrimaryModelServed: () => {
+                        if (resolution.notice) {
+                            announceModelChange(
+                                resolution.notice.from,
+                                resolution.notice.to,
+                                resolution.notice.reason,
+                            );
+                        }
+                    },
+                    onHealedModelServed: (from, to) => announceModelChange(from, to, 'healed'),
+                });
                 return result;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (error: any) {
@@ -288,10 +423,14 @@ export class GeminiService {
             .replace(/<img[^>]*>/g, '')        // Remove HTML images
             .replace(/\[.*?\]\(.*?\.(png|jpg|jpeg|gif|webp).*?\)/g, ''); // Remove other links to images
 
-        // Use configurable image model (default: gemini-3.1-flash-image-preview - Nano Banana 2)
+        // Use configurable image model (default: Nano Banana 2), resolved the
+        // same way as the text tier: the strategy applies to both.
         const config = vscode.workspace.getConfiguration('c4x.ai');
-        const imageModelName = config.get<string>('imageModel') || DEFAULT_IMAGE_MODEL;
-        const imageModel = this.genAI.getGenerativeModel({ model: imageModelName });
+        const configuredImageModel = config.get<string>('imageModel') || DEFAULT_IMAGE_MODEL;
+        const imageResolution = await this.resolveModelId(configuredImageModel);
+        let imageModelName = imageResolution.model;
+        let imageModel = this.genAI.getGenerativeModel({ model: imageModelName });
+        let pendingImageNotice = imageResolution.notice;
 
         // Step 1: Detect the best diagram framework (or use override)
         let frameworkResult = frameworkOverride;
@@ -378,14 +517,18 @@ export class GeminiService {
 
         // Step 5: Generate with self-remediation retry loop
         const maxVisualRetries = 2; // 1 initial + 1 retry
-        for (let attempt = 1; attempt <= maxVisualRetries; attempt++) {
+        let corrective = false;
+        let hasHealed = false;
+        let attempt = 0;
+        while (attempt < maxVisualRetries) {
+            attempt++;
             try {
-                const currentParts = attempt === 1
-                    ? parts
+                const currentParts = corrective
                     // On retry, use the corrective prompt (text-only, no ref images to reduce noise)
-                    : [buildVisualFixPrompt(promptText, 'No image was returned on the previous attempt. Generate a PNG image.')];
+                    ? [buildVisualFixPrompt(promptText, 'No image was returned on the previous attempt. Generate a PNG image.')]
+                    : parts;
 
-                console.log(`[GeminiService] Visual generation attempt ${attempt}/${maxVisualRetries}`);
+                console.log(`[GeminiService] Visual generation attempt ${attempt}/${maxVisualRetries} on ${imageModelName}`);
                 const result = await imageModel.generateContent(currentParts);
                 const response = await result.response;
                 const candidates = response.candidates;
@@ -394,6 +537,7 @@ export class GeminiService {
                     console.warn(`[GeminiService] Visual attempt ${attempt}: No candidates returned.`);
                     if (attempt < maxVisualRetries) {
                         console.log('[GeminiService] Retrying visual generation with corrective prompt...');
+                        corrective = true;
                         continue;
                     }
                     return null;
@@ -402,6 +546,14 @@ export class GeminiService {
                 const resParts = candidates[0].content?.parts || [];
                 for (const part of resParts) {
                     if (part.inlineData && part.inlineData.mimeType?.startsWith('image/')) {
+                        if (pendingImageNotice?.to === imageModelName) {
+                            announceModelChange(
+                                pendingImageNotice.from,
+                                pendingImageNotice.to,
+                                pendingImageNotice.reason,
+                            );
+                            pendingImageNotice = undefined;
+                        }
                         console.log(`[GeminiService] Visual generation succeeded on attempt ${attempt}.`);
                         return part.inlineData.data;
                     }
@@ -411,14 +563,33 @@ export class GeminiService {
                 console.warn(`[GeminiService] Visual attempt ${attempt}: Response contained no image data.`);
                 if (attempt < maxVisualRetries) {
                     console.log('[GeminiService] Retrying visual generation with corrective prompt...');
+                    corrective = true;
                     continue;
                 }
 
                 return null;
             } catch (error) {
                 console.error(`[GeminiService] Visual attempt ${attempt} failed:`, error);
+
+                // The image model is gone rather than misbehaving: heal once to
+                // the newest GA image model and retry with the original prompt.
+                // The retry is free — this attempt never reached the model.
+                if (!hasHealed && isModelUnavailableError(error)) {
+                    const healedResolution = await this.healModelId(imageModelName);
+                    if (healedResolution && healedResolution.model !== imageModelName) {
+                        hasHealed = true;
+                        imageModelName = healedResolution.model;
+                        imageModel = this.genAI.getGenerativeModel({ model: imageModelName });
+                        pendingImageNotice = healedResolution.notice;
+                        attempt--;
+                        continue;
+                    }
+                    hasHealed = true;
+                }
+
                 if (attempt < maxVisualRetries) {
                     console.log('[GeminiService] Retrying visual generation after error...');
+                    corrective = true;
                     continue;
                 }
                 return null;

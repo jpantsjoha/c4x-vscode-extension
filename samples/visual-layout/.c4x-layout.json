@@ -1,5 +1,4 @@
 {
-  "$schema": "https://raw.githubusercontent.com/jpantsjoha/c4model-vscode-extension/main/.agents/schemas/sidecar-layout.schema.json",
   "version": "1.0.0",
   "layouts": {
     "samples/visual-layout/banking-system.dsl": {

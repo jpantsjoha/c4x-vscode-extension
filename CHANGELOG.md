@@ -2,6 +2,44 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
+## [1.7.0] - 2026-09-07
+
+This release improves visual editing and save recovery, adds Gemini model selection and discovery, and hardens the installed extension package.
+
+### Added
+
+- **Text and image model pickers:** `C4X: Select Gemini Model` and `C4X: Select Gemini Image Model` list models your API key can access, marking preview, retired and specialist models.
+- **Runtime model discovery:** model lists are cached for a day. `c4x.ai.modelStrategy` supports a pinned model or automatic selection of generally available models in its tier. An unavailable model can be replaced once with a notice; authentication, quota and network failures do not trigger model healing.
+
+### Fixed
+
+- The visual editor's assembled script parses correctly, fixing a failure that prevented the panel from opening.
+- Focusing the preview retains its source-document binding rather than clearing the diagram when no text editor is active.
+- Nested boundaries resize child-first, preserve authored origins and minimum sizes, and use consistent rules during dragging and saving.
+- Relationship-label layout no longer displaces manually positioned elements.
+- Removing or discarding a staged node move rewraps its enclosing boundary.
+- Failed-save rollback retries up to three times. Draft restoration reports missing targets, including when nothing can be restored.
+- Changing the text model directly in Settings takes effect on the next request.
+- Specialist models are excluded from automatic selection while remaining available for deliberate selection.
+
+### Changed
+
+- The configured text-model default is `gemini-3.8-flash`; model discovery and explicit settings determine subsequent selection.
+- Documentation now distinguishes supported workflows, measured validation and known limitations. Layout examples provide more space around nodes and relationship labels.
+- Clean packaged-installation checks verify activation, commands and rendered preview nodes on Windows, macOS and Linux. Browser failures and high/critical dependency findings block CI.
+
+### Security
+
+- Updated shipped Markdown/linkification and bundled MCP URI dependencies. The candidate dependency audit reports no high or critical findings.
+- Removed private engineering adapters from the VSIX and tightened public-export checks and the package allowlist.
+
+### Known limitations
+
+- Pan/zoom-only persistence and draft identity/migration remain incomplete; the separate draft-persistence rewrite is excluded.
+- Relationship labels can change position after save, and long descriptions can overflow node boxes. Resize-handle placement and mixed boundary/node edits remain under review.
+- Element-palette creation and deletion of elements or relationships remain planned features.
+- Model discovery reflects API availability, not lifecycle guarantees: a deprecated model can still be listed and served.
+
 ## [1.6.4] - 2026-08-07 — "Where the key goes"
 
 ### Added

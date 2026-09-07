@@ -158,31 +158,35 @@ async function restoreDocument(
     reason: string,
     boundary: WritebackTransactionBoundary,
 ): Promise<void> {
-    const currentText = document.getText();
-    const rollbackEdit: BoundedTextEdit = {
-        range: {
-            start: sourcePositionAt(currentText, 0),
-            end: sourcePositionAt(currentText, currentText.length),
-        },
-        newText: originalText,
-    };
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        const currentText = document.getText();
+        const rollbackEdit: BoundedTextEdit = {
+            range: {
+                start: sourcePositionAt(currentText, 0),
+                end: sourcePositionAt(currentText, currentText.length),
+            },
+            newText: originalText,
+        };
 
-    const restored = await boundary.applyBoundedEdits(document, [rollbackEdit]);
-    if (!restored || document.getText() !== originalText) {
-        throw new WritebackTransactionError(
-            'validation_failed',
-            `Rollback failed while attempting to restore original source (${reason}).`
-        );
+        const restored = await boundary.applyBoundedEdits(document, [rollbackEdit]);
+        if (restored && document.getText() === originalText) {
+            try {
+                parser.parse(document.getText());
+                return;
+            } catch (error) {
+                throw new WritebackTransactionError(
+                    'validation_failed',
+                    `Rollback restored source that no longer parses cleanly. Reason: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        }
     }
 
-    try {
-        parser.parse(document.getText());
-    } catch (error) {
-        throw new WritebackTransactionError(
-            'validation_failed',
-            `Rollback restored source that no longer parses cleanly. Reason: ${error instanceof Error ? error.message : String(error)}`
-        );
-    }
+    throw new WritebackTransactionError(
+        'validation_failed',
+        `Rollback could not restore original source after ${MAX_ATTEMPTS} attempts (${reason}).`
+    );
 }
 
 function validateWritebackEdits(edits: readonly BoundedTextEdit[]): void {

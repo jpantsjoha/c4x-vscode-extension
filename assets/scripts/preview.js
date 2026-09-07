@@ -1,8 +1,12 @@
 // C4X Markdown Preview Script
-// Enables click-to-zoom functionality for diagrams
+// Enables click-to-zoom functionality for diagrams in VS Code's Markdown preview.
+// Injected via the markdown.previewScripts contribution point.
 
 (function () {
-    const vscode = acquireVsCodeApi();
+    // Note: acquireVsCodeApi() is available in the Markdown preview webview
+    // but we don't currently need it for lightbox functionality.
+    // Avoid calling it eagerly to prevent conflicts with other extensions
+    // that also contribute preview scripts (acquireVsCodeApi can only be called once).
 
     // Delegate click events on the document
     document.addEventListener('click', (event) => {

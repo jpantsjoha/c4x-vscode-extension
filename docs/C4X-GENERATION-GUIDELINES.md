@@ -351,7 +351,7 @@ If generation produces syntax errors:
    - Invalid arrows: Use `-->` or `-.->`, NOT `->`
    - Element type: Check whitelist, don't invent types
 3. **Re-generate** with fix prompt (max 3 retries)
-4. **Fallback model** if needed: gemini-3.1-pro-preview → gemini-3-flash-preview
+4. **Fallback model** if needed: the chain in `src/ai/FallbackStrategy.ts` — `DEFAULT_MODEL` elevates to `PRO_MODEL`, both from `src/ai/models.ts`. This document names no ids; they retire faster than it is edited
 
 ## Quality Checklist
 
@@ -370,4 +370,4 @@ Before finalizing, verify:
 ---
 
 **Build ID**: 20260303-LAYOUT-ENHANCEMENT
-**Model**: gemini-3.1-pro-preview (default), gemini-3.1-flash-image-preview (visual)
+**Model**: `DEFAULT_MODEL` (text) and `DEFAULT_IMAGE_MODEL` (visual), read from `src/ai/models.ts`

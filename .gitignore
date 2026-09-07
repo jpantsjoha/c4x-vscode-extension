@@ -54,3 +54,10 @@ logs/
 test-results/
 playwright-report/
 .archive/
+
+# iCloud Drive duplicates ("file 2.ts"). They compile, they pass, and they
+# double-count in the suite. Never commit one.
+* [0-9].ts
+* [0-9].js
+* [0-9].json
+* [0-9].vsix

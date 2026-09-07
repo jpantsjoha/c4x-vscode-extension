@@ -1,9 +1,11 @@
 import * as assert from 'assert';
 import {
     applyEdgeGeometry,
+    computeOptimalConnectionPoints,
     formatEdgePathD,
     type AttributeTarget,
 } from '../../webview/previewClientScript';
+import { calculateOptimalConnectionPoints } from '../../render/EdgeRouter';
 
 class FakeAttributeTarget implements AttributeTarget {
     public readonly attributes: Record<string, string> = {};
@@ -65,5 +67,77 @@ describe('applyEdgeGeometry', () => {
         applyEdgeGeometry(edge, points);
         assert.strictEqual(edge.hitArea.attributes['d'], expectedD);
         assert.strictEqual(edge.visible.attributes['d'], expectedD);
+    });
+});
+
+describe('computeOptimalConnectionPoints', () => {
+    it('connects Bottom to Top when target is below source', () => {
+        const from = { x: 100, y: 50, width: 120, height: 80 };
+        const to = { x: 100, y: 250, width: 120, height: 80 };
+        const points = computeOptimalConnectionPoints(from, to);
+        assert.deepStrictEqual(points.from, { x: 160, y: 130 }); // Bottom center
+        assert.deepStrictEqual(points.to, { x: 160, y: 250 });   // Top center
+    });
+
+    it('connects Top to Bottom when target is above source', () => {
+        const from = { x: 100, y: 250, width: 120, height: 80 };
+        const to = { x: 100, y: 50, width: 120, height: 80 };
+        const points = computeOptimalConnectionPoints(from, to);
+        assert.deepStrictEqual(points.from, { x: 160, y: 250 }); // Top center
+        assert.deepStrictEqual(points.to, { x: 160, y: 130 });   // Bottom center
+    });
+
+    it('connects Right to Left when target is to the right of source', () => {
+        const from = { x: 50, y: 100, width: 100, height: 60 };
+        const to = { x: 250, y: 100, width: 100, height: 60 };
+        const points = computeOptimalConnectionPoints(from, to);
+        assert.deepStrictEqual(points.from, { x: 150, y: 130 }); // Right center
+        assert.deepStrictEqual(points.to, { x: 250, y: 130 });   // Left center
+    });
+
+    it('connects Left to Right when target is to the left of source', () => {
+        const from = { x: 250, y: 100, width: 100, height: 60 };
+        const to = { x: 50, y: 100, width: 100, height: 60 };
+        const points = computeOptimalConnectionPoints(from, to);
+        assert.deepStrictEqual(points.from, { x: 250, y: 130 }); // Left center
+        assert.deepStrictEqual(points.to, { x: 150, y: 130 });   // Right center
+    });
+});
+
+describe('computeOptimalConnectionPoints parity with the host EdgeRouter', () => {
+    // The webview script is assembled from fn.toString(), so it cannot import
+    // EdgeRouter and the algorithm is duplicated. "Matches line-for-line" was a
+    // comment; this makes it a test. If either copy changes, the arrows a user
+    // sees while dragging stop matching the arrows the host draws after save.
+    it('produces identical anchors for every box pair on a grid, including overlapping, diagonal and enclosing ones', () => {
+        const sizes = [
+            { width: 120, height: 80 },
+            { width: 60, height: 200 },
+            { width: 400, height: 300 }, // large enough to enclose either of the others: a boundary around a node
+        ];
+        const origins = [-150, -40, 0, 30, 90, 200];
+        const boxes: Array<{ x: number; y: number; width: number; height: number }> = [];
+        for (const size of sizes) {
+            for (const x of origins) {
+                for (const y of origins) {
+                    boxes.push({ x, y, ...size });
+                }
+            }
+        }
+
+        let compared = 0;
+        for (const from of boxes) {
+            for (const to of boxes) {
+                const host = calculateOptimalConnectionPoints(from, to);
+                const client = computeOptimalConnectionPoints(from, to);
+                assert.deepStrictEqual(
+                    client,
+                    { from: host.from, to: host.to },
+                    `anchor mismatch for ${JSON.stringify(from)} -> ${JSON.stringify(to)}`,
+                );
+                compared++;
+            }
+        }
+        assert.ok(compared >= 10000, `grid too small to mean anything: ${compared} pairs`);
     });
 });

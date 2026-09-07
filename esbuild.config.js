@@ -196,6 +196,8 @@ async function compilePeg() {
 const WEBVIEW_EMBEDDED_HELPERS = [
     'formatMoveAnnouncement',
     'computeZoomToFit',
+    'computeOptimalConnectionPoints',
+    'computeBoundaryWrap',
     'isRelationshipEndpointLegal',
     'eligibleConnectTargets',
     'advanceConnectMode',

@@ -214,11 +214,81 @@ describe('DagreLayoutEngine — overlap prevention and locked stability', () => 
         assert.ok(el2Pos.y + el2Pos.height <= bPos.y + bPos.height, 'el2 height within boundary');
     });
 
-    it('ensures elements nudge away from relationship labels to avoid clipping them', () => {
+    it('nudges a genuinely auto-positioned element away from relationship labels to avoid clipping them', () => {
+        // A disconnected obstacle with no relationships at all (the earlier
+        // shape of this test) is vacuous: Dagre lays it out as its own
+        // component wherever it likes, nowhere near a label, so
+        // "not equal to the midpoint" would pass whether or not the
+        // label-collision pass ever ran. This uses a chain instead — src ->
+        // mid -> dst, each edge unlabeled, plus a long-labeled *skip* edge
+        // src -> dst — so mid is genuinely auto-positioned (no $x/$y) but
+        // Dagre's own layered algorithm puts it directly on the src/dst rank
+        // line, where the skip edge's label sits.
+        const elements: C4Element[] = [
+            { id: 'src', label: 'Source', type: 'SoftwareSystem' },
+            { id: 'mid', label: 'Mid', type: 'SoftwareSystem' },
+            { id: 'dst', label: 'Destination', type: 'SoftwareSystem' },
+        ];
+        const chainOnly: C4Rel[] = [
+            { id: 'r1', from: 'src', to: 'mid', label: '', relType: 'uses' },
+            { id: 'r2', from: 'mid', to: 'dst', label: '', relType: 'uses' },
+        ];
+        const withLabeledSkipEdge: C4Rel[] = [
+            ...chainOnly,
+            { id: 'r3', from: 'src', to: 'dst', label: 'A Very Long Relationship Label Description', relType: 'uses' },
+        ];
+
+        // Control: the same chain with no skip edge, so the label-collision
+        // pass never runs for `mid` (it is the src/dst of its own two edges,
+        // which the pass always exempts — see :388). Measured: src=(40,40)
+        // mid=(360,40) dst=(680,40), i.e. mid sits exactly on the src/dst
+        // midpoint, both x and y — this is the "premise": absent a labeled
+        // relationship crossing it, mid's natural chain position IS the
+        // midpoint.
+        const control = new DagreLayoutEngine().layoutSync({ type: 'system-context', elements, relationships: chainOnly });
+        const controlMid = control.elements.find(e => e.id === 'mid')!;
+        const controlSrc = control.elements.find(e => e.id === 'src')!;
+        const controlDst = control.elements.find(e => e.id === 'dst')!;
+        const controlMidpointX = (controlSrc.x + controlSrc.width / 2 + controlDst.x + controlDst.width / 2) / 2;
+        const controlMidpointY = (controlSrc.y + controlSrc.height / 2 + controlDst.y + controlDst.height / 2) / 2;
+        assert.strictEqual(controlMid.x + controlMid.width / 2, controlMidpointX, 'premise: without the labeled skip edge, mid sits exactly on the src/dst midpoint (x)');
+        assert.strictEqual(controlMid.y + controlMid.height / 2, controlMidpointY, 'premise: without the labeled skip edge, mid sits exactly on the src/dst midpoint (y)');
+
+        // With the skip edge: measured, Dagre widens src/dst apart to route
+        // it (40 -> 91.25 on y) independently of the label-collision code, so
+        // mid ends up off the recomputed (shifted) midpoint either way — that
+        // shift alone isn't proof of a nudge. The proof is that mid's own
+        // Dagre-native, pre-push position is IDENTICAL with or without the
+        // skip edge (measured: (360, 40) in both runs — the skip edge does
+        // not move mid natively). So any difference between mid here and
+        // `controlMid` is attributable only to the label-collision pass.
+        const withLabel = new DagreLayoutEngine().layoutSync({ type: 'system-context', elements, relationships: withLabeledSkipEdge });
+        const mid = withLabel.elements.find(e => e.id === 'mid')!;
+        const src = withLabel.elements.find(e => e.id === 'src')!;
+        const dst = withLabel.elements.find(e => e.id === 'dst')!;
+        const midpointY = (src.y + src.height / 2 + dst.y + dst.height / 2) / 2;
+        const midCenterY = mid.y + mid.height / 2;
+
+        assert.notStrictEqual(midCenterY, midpointY, 'mid should not sit on the src/dst label midpoint');
+        // The bite: this fails (mid.y comes back 40, matching controlMid.y
+        // exactly) if the label-collision push is disabled, because mid's
+        // pre-push position is identical to the no-skip-edge control.
+        assert.notStrictEqual(mid.y, controlMid.y, 'the label-collision pass must have moved mid away from its natural chain position');
+    });
+
+    it('SR-5: does not nudge a pinned ($x/$y, not $locked) element away from a relationship label midpoint', () => {
+        // Regression test for #165: the label-collision pass tested !isLocked
+        // instead of !isPinned, so a user-positioned element that was never
+        // $locked could still be pushed away from a relationship label after
+        // save — the "pinned position drifts after save" defect. isPinned
+        // (locked OR carrying $x/$y) already guards the element-element
+        // overlap pass; the label pass must respect the same invariant.
         const elements: C4Element[] = [
             { id: 'src', label: 'Source', type: 'SoftwareSystem', metadata: { x: '100', y: '100', locked: 'true' } },
             { id: 'dst', label: 'Destination', type: 'SoftwareSystem', metadata: { x: '100', y: '500', locked: 'true' } },
-            { id: 'el3', label: 'Obstacle', type: 'SoftwareSystem', metadata: { x: '100', y: '300' } } // positioned directly at the midpoint
+            // Explicit $x/$y, deliberately NOT $locked — sits exactly on the
+            // src/dst relationship label's midpoint (see math below).
+            { id: 'el3', label: 'Obstacle', type: 'SoftwareSystem', metadata: { x: '100', y: '300' } }
         ];
 
         const relationships: C4Rel[] = [
@@ -240,14 +310,13 @@ describe('DagreLayoutEngine — overlap prevention and locked stability', () => 
         const result = engine.layoutSync(view);
         const el3Pos = result.elements.find(e => e.id === 'el3')!;
 
-        // The midpoint between src and dst centers:
         // src center: 100 + 260/2 = 230, 100 + 140/2 = 170
         // dst center: 100 + 260/2 = 230, 500 + 140/2 = 570
-        // Midpoint: 230, 370
-        // Without nudging, el3 center would be 100 + 260/2 = 230, 300 + 140/2 = 370 (exactly on the midpoint!)
-        // It must have nudged away.
-        const el3CenterY = el3Pos.y + el3Pos.height / 2;
-        assert.notStrictEqual(el3CenterY, 370, 'Obstacle element should have been nudged away from the label midpoint');
+        // Midpoint: 230, 370 — el3 center (100 + 260/2, 300 + 140/2) = (230, 370)
+        // sits exactly on it. A pinned element must stay exactly at its
+        // authored coordinates even though it overlaps the label.
+        assert.strictEqual(el3Pos.x, 100, 'pinned Obstacle must keep its authored $x exactly');
+        assert.strictEqual(el3Pos.y, 300, 'pinned Obstacle must keep its authored $y exactly');
     });
 
     it('keeps a manually positioned child inside its parent container (nested deployment nodes)', () => {

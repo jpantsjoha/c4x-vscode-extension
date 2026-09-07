@@ -394,7 +394,7 @@ export class DagreLayoutEngine {
                                 el.y < lblMaxY + labelPadding &&
                                 lblMinY - labelPadding < el.y + el.height;
 
-          if (isOverlapping && !isLocked(el)) {
+          if (isOverlapping && !isPinned(el)) {
             // Push element away from label center
             const elCenterX = el.x + el.width / 2;
             const elCenterY = el.y + el.height / 2;
@@ -724,7 +724,33 @@ export class DagreLayoutEngine {
   private adjustBoundariesToContainChildren(elements: PositionedElement[], boundaries: PositionedBoundary[]): void {
     const boundaryById = new Map(boundaries.map(b => [b.id, b]));
 
-    boundaries.forEach(b => {
+    // Process child-first: a parent frame must measure its nested child frames
+    // only after those children have re-wrapped around their own contents.
+    // flattenHierarchy pushes boundaries parent-first (pre-order), so a single
+    // pass over that list sized each parent against its child's STALE frame —
+    // a child that grew around a moved node hung outside its saved parent.
+    // Depth is the number of ancestors, from the parent relation the engine
+    // already has; the sort is stable, so siblings keep their pre-order.
+    const parentOf = new Map<string, string>();
+    for (const b of boundaries) {
+      for (const childId of b.boundary.elements) {
+        if (boundaryById.has(childId)) {
+          parentOf.set(childId, b.id);
+        }
+      }
+    }
+    const nestingDepth = (b: PositionedBoundary): number => {
+      let depth = 0;
+      let ancestor = parentOf.get(b.id);
+      while (ancestor !== undefined) {
+        depth++;
+        ancestor = parentOf.get(ancestor);
+      }
+      return depth;
+    };
+    const ordered = [...boundaries].sort((a, b) => nestingDepth(b) - nestingDepth(a));
+
+    ordered.forEach(b => {
       // Collect leaf elements and nested boundary frames that belong to this boundary.
       const children: Array<PositionedElement | PositionedBoundary> = [];
       for (const childId of b.boundary.elements) {

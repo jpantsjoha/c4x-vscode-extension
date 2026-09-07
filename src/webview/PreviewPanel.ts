@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { randomUUID } from 'node:crypto';
 import { C4XParseError, c4xParser } from '../parser';
 import { loadBinding, saveBinding, clearBinding } from './editorBinding';
 import { parseStructurizrDSL, StructurizrLexerError, StructurizrParserError } from '../parser/structurizr';
@@ -79,6 +80,30 @@ export class PreviewPanel {
     private static instance: PreviewPanel | undefined;
     /** Separate instance for Markdown block editing (one at a time). */
     private static markdownInstance: PreviewPanel | undefined;
+
+    /** Read-only installed-VSIX probe. Never exposed in ordinary activation. */
+    public static whenPreviewRendered(uri: string, timeoutMs: number): Promise<{ nodeCount: number; text: string }> {
+        const panel = PreviewPanel.instance;
+        if (process.env.C4X_VSIX_SMOKE !== '1' || !panel || panel.activeDocument?.uri.toString() !== uri) {
+            return Promise.reject(new Error('Packaged webview probe requires the matching open document'));
+        }
+        if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000 || panel.smokeWaiter) {
+            return Promise.reject(new Error('Invalid or overlapping packaged webview probe'));
+        }
+        return new Promise((resolve, reject) => {
+            let finished = false;
+            const timer = setTimeout(() => finish(undefined, new Error('Packaged webview did not acknowledge a rendered SVG before timeout')), timeoutMs);
+            const finish = (result?: { nodeCount: number; text: string }, error?: Error): void => {
+                if (finished) { return; }
+                finished = true;
+                clearTimeout(timer);
+                panel.smokeWaiter = undefined;
+                if (error) { reject(error); } else if (result) { resolve(result); }
+            };
+            panel.smokeWaiter = { token: randomUUID(), uri, revision: panel.activeDocument!.version, finish };
+            void panel.render();
+        });
+    }
 
     public static createOrShow(context: vscode.ExtensionContext): void {
         if (PreviewPanel.instance) {
@@ -185,6 +210,12 @@ export class PreviewPanel {
     private currentLayoutSnapshot: VisualLayoutSnapshot | undefined;
     /** Tracks whether the webview has reported unsaved staged edits. */
     private hasDirtyState = false;
+    private smokeWaiter: {
+        token: string;
+        uri: string;
+        revision: number;
+        finish: (result?: { nodeCount: number; text: string }, error?: Error) => void;
+    } | undefined;
     /** Tracks whether we are in a conflict state (external change while dirty). */
     private inConflictState = false;
 
@@ -379,6 +410,29 @@ export class PreviewPanel {
     }
 
     private async handleWebviewMessage(message: unknown): Promise<void> {
+        if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'smoke.renderFailed') {
+            const report = message as Record<string, unknown>;
+            if (this.smokeWaiter && report.token === this.smokeWaiter.token) {
+                this.smokeWaiter.finish(undefined, new Error('Packaged webview DOM has no visible SVG'));
+            }
+            return;
+        }
+        if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'smoke.rendered') {
+            const report = message as Record<string, unknown>;
+            const waiting = this.smokeWaiter;
+            if (waiting && report.token === waiting.token &&
+                (this.activeDocument?.uri.toString() !== waiting.uri || this.activeDocument.version !== waiting.revision)) {
+                waiting.finish(undefined, new Error('Packaged webview document changed during the render probe'));
+                return;
+            }
+            if (waiting && report.token === waiting.token &&
+                this.activeDocument?.uri.toString() === waiting.uri && this.activeDocument.version === waiting.revision &&
+                typeof report.nodeCount === 'number' && Number.isInteger(report.nodeCount) && report.nodeCount > 0 && report.nodeCount <= 10000 &&
+                typeof report.text === 'string' && report.text.length <= 20000) {
+                waiting.finish({ nodeCount: report.nodeCount, text: report.text });
+            }
+            return;
+        }
         const messageType = typeof message === 'object' && message !== null && 'type' in message
             ? String((message as { type: unknown }).type)
             : '(untyped)';
@@ -790,6 +844,11 @@ export class PreviewPanel {
         if (this.markdownBlock) {
             return;
         }
+        // Focusing the webview can leave no active text editor. Keep the
+        // diagram binding until an actual text editor supplies a new target.
+        if (!vscode.window.activeTextEditor) {
+            return;
+        }
         const newDocument = this.getActiveDiagramDocument();
         if (newDocument?.uri.toString() !== this.activeDocument?.uri.toString()) {
             this.activeDocument = newDocument;
@@ -832,6 +891,7 @@ export class PreviewPanel {
     }
 
     private async render(): Promise<void> {
+        const smokeWaiter = this.smokeWaiter;
         const activeDocument = this.activeDocument;
         if (!activeDocument) {
             this.currentLayoutSnapshot = undefined;
@@ -966,7 +1026,7 @@ export class PreviewPanel {
                             childBoundaryIds.push(childId);
                         }
                     }
-                    return {
+                    const snapshot: VisualLayoutBoundarySnapshot = {
                         id: boundary.id,
                         label: boundary.boundary.label,
                         x: boundary.x,
@@ -975,7 +1035,24 @@ export class PreviewPanel {
                         height: boundary.height,
                         childNodeIds,
                         childBoundaryIds,
-                    } satisfies VisualLayoutBoundarySnapshot;
+                    };
+                    // Manual geometry travels with the frame so the editor's
+                    // live re-wrap honours a pinned origin and treats $w/$h as
+                    // minima, exactly as adjustBoundariesToContainChildren
+                    // does on save (#163).
+                    if (boundary.manualX) {
+                        snapshot.manualX = true;
+                    }
+                    if (boundary.manualY) {
+                        snapshot.manualY = true;
+                    }
+                    if (boundary.manualWidth !== undefined) {
+                        snapshot.manualWidth = boundary.manualWidth;
+                    }
+                    if (boundary.manualHeight !== undefined) {
+                        snapshot.manualHeight = boundary.manualHeight;
+                    }
+                    return snapshot;
                 }),
                 edges: layout.relationships.map(relationship => ({
                     id: relationship.id,
@@ -1030,7 +1107,10 @@ export class PreviewPanel {
                 return;
             }
 
-            void this.panel.webview.postMessage({ type: 'render', payload });
+            void this.panel.webview.postMessage({
+                type: 'render', payload,
+                ...(smokeWaiter && smokeWaiter === this.smokeWaiter ? { smokeRequest: smokeWaiter.token } : {}),
+            });
             this.currentSvg = svg;
             this.currentLayoutSnapshot = visualLayout;
             if (!this.markdownBlock) {
@@ -1039,6 +1119,7 @@ export class PreviewPanel {
             }
             // For Markdown blocks the anchor is refreshed at the top of render().
         } catch (error) {
+            smokeWaiter?.finish(undefined, new Error('Packaged webview render failed: ' + (error instanceof Error ? error.message : String(error))));
             this.currentSvg = undefined;
             this.currentLayoutSnapshot = undefined;
             if (error instanceof C4XParseError) {
@@ -2093,6 +2174,7 @@ export class PreviewPanel {
             return;
         }
         this.disposed = true;
+        this.smokeWaiter?.finish(undefined, new Error('Packaged webview closed before rendering'));
         void clearBinding(this.context.workspaceState);
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);

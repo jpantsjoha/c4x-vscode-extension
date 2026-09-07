@@ -6,6 +6,17 @@ on:
   # and release tags. Caveat: paths-ignore also applies to tag pushes, so a
   # release tag placed on a docs-only commit will not build. Release commits
   # bump package.json, so this does not arise in the normal flow.
+  #
+  # Those same jobs ALSO run on a push to main whose head commit is not a pull
+  # request merge — that is, a direct push (#170). On 2026-09-04 five commits
+  # went straight to main and the browser suite, the only gate that executes
+  # the webview script, never ran; a visual editor that threw on open reached
+  # main and every other gate stayed green. The normal flow costs nothing extra
+  # because a PR merge commit is excluded: it already ran these jobs on the PR.
+  #
+  # This detects a bypass, it does not prevent one. Prevention is branch
+  # protection — see .github/branch-protection.json and
+  # scripts/apply-branch-protection.sh.
   push:
     branches: [main, develop]
     paths-ignore:
@@ -52,23 +63,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify tracked MCP artifacts
-        run: pnpm run verify:mcp
-
-      - name: Test MCP protocol
-        run: pnpm run test:mcp
-
-      - name: Lint code
-        run: pnpm run lint
+      - name: Run canonical quick checks
+        run: make quick-check
 
       - name: Build extension
         run: pnpm run build
-
-      - name: Compile TypeScript
-        run: pnpm run test:compile
-
-      - name: Run unit tests
-        run: pnpm run test:unit
 
       - name: Run extension-host tests
         if: matrix.node-version == '20.20.2'
@@ -91,59 +90,24 @@ jobs:
             test-results/
             coverage/
 
-  # ---------------------------------------------------------------------------
-  # CVE scan via osv-scanner (Google Open Source Vulnerabilities database).
-  #
-  # Report-only: advisories are surfaced as a build artifact and in the step
-  # summary, but findings do NOT fail the pipeline (continue-on-error: true).
-  # The known high advisories are in devDependencies only (build tooling such
-  # as @vscode/vsce, esbuild, and Playwright); they do not ship in the VSIX.
-  # Triage status is tracked in docs/adrs/TDR-007-security-audit.md.
-  #
-  # To harden this job into a blocking gate once all highs are triaged/fixed:
-  #   1. Remove continue-on-error.
-  #   2. Drop `|| true` from the osv-scanner invocation.
-  #   3. Update TDR-007 status to ENFORCED.
-  # ---------------------------------------------------------------------------
+  # The complete dependency graph is audited: some development dependencies
+  # are embedded in the standalone MCP distribution.
   cve-scan:
-    name: CVE Scan (osv-scanner, report-only)
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
+    name: Dependency security gate
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Install osv-scanner
-        run: |
-          curl -sSfL "https://github.com/google/osv-scanner/releases/download/v2.3.8/osv-scanner_linux_amd64" \
-            -o /usr/local/bin/osv-scanner
-          chmod +x /usr/local/bin/osv-scanner
-          osv-scanner --version
-
-      - name: Scan lockfile for known CVEs (table report)
-        id: scan
-        run: |
-          osv-scanner scan --lockfile pnpm-lock.yaml 2>&1 | tee osv-scan-report.txt || true
-          echo "## CVE Scan Summary (osv-scanner v2.3.8)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -E "^(Total|[0-9]+ vulnerabilities)" osv-scan-report.txt >> $GITHUB_STEP_SUMMARY || tail -3 osv-scan-report.txt >> $GITHUB_STEP_SUMMARY || echo "(no findings)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "See [TDR-007](docs/adrs/TDR-007-security-audit.md) for triage status." >> $GITHUB_STEP_SUMMARY
-
-      - name: Scan lockfile for known CVEs (SARIF artifact)
-        run: |
-          osv-scanner scan --lockfile pnpm-lock.yaml --format sarif --output-file osv-scan-results.sarif || true
-
-      - name: Upload CVE scan results (SARIF)
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
         with:
-          name: cve-scan-results
-          path: |
-            osv-scan-results.sarif
-            osv-scan-report.txt
-          retention-days: 30
+          version: 10.18.3
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20.20.2'
+      - name: Audit all locked dependencies
+        run: make cve-scan
 
   validate-docs:
     name: Validate Documentation
@@ -176,27 +140,11 @@ jobs:
       - name: Validate Documentation
         run: pnpm run validate:docs
 
-  # ---------------------------------------------------------------------------
-  # Playwright E2E browser suite (61 scenarios: visual-layout, visual-c4-editor,
-  # zoom-fit-multiselect, markdown-entry, basic, perf-large-diagram)
-  #
-  # The specs run against a static HTML harness (no live VS Code process), so
-  # xvfb is NOT required — Chromium runs headless. The harness is auto-generated
-  # by test.beforeAll() inside each spec via generate-prototype-harness.js.
-  #
-  # Snapshot policy: the golden (visual-c4-editor-chrome-chromium-darwin.png)
-  # was captured on macOS. maxDiffPixelRatio=0.05 in playwright.config.ts
-  # absorbs Linux font/antialiasing differences. Once this job has been green
-  # for 5 consecutive CI runs, regenerate goldens on Linux, tighten the ratio
-  # to 0.02, and flip continue-on-error to false to make the job required.
-  # ---------------------------------------------------------------------------
+  # Execute the real preview script and enforce visual/interaction regressions.
   e2e-browser:
-    name: Playwright E2E (chromium, report-only)
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
+    name: Playwright E2E (chromium)
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
-    # Report-only: failures are surfaced in the artifact but do not block the
-    # pipeline. Flip to false after 5 consecutive green runs (see note above).
-    continue-on-error: true
     timeout-minutes: 15
 
     steps:
@@ -255,7 +203,7 @@ jobs:
 
   package:
     name: Package & Clean VSIX Smoke (${{ matrix.os }})
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'Merge pull request'))
     runs-on: ${{ matrix.os }}
     needs: [build-and-test, validate-docs]
     strategy:
@@ -306,53 +254,10 @@ jobs:
           path: "*.vsix"
           retention-days: 7
 
-  deploy:
-    name: Publish to Marketplace
-    runs-on: ubuntu-24.04
-    needs: package
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      # pnpm must be installed before setup-node, because `cache: 'pnpm'`
-      # resolves the store path by shelling out to `pnpm store path`.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-        with:
-          version: 10.18.3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '20.20.2'
-          cache: 'pnpm'
-
-      - name: Validate and record pinned toolchain
-        env:
-          C4X_EXPECTED_NODE_VERSION: '20.20.2'
-        run: pnpm run validate:toolchain
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify Tag matches Package Version
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION=${GITHUB_REF_NAME#v}
-          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
-            echo "❌ Error: Git tag ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)."
-            echo "Please ensure you bumped the version in package.json before tagging."
-            exit 1
-          fi
-          echo "✅ Version verified: $PACKAGE_VERSION"
-
-      - name: Download VSIX artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: c4x-vsix-Linux
-
-      - name: Publish to VS Code Marketplace
-        run: pnpm exec vsce publish --packagePath *.vsix
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+# The publish job that used to live here has moved to release.yml.
+#
+# Both workflows triggered on `v*` tags, so a single release fired two
+# publishes: whichever lost the race failed with "already exists", producing a
+# red run for a release that had actually succeeded. release.yml is now the one
+# publish path — no path filter, self-contained, and retryable via
+# workflow_dispatch without moving a tag.
