@@ -3,10 +3,9 @@
 // Centralises all Gemini model references so that GeminiService, FallbackStrategy,
 // and configuration defaults share a single source of truth.
 //
-// Extracted from GeminiService.ts as part of WS-5 decomposition.
-// Model registry, validation, and sunset alerting added as part of G3/G4.
 
-// Every default below MUST be a generally available id. Preview ids are
+// Every default below MUST be a generally available id, except the one exact,
+// dated PRO_MODEL decision allowed by verify-doc-claims R1. Preview ids are
 // retired on short notice and Google's model list publishes no lifecycle
 // state, so a retired preview keeps being listed and served long after it
 // stops being supported. Shipping one as a default is how v1.6.2 ended up
@@ -14,14 +13,20 @@
 // scripts/verify-doc-claims.ts enforces this.
 
 /** Default text-generation model. GA. */
-export const DEFAULT_MODEL = 'gemini-3.6-flash';
+export const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 /**
  * Pro-tier text-generation model used as failover.
  *
- * Knowingly a preview id: no generally available Pro model exists in the
- * Gemini 3.x line as of 2026-08-07, so there is no GA alternative at this
- * tier. Kept out of the default position for that reason.
+ * Knowingly a preview id, and a recorded decision rather than an oversight
+ * (#178, revisited against the live model list on 2026-09-05): no generally
+ * available Pro model exists in the Gemini 3.x line. The only GA Pro is
+ * gemini-2.5-pro — a generation back from the 3.8 primary and itself
+ * sunsetting 2026-10-16 — so moving the failover to it would rescue a
+ * 3.8-flash failure with an older, slower model that retires within weeks.
+ * The preview stays, labelled preview wherever the id appears, and
+ * verify-doc-claims rule R1 allows it explicitly. Revisit when a GA 3.x Pro
+ * ships.
  */
 export const PRO_MODEL = 'gemini-3.1-pro-preview';
 
@@ -52,9 +57,9 @@ export interface ModelInfo {
     /** Whether this model is a current default in the extension. */
     isDefault?: boolean;
     /**
-     * Release channel. Only `ga` ids may occupy a default position; the
-     * doc-claim linter fails the build otherwise. Retired entries stay in the
-     * registry so a user who pinned one still gets a warning.
+     * Release channel. Only `ga` ids may occupy a default position, except the
+     * exact dated PRO_MODEL decision allowlisted by the doc-claim linter.
+     * Retired entries stay in the registry so a pinned user still gets a warning.
      */
     channel: 'ga' | 'preview' | 'retired';
 }
@@ -63,13 +68,16 @@ export interface ModelInfo {
 export const MODEL_REGISTRY: ModelInfo[] = [
     // ── Text, generally available ────────────────────────────────────────────
     { id: DEFAULT_MODEL, purpose: 'Primary DSL generation (newest GA flash)', channel: 'ga', isDefault: true },
+    { id: 'gemini-3.7-flash', purpose: 'Previous generation (still GA)', channel: 'ga' },
+    { id: 'gemini-3.6-flash', purpose: 'Previous default (still GA)', channel: 'ga' },
     { id: 'gemini-3.5-flash', purpose: 'Previous default (still GA)', channel: 'ga' },
     { id: LITE_MODEL, purpose: 'Budget option (user-selectable)', channel: 'ga' },
     { id: 'gemini-3.5-flash-lite', purpose: 'Budget option, newer but priced above 3.1-flash-lite', channel: 'ga' },
 
     // ── Text, preview ────────────────────────────────────────────────────────
     // No GA Pro exists in the Gemini 3.x line, so the failover is a preview id
-    // by necessity rather than by choice. Revisit when a GA Pro ships.
+    // by necessity rather than by choice — see the decision recorded on
+    // PRO_MODEL above. Revisit when a GA Pro ships.
     { id: PRO_MODEL, purpose: 'Failover DSL generation (best reasoning). No GA equivalent exists', channel: 'preview' },
 
     // ── Image, generally available ───────────────────────────────────────────
@@ -81,7 +89,7 @@ export const MODEL_REGISTRY: ModelInfo[] = [
     { id: 'gemini-3.1-flash-image-preview', purpose: 'Retired: use gemini-3.1-flash-image', channel: 'retired', sunsetDate: '2026-07-17' },
     { id: 'gemini-3-pro-image-preview', purpose: 'Retired: use gemini-3-pro-image', channel: 'retired', sunsetDate: '2026-07-17' },
     { id: 'gemini-3.1-flash-lite-preview', purpose: 'Retired: use gemini-3.1-flash-lite', channel: 'retired', sunsetDate: '2026-07-09' },
-    { id: 'gemini-3-flash-preview', purpose: 'Retired: use gemini-3.6-flash', channel: 'retired', sunsetDate: '2026-07-17' },
+    { id: 'gemini-3-flash-preview', purpose: 'Retired: use gemini-3.8-flash', channel: 'retired', sunsetDate: '2026-07-17' },
     { id: 'gemini-3-pro-preview', purpose: 'Retired: use gemini-3.1-pro-preview', channel: 'retired', sunsetDate: '2026-03-09' },
 
     // Gemini 2.5 retires 2026-10-16. An earlier registry recorded 2026-06-17,

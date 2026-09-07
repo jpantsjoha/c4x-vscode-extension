@@ -1,7 +1,7 @@
 /**
  * Draft state schema for webview persistence via VS Code's setState/getState API.
  *
- * ADR-019 constraint: NO hidden files. The only persistence layer allowed is the
+ * Persistence contract: no hidden files. The only persistence layer allowed is the
  * VS Code webview state API (setState / getState). This module defines the schema
  * and the pure validation guard used by both the client script and host tests.
  */
@@ -43,6 +43,9 @@ export interface PersistedDraftState {
     readonly editMode: boolean;
     readonly selectedNodeId: string | null;
     readonly stagedEdits: readonly PersistedStagedEdit[];
+    readonly zoom?: number;
+    readonly panX?: number;
+    readonly panY?: number;
 }
 
 // ── Schema constants ─────────────────────────────────────────────────────────
@@ -176,6 +179,15 @@ export function isPersistedDraftState(value: unknown): value is PersistedDraftSt
     // IDs within the edit array must be unique
     const ids = edits.map(e => (isRecord(e) ? e['id'] : null));
     if (new Set(ids).size !== ids.length) {
+        return false;
+    }
+    if (value['zoom'] !== undefined && (typeof value['zoom'] !== 'number' || !Number.isFinite(value['zoom']) || value['zoom'] <= 0)) {
+        return false;
+    }
+    if (value['panX'] !== undefined && (typeof value['panX'] !== 'number' || !Number.isFinite(value['panX']))) {
+        return false;
+    }
+    if (value['panY'] !== undefined && (typeof value['panY'] !== 'number' || !Number.isFinite(value['panY']))) {
         return false;
     }
     return edits.every(isPersistedStagedEdit);

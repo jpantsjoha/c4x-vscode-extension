@@ -1,9 +1,9 @@
 # C4X User Guide
 
-> **Version line**: v1.4.x
-> **Updated**: 2026-07-16
+> **Version line**: public v1.6.4 and the 1.7.0 candidate
+> **Updated**: 2026-09-07
 
-C4X renders source-controlled C4 diagrams directly in VS Code without Java, Docker, or a rendering server. The public v1.4.x experience is source-first; the private v1.6 integration branch carries the UAT Visual C4 Editor.
+C4X renders source-controlled C4 diagrams directly in VS Code without Java, Docker, or a rendering server. Public v1.6.x includes the source-authoritative Visual C4 Editor; the 1.7.0 candidate adds model discovery and editor reliability work.
 
 ## Supported source files
 
@@ -87,7 +87,7 @@ Review AI-generated source or images before committing them. See the [Gemini gui
 
 ## Visual Layout Mode status
 
-The Visual C4 Editor is merged to private `main` and distributed in `1.6.0-uat.N` prerelease builds pending UAT sign-off. It is not in the public v1.4.x Marketplace feature set. The build provides source-controlled drag, keyboard movement, staged native property editing with inline validation, safe identifier rename, relationship label editing, lock toggling, reset, native C4X writeback, and deterministic sidecar persistence for foreign formats.
+The Visual C4 Editor is available in public v1.6.x releases. It provides source-controlled drag, keyboard movement, staged native property editing with inline validation, safe identifier rename, relationship creation and editing, boundary editing, lock toggling, reset, native C4X writeback, and deterministic sidecar persistence for foreign formats.
 
 Follow [How to edit a C4 diagram visually](how-to/edit-a-c4-diagram-visually.md) for entering edit mode, pointer and keyboard movement, zoom/pan, persistence selection, reset, and recovery. Changes are staged and applied together with **Save Changes**; **Discard** abandons the draft. Source or an explicit versioned sidecar remains authoritative.
 

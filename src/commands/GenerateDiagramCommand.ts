@@ -19,6 +19,11 @@ export class GenerateDiagramCommand {
      * its own service instance, so both must be refreshed or one keeps a stale
      * client and fails while the other works.
      */
+    /** Model ids this API key can actually reach. Empty on any failure. */
+    public async discoverModels() {
+        return this.geminiService.discoverModels();
+    }
+
     public async refreshCredentials(): Promise<void> {
         await this.geminiService.refreshCredentials();
     }

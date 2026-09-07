@@ -5,6 +5,7 @@ import { HtmlExporter } from './export/HtmlExporter';
 import { PdfExporter } from './export/PdfExporter';
 import { GenerateDiagramCommand } from './commands/GenerateDiagramCommand';
 import { promptForApiKey } from './ai/AuthService';
+import { selectModelCommand } from './commands/selectModel';
 import { VisualDiagramCommand } from './commands/VisualDiagramCommand';
 import { C4XCompletionItemProvider } from './completion/C4XCompletionItemProvider';
 import { exportPngCommand } from './commands/exportPng';
@@ -68,6 +69,20 @@ export function activate(context: vscode.ExtensionContext) {
       await refreshAllCredentials();
       vscode.window.showInformationMessage('C4X: Gemini API key removed. You will be prompted next time you use an AI command.');
       return true;
+    }),
+    vscode.commands.registerCommand('c4x.selectModel', async () => {
+      const chosen = await selectModelCommand(() => generateDiagramCommand.discoverModels(), 'text');
+      if (chosen) {
+        await refreshAllCredentials();
+      }
+      return chosen;
+    }),
+    vscode.commands.registerCommand('c4x.selectImageModel', async () => {
+      const chosen = await selectModelCommand(() => generateDiagramCommand.discoverModels(), 'image');
+      if (chosen) {
+        await refreshAllCredentials();
+      }
+      return chosen;
     }),
     vscode.commands.registerCommand('c4x.openPreview', () => {
       PreviewPanel.createOrShow(context);
@@ -149,6 +164,9 @@ export function activate(context: vscode.ExtensionContext) {
   // This is REQUIRED for markdown.markdownItPlugins contribution point to work
   // See: https://code.visualstudio.com/api/extension-guides/markdown-extension
   return {
+    ...(process.env.C4X_VSIX_SMOKE === '1' ? {
+      __test: { whenPreviewRendered: PreviewPanel.whenPreviewRendered },
+    } : {}),
     extendMarkdownIt(md: import('markdown-it')) {
       try {
         return c4xPlugin(md);

@@ -10,6 +10,7 @@
  */
 
 import * as assert from 'assert';
+import { spawnSync } from 'child_process';
 import { isPersistedDraftState, type PersistedDraftState } from '../../webview/draftState';
 import { serializeDraftState, deserializeDraftState } from '../../webview/previewClientScript';
 
@@ -131,6 +132,27 @@ describe('isPersistedDraftState — schema guard', () => {
         const state = makeValidState({ stagedEdits: [{ id: 'api', newId: 'newApi' }] });
         assert.strictEqual(isPersistedDraftState(state), true);
     });
+
+    it('accepts valid camera zoom and pan coordinates', () => {
+        const state = makeValidState({ zoom: 1.25, panX: 150, panY: -80 });
+        assert.strictEqual(isPersistedDraftState(state), true);
+    });
+
+    it('rejects invalid or non-positive camera zoom', () => {
+        const zeroZoom = { ...makeValidState(), zoom: 0 } as unknown;
+        assert.strictEqual(isPersistedDraftState(zeroZoom), false);
+        const negativeZoom = { ...makeValidState(), zoom: -1 } as unknown;
+        assert.strictEqual(isPersistedDraftState(negativeZoom), false);
+        const nanZoom = { ...makeValidState(), zoom: NaN } as unknown;
+        assert.strictEqual(isPersistedDraftState(nanZoom), false);
+    });
+
+    it('rejects non-finite camera pan coordinates', () => {
+        const infPanX = { ...makeValidState(), panX: Infinity } as unknown;
+        assert.strictEqual(isPersistedDraftState(infPanX), false);
+        const nanPanY = { ...makeValidState(), panY: NaN } as unknown;
+        assert.strictEqual(isPersistedDraftState(nanPanY), false);
+    });
 });
 
 // ── serializeDraftState / deserializeDraftState round-trip ───────────────────
@@ -226,114 +248,112 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
     });
 });
 
-// ── Dirty-close host-side guard ───────────────────────────────────────────────
-// The `isDirtyStateChangedMessage` private method is verified indirectly by
-// testing the message shape that the webview emits. We exercise the guard by
-// importing PreviewPanel and testing via the public integration surface.
+// Exercise the real host callbacks in a separate process so the VS Code mock
+// cannot pollute modules shared with other unit suites.
+const DIRTY_CLOSE_HOST = String.raw`
+const assert = require('node:assert/strict');
+const Module = require('node:module');
+const scenario = JSON.parse(process.argv[2]);
+const warnings = [];
+const commands = [];
+let receive;
+let didDispose;
+let closed = false;
+const disposable = () => ({ dispose() {} });
+const vscode = {
+    workspace: {
+        getConfiguration: () => ({ get: (_key, fallback) => fallback }),
+        onDidSaveTextDocument: disposable,
+        onDidChangeTextDocument: disposable,
+    },
+    window: {
+        createOutputChannel: () => ({ appendLine() {}, dispose() {} }),
+        onDidChangeActiveTextEditor: disposable,
+        showInformationMessage: async () => undefined,
+        showWarningMessage: async (...args) => {
+            warnings.push(args);
+            return scenario.reopen ? 'Reopen Editor' : undefined;
+        },
+    },
+    commands: { executeCommand: async command => { commands.push(command); } },
+};
+const originalLoad = Module._load;
+Module._load = function(request, ...args) {
+    return request === 'vscode' ? vscode : originalLoad.call(this, request, ...args);
+};
+const { PreviewPanel } = require(process.argv[1]);
+const panel = {
+    webview: {
+        options: {}, html: '', postMessage: async () => true,
+        onDidReceiveMessage(callback) { receive = callback; return disposable(); },
+    },
+    onDidDispose(callback) { didDispose = callback; return disposable(); },
+    dispose() {
+        if (closed) return;
+        closed = true;
+        didDispose();
+    },
+};
+const context = {
+    workspaceState: { get: () => undefined, update: async () => undefined },
+};
+(async () => {
+    await PreviewPanel.createSerializer(context).deserializeWebviewPanel(panel, undefined);
+    assert.equal(typeof receive, 'function', 'production message callback was registered');
+    assert.equal(typeof didDispose, 'function', 'production disposal callback was registered');
+    for (const message of scenario.messages) receive(message);
+    await new Promise(resolve => setImmediate(resolve));
+    panel.dispose();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(warnings.length, scenario.warnings, 'actual dirty-close warning count');
+    if (scenario.warnings) {
+        assert.match(warnings[0][0], /unsaved staged changes/);
+        assert.equal(warnings[0][1], 'Reopen Editor');
+    }
+    assert.deepEqual(commands, scenario.reopen ? ['c4x.openPreview'] : []);
+})().catch(error => { console.error(error); process.exitCode = 1; });
+`;
 
-describe('dirtyStateChanged message shape', () => {
-    // We test the message-shape contract by verifying what the webview should post.
-    // The actual vscode.window.showWarningMessage call is tested via the vscode mock
-    // in a host environment (see Playwright / host integration notes in the issue).
-    // Here we verify the shape of the message the client script emits.
+function verifyDirtyClose(messages: unknown[], warnings: number, reopen = false): void {
+    const result = spawnSync(process.execPath, [
+        '-r', require.resolve('ts-node/register/transpile-only'),
+        '-e', DIRTY_CLOSE_HOST,
+        require.resolve('../../webview/PreviewPanel'),
+        JSON.stringify({ messages, warnings, reopen }),
+    ], { encoding: 'utf8', timeout: 10000 });
+    assert.ifError(result.error);
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+}
 
-    it('a valid dirtyStateChanged(true) message is correctly shaped', () => {
-        const msg = { type: 'dirtyStateChanged', dirty: true };
-        assert.strictEqual(msg.type, 'dirtyStateChanged');
-        assert.strictEqual(typeof msg.dirty, 'boolean');
-        assert.strictEqual(msg.dirty, true);
+describe('dirty-close warning — real PreviewPanel callbacks', () => {
+    it('warns once when an actual dirty message precedes disposal', () => {
+        verifyDirtyClose([{ type: 'dirtyStateChanged', dirty: true }], 1);
     });
 
-    it('a valid dirtyStateChanged(false) message is correctly shaped', () => {
-        const msg = { type: 'dirtyStateChanged', dirty: false };
-        assert.strictEqual(msg.dirty, false);
-    });
-
-    it('rejects a message where dirty is not boolean', () => {
-        const msg = { type: 'dirtyStateChanged', dirty: 'yes' };
-        // The host guard checks typeof dirty === 'boolean'
-        assert.notStrictEqual(typeof msg.dirty, 'boolean');
-    });
-});
-
-// ── Dirty-close warning invocation ───────────────────────────────────────────
-
-describe('dirty-close warning — host tracking', () => {
-    // The VS Code host calls showWarningMessage when onDidDispose fires and
-    // hasDirtyState is true. We verify the PreviewPanel exposes the necessary
-    // logic by checking that the host-side isDirtyStateChangedMessage guard
-    // correctly identifies the messages that would flip hasDirtyState.
-
-    it('hasDirtyState should be flipped to true by a dirty:true message', () => {
-        // Simulated: the host calls isDirtyStateChangedMessage on each inbound message
-        function isDirtyMsg(m: unknown): m is { type: 'dirtyStateChanged'; dirty: boolean } {
-            return typeof m === 'object' && m !== null &&
-                'type' in m && (m as { type: unknown }).type === 'dirtyStateChanged' &&
-                'dirty' in m && typeof (m as { dirty: unknown }).dirty === 'boolean';
-        }
-
-        let hasDirty = false;
-        const messages: unknown[] = [
-            { type: 'ready' },
-            { type: 'dirtyStateChanged', dirty: true },
-        ];
-        for (const msg of messages) {
-            if (isDirtyMsg(msg)) {
-                hasDirty = msg.dirty;
-            }
-        }
-        assert.strictEqual(hasDirty, true);
-    });
-
-    it('hasDirtyState resets to false when dirty:false message arrives', () => {
-        function isDirtyMsg(m: unknown): m is { type: 'dirtyStateChanged'; dirty: boolean } {
-            return typeof m === 'object' && m !== null &&
-                'type' in m && (m as { type: unknown }).type === 'dirtyStateChanged' &&
-                'dirty' in m && typeof (m as { dirty: unknown }).dirty === 'boolean';
-        }
-
-        let hasDirty = false;
-        const messages: unknown[] = [
+    it('does not warn after the client clears its dirty state', () => {
+        verifyDirtyClose([
             { type: 'dirtyStateChanged', dirty: true },
             { type: 'dirtyStateChanged', dirty: false },
-        ];
-        for (const msg of messages) {
-            if (isDirtyMsg(msg)) {
-                hasDirty = msg.dirty;
-            }
-        }
-        assert.strictEqual(hasDirty, false);
+        ], 0);
     });
 
-    it('showWarningMessage would be called when wasDirty is true at dispose time', () => {
-        // Simulate the dispose handler logic to confirm warning fires.
-        const calls: string[] = [];
-        const mockShowWarningMessage = (msg: string) => {
-            calls.push(msg);
-            return Promise.resolve(undefined);
-        };
-
-        const wasDirty = true;
-        if (wasDirty) {
-            void mockShowWarningMessage(
-                'C4X: You closed the diagram editor with unsaved staged changes. ' +
-                'Reopen the editor to restore your draft if the webview state was kept.',
-            );
-        }
-
-        assert.strictEqual(calls.length, 1);
-        assert.ok(calls[0].includes('unsaved staged changes'));
+    it('rejects malformed and unrelated messages without making the panel dirty', () => {
+        verifyDirtyClose([null, {}, { type: 'dirtyStateChanged', dirty: 'yes' },
+            { type: 'dirtyStateChanged' }, { type: 'other', dirty: true }], 0);
     });
 
-    it('showWarningMessage is NOT called when wasDirty is false', () => {
-        const calls: string[] = [];
-        const mockShowWarningMessage = (msg: string) => { calls.push(msg); };
+    it('does not let a malformed clear message erase an existing dirty state', () => {
+        verifyDirtyClose([
+            { type: 'dirtyStateChanged', dirty: true },
+            { type: 'dirtyStateChanged', dirty: 0 },
+        ], 1);
+    });
 
-        const wasDirty = false;
-        if (wasDirty) {
-            mockShowWarningMessage('should not appear');
-        }
+    it('does not warn when an untouched panel closes', () => {
+        verifyDirtyClose([], 0);
+    });
 
-        assert.strictEqual(calls.length, 0);
+    it('reopens the native editor through the warning action', () => {
+        verifyDirtyClose([{ type: 'dirtyStateChanged', dirty: true }], 1, true);
     });
 });

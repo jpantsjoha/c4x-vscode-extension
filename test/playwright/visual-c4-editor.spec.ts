@@ -434,7 +434,32 @@ test('26. [Phase 1] selecting an edge shows the read-only relationship inspector
     await loadHarness(page);
     await enterEditMode(page);
     const edge = page.locator('g.edge[data-id="edge-4"]');
-    await edge.locator('.edge-hit-area').click({ force: true });
+    // A vertical SVG stroke has a zero-width bounding box, so locator.click()
+    // considers it invisible. A forced click skips stability while entering
+    // edit mode refits the camera. Wait for its actual stroke point to settle.
+    const point = await edge.locator('.edge-hit-area').evaluate(async element => {
+        const stroke = element as SVGPathElement;
+        let previous: { x: number; y: number } | undefined;
+        let stableFrames = 0;
+        for (let frame = 0; frame < 60; frame++) {
+            await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+            const matrix = stroke.getScreenCTM();
+            if (!matrix) throw new Error('Relationship stroke has no screen transform');
+            const current = stroke.getPointAtLength(stroke.getTotalLength() / 2).matrixTransform(matrix);
+            stableFrames = previous && Math.abs(previous.x - current.x) < 0.1 && Math.abs(previous.y - current.y) < 0.1
+                ? stableFrames + 1 : 0;
+            previous = { x: current.x, y: current.y };
+            if (stableFrames >= 2) {
+                const target = document.elementFromPoint(current.x, current.y)?.closest('g.edge');
+                if (target?.getAttribute('data-id') !== 'edge-4') {
+                    throw new Error('Relationship stroke is obscured at its stable midpoint');
+                }
+                return previous;
+            }
+        }
+        throw new Error('Relationship stroke did not settle after entering edit mode');
+    });
+    await page.mouse.click(point.x, point.y);
     await expect(edge).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#edge-inspector')).toBeVisible();
     await expect(page.locator('#edge-from')).toHaveValue('Payments System');

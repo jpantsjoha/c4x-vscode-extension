@@ -138,6 +138,187 @@ export function computeContentBounds(
 }
 
 /**
+ * Calculate optimal connection points between two boxes using directional penalty scoring.
+ * Matches EdgeRouter.ts:calculateOptimalConnectionPoints line-for-line.
+ * Pure — no DOM access. Exported for unit tests.
+ */
+export function computeOptimalConnectionPoints(
+    from: NodeBounds,
+    to: NodeBounds
+): EdgeEndpoints {
+    const fromPoints = [
+        { x: from.x + from.width / 2, y: from.y, edge: 'top' },
+        { x: from.x + from.width, y: from.y + from.height / 2, edge: 'right' },
+        { x: from.x + from.width / 2, y: from.y + from.height, edge: 'bottom' },
+        { x: from.x, y: from.y + from.height / 2, edge: 'left' }
+    ];
+
+    const toPoints = [
+        { x: to.x + to.width / 2, y: to.y, edge: 'top' },
+        { x: to.x + to.width, y: to.y + to.height / 2, edge: 'right' },
+        { x: to.x + to.width / 2, y: to.y + to.height, edge: 'bottom' },
+        { x: to.x, y: to.y + to.height / 2, edge: 'left' }
+    ];
+
+    const isBelow = to.y >= from.y + from.height;
+    const isAbove = from.y >= to.y + to.height;
+    const isRight = to.x >= from.x + from.width;
+    const isLeft = from.x >= to.x + to.width;
+
+    let minScore = Infinity;
+    let bestFrom = fromPoints[0];
+    let bestTo = toPoints[0];
+
+    for (let i = 0; i < fromPoints.length; i++) {
+        const fp = fromPoints[i];
+        for (let j = 0; j < toPoints.length; j++) {
+            const tp = toPoints[j];
+            const dist = Math.sqrt(
+                Math.pow(tp.x - fp.x, 2) + Math.pow(tp.y - fp.y, 2)
+            );
+
+            let penalty = 0;
+            if (isBelow) {
+                if (fp.edge !== 'bottom') penalty += 150;
+                if (tp.edge !== 'top') penalty += 150;
+            } else if (isAbove) {
+                if (fp.edge !== 'top') penalty += 150;
+                if (tp.edge !== 'bottom') penalty += 150;
+            } else if (isRight) {
+                if (fp.edge !== 'right') penalty += 150;
+                if (tp.edge !== 'left') penalty += 150;
+            } else if (isLeft) {
+                if (fp.edge !== 'left') penalty += 150;
+                if (tp.edge !== 'right') penalty += 150;
+            }
+
+            const score = dist + penalty;
+            if (score < minScore) {
+                minScore = score;
+                bestFrom = fp;
+                bestTo = tp;
+            }
+        }
+    }
+
+    if (minScore === Infinity) {
+        bestFrom = fromPoints[1];
+        bestTo = toPoints[3];
+    }
+
+    return {
+        from: { x: bestFrom.x, y: bestFrom.y },
+        to: { x: bestTo.x, y: bestTo.y }
+    };
+}
+
+/** The frame of a boundary as the editor currently knows it. */
+export interface BoundaryWrapFrame {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    /** True when `$x` is authored on the subgraph, or a boundary move is staged. */
+    manualX?: boolean;
+    /** True when `$y` is authored on the subgraph, or a boundary move is staged. */
+    manualY?: boolean;
+    /** Authored `$w` (or a staged resize width). A minimum, never a cap. */
+    manualWidth?: number;
+    /** Authored `$h` (or a staged resize height). A minimum, never a cap. */
+    manualHeight?: number;
+}
+
+/** Padding a boundary frame leaves around its children. Host defaults. */
+export interface BoundaryWrapPadding {
+    paddingX: number;
+    paddingTop: number;
+    paddingBottom: number;
+}
+
+/**
+ * The frame a boundary must occupy to contain `children`.
+ *
+ * Line-for-line mirror of `DagreLayoutEngine.adjustBoundariesToContainChildren`
+ * so the editor's live preview and the layout the host computes on save agree
+ * (#163). Four rules that the earlier inline re-wrap got wrong:
+ *
+ *   1. A manual origin is kept. `$x`/`$y` (or a staged boundary move) pins the
+ *      frame; only an auto frame wraps to the child bounding box.
+ *   2. `$w`/`$h` are minima, clamped up to fit the children — never a size the
+ *      frame shrinks back to, and never a cap that clips content.
+ *   3. Nested boundary frames count as children, exactly like leaf nodes.
+ *   4. Size is measured from the frame's ACTUAL origin out to the far edge of
+ *      the children, not from the child bounding-box extent. The two only
+ *      agree while the origin auto-wraps; once it is pinned, the gap between
+ *      the origin and the nearest child is real space the frame must span.
+ *
+ * Coordinate space: absolute SVG user units, the same space the layout
+ * snapshot and the rendered `<rect>` use. `children` are already positioned in
+ * it — this function never moves a child, only the frame around them.
+ *
+ * No clamp to zero. The host does not clamp a boundary either: it lets the
+ * frame go negative and then translates the whole scene in `normalizeOrigin`.
+ * Clamping the frame alone would change its geometry relative to its children,
+ * which is the very divergence this helper exists to close.
+ *
+ * Pure — no DOM access, no module scope. Exported for unit tests and embedded
+ * verbatim in the webview script.
+ */
+export function computeBoundaryWrap(
+    frame: BoundaryWrapFrame,
+    children: NodeBounds[],
+    options?: Partial<BoundaryWrapPadding>,
+): { x: number; y: number; width: number; height: number } {
+    const paddingX = options && options.paddingX !== undefined ? options.paddingX : 40;
+    const paddingTop = options && options.paddingTop !== undefined ? options.paddingTop : 60;
+    const paddingBottom = options && options.paddingBottom !== undefined ? options.paddingBottom : 40;
+
+    if (children.length === 0) {
+        // Nothing to contain: honour explicit sizes as-is, otherwise leave the
+        // empty computed frame alone.
+        return {
+            x: frame.x,
+            y: frame.y,
+            width: frame.manualWidth !== undefined ? frame.manualWidth : frame.width,
+            height: frame.manualHeight !== undefined ? frame.manualHeight : frame.height,
+        };
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const child of children) {
+        minX = Math.min(minX, child.x);
+        minY = Math.min(minY, child.y);
+        maxX = Math.max(maxX, child.x + child.width);
+        maxY = Math.max(maxY, child.y + child.height);
+    }
+
+    const x = frame.manualX ? frame.x : minX - paddingX;
+    const y = frame.manualY ? frame.y : minY - paddingTop;
+
+    const requiredWidth = (maxX + paddingX) - x;
+    const requiredHeight = (maxY + paddingBottom) - y;
+
+    return {
+        x,
+        y,
+        width: frame.manualWidth !== undefined ? Math.max(frame.manualWidth, requiredWidth) : requiredWidth,
+        height: frame.manualHeight !== undefined ? Math.max(frame.manualHeight, requiredHeight) : requiredHeight,
+    };
+}
+
+/**
+ * Offset of a boundary's label from its frame origin. Mirrors
+ * `BoundaryRenderer.renderBoundary`, which puts the label at
+ * `x + 10`, `y + fontSize + 6` with a 14px font. Kept as constants so the
+ * editor moves the label to the same place the host renders it (#163).
+ */
+export const BOUNDARY_LABEL_OFFSET_X = 10;
+export const BOUNDARY_LABEL_OFFSET_Y = 20;
+
+/**
  * Pan that puts the centre of the content on the centre of the viewport,
  * expressed in the same SVG units the camera uses. Pure — exported for tests.
  *
@@ -467,6 +648,7 @@ export function serializeDraftState(
     stagedEdits: Record<string, Record<string, unknown>>,
     selectedNodeId: string | null,
     editMode: boolean,
+    camera?: { zoom?: number; panX?: number; panY?: number },
 ): PersistedDraftState {
     const editsArray: PersistedStagedEdit[] = Object.keys(stagedEdits).map(id => {
         const edit = stagedEdits[id];
@@ -495,6 +677,9 @@ export function serializeDraftState(
         editMode,
         selectedNodeId,
         stagedEdits: editsArray,
+        ...(camera?.zoom !== undefined ? { zoom: camera.zoom } : {}),
+        ...(camera?.panX !== undefined ? { panX: camera.panX } : {}),
+        ...(camera?.panY !== undefined ? { panY: camera.panY } : {}),
     };
 }
 
@@ -891,7 +1076,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         (v.selectedNodeId === null || typeof v.selectedNodeId === 'string') &&
         Array.isArray(v.stagedEdits) &&
         v.stagedEdits.length <= 500 &&
-        v.stagedEdits.every(isPersistedStagedEditEntry);
+        v.stagedEdits.every(isPersistedStagedEditEntry) &&
+        (v.zoom === undefined || (typeof v.zoom === 'number' && Number.isFinite(v.zoom) && v.zoom > 0)) &&
+        (v.panX === undefined || (typeof v.panX === 'number' && Number.isFinite(v.panX))) &&
+        (v.panY === undefined || (typeof v.panY === 'number' && Number.isFinite(v.panY)));
     }
 
     // ── END draft state schema ─────────────────────────────────────────────────
@@ -911,6 +1099,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     ${embedForWebview(formatEdgePathD)}
     ${embedForWebview(computeExpandedViewBox)}
     ${embedForWebview(applyEdgeGeometry)}
+    ${embedForWebview(computeOptimalConnectionPoints)}
+    ${embedForWebview(computeBoundaryWrap)}
+    const BOUNDARY_LABEL_OFFSET_X = ${BOUNDARY_LABEL_OFFSET_X};
+    const BOUNDARY_LABEL_OFFSET_Y = ${BOUNDARY_LABEL_OFFSET_Y};
     ${emitLiveRegion.toString()}
     ${embedForWebview(formatCanvasTextValue)}
     ${embedForWebview(formatCanvasUpdateAnnouncement)}
@@ -1024,7 +1216,12 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         Array.isArray(value.childNodeIds) &&
         value.childNodeIds.every(function(id) { return typeof id === 'string' && id.length > 0 && id.length <= 256; }) &&
         Array.isArray(value.childBoundaryIds) &&
-        value.childBoundaryIds.every(function(id) { return typeof id === 'string' && id.length > 0 && id.length <= 256; });
+        value.childBoundaryIds.every(function(id) { return typeof id === 'string' && id.length > 0 && id.length <= 256; }) &&
+        // Manual geometry (#163) is optional: an older host omits it entirely.
+        (value.manualX === undefined || typeof value.manualX === 'boolean') &&
+        (value.manualY === undefined || typeof value.manualY === 'boolean') &&
+        (value.manualWidth === undefined || isCoordinate(value.manualWidth)) &&
+        (value.manualHeight === undefined || isCoordinate(value.manualHeight));
     }
 
     function isVisualLayoutSnapshot(value) {
@@ -1193,7 +1390,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
           schemaVersion: 1,
           editMode: editMode,
           selectedNodeId: selectedNode ? selectedNode.dataset.id : null,
-          stagedEdits: editsArray
+          stagedEdits: editsArray,
+          zoom: zoom,
+          panX: panX,
+          panY: panY
         });
       } catch (_e) {
         // setState is best-effort; never throw to the caller
@@ -1286,6 +1486,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
           nodeEl.dataset.currentY = String(baseY);
           nodeEl.setAttribute('transform', 'translate(0 0)');
           updateConnectedEdges(id);
+          updateEnclosingBoundariesForNode(id);
         }
       }
       if (!edit) return;
@@ -2303,28 +2504,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function connectionPoints(from, to) {
-      const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
-      const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-      const dx = toCenter.x - fromCenter.x;
-      const dy = toCenter.y - fromCenter.y;
-
-      if (Math.abs(dx) >= Math.abs(dy)) {
-        return dx >= 0 ? {
-          from: { x: from.x + from.width, y: fromCenter.y },
-          to: { x: to.x, y: toCenter.y }
-        } : {
-          from: { x: from.x, y: fromCenter.y },
-          to: { x: to.x + to.width, y: toCenter.y }
-        };
-      }
-
-      return dy >= 0 ? {
-        from: { x: fromCenter.x, y: from.y + from.height },
-        to: { x: toCenter.x, y: to.y }
-      } : {
-        from: { x: fromCenter.x, y: from.y },
-        to: { x: toCenter.x, y: to.y + to.height }
-      };
+      return computeOptimalConnectionPoints(from, to);
     }
 
     function updateConnectedEdges(nodeId) {
@@ -2344,6 +2524,182 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       }
     }
 
+    /**
+     * The frame a boundary occupies right now, in absolute SVG units, plus the
+     * manual-geometry flags computeBoundaryWrap needs.
+     *
+     * "Manual" means the host will keep this origin/size on save: either $x/$y
+     * (or $w/$h) is authored on the subgraph — the snapshot says so — or the
+     * session has a staged boundary move/resize for it (#137). The origin
+     * itself is read from dataset.currentX/currentY, which only moveBoundary
+     * writes, so it is always the authored or staged origin and never a
+     * previously auto-wrapped one.
+     */
+    function boundaryWrapFrame(b) {
+      const boundaryEl = findByDataId('g.boundary', b.id);
+      const staged = stagedEdits[b.id];
+      const stagedX = staged && staged.x !== undefined ? staged.x : undefined;
+      const stagedY = staged && staged.y !== undefined ? staged.y : undefined;
+      const stagedW = staged && staged.w !== undefined ? staged.w : undefined;
+      const stagedH = staged && staged.h !== undefined ? staged.h : undefined;
+
+      const originX = boundaryEl && boundaryEl.dataset.currentX !== undefined
+        ? Number(boundaryEl.dataset.currentX)
+        : b.x;
+      const originY = boundaryEl && boundaryEl.dataset.currentY !== undefined
+        ? Number(boundaryEl.dataset.currentY)
+        : b.y;
+
+      const readSize = function(wrapKey, currentKey, fallback) {
+        if (boundaryEl && boundaryEl.dataset[wrapKey] !== undefined) {
+          return Number(boundaryEl.dataset[wrapKey]);
+        }
+        if (boundaryEl && boundaryEl.dataset[currentKey] !== undefined) {
+          return Number(boundaryEl.dataset[currentKey]);
+        }
+        return fallback;
+      };
+
+      const frame = {
+        x: originX,
+        y: originY,
+        width: readSize('wrapWidth', 'currentWidth', b.width),
+        height: readSize('wrapHeight', 'currentHeight', b.height)
+      };
+
+      if (b.manualX === true || stagedX !== undefined) { frame.manualX = true; }
+      if (b.manualY === true || stagedY !== undefined) { frame.manualY = true; }
+      const manualWidth = stagedW !== undefined ? stagedW : b.manualWidth;
+      const manualHeight = stagedH !== undefined ? stagedH : b.manualHeight;
+      if (manualWidth !== undefined) { frame.manualWidth = manualWidth; }
+      if (manualHeight !== undefined) { frame.manualHeight = manualHeight; }
+      return frame;
+    }
+
+    /** The frame a boundary is drawn at right now, after any live re-wrap. */
+    function renderedBoundaryFrame(b) {
+      const boundaryEl = findByDataId('g.boundary', b.id);
+      if (boundaryEl && boundaryEl.dataset.wrapX !== undefined) {
+        return {
+          x: Number(boundaryEl.dataset.wrapX),
+          y: Number(boundaryEl.dataset.wrapY),
+          width: Number(boundaryEl.dataset.wrapWidth),
+          height: Number(boundaryEl.dataset.wrapHeight)
+        };
+      }
+      const frame = boundaryWrapFrame(b);
+      return { x: frame.x, y: frame.y, width: frame.width, height: frame.height };
+    }
+
+    /** Direct children of a boundary, as boxes, at their current positions. */
+    function boundaryChildBoxes(b) {
+      const boxes = [];
+      const nodeIds = b.childNodeIds || [];
+      for (let i = 0; i < nodeIds.length; i++) {
+        const cSnap = nodeSnapshot(nodeIds[i]);
+        if (!cSnap) continue;
+        const cEl = findByDataId('g.node', nodeIds[i]);
+        boxes.push({
+          x: cEl && cEl.dataset.currentX !== undefined ? Number(cEl.dataset.currentX) : cSnap.x,
+          y: cEl && cEl.dataset.currentY !== undefined ? Number(cEl.dataset.currentY) : cSnap.y,
+          width: cSnap.width,
+          height: cSnap.height
+        });
+      }
+      const boundaryIds = b.childBoundaryIds || [];
+      for (let i = 0; i < boundaryIds.length; i++) {
+        const childSnap = boundarySnapshot(boundaryIds[i]);
+        if (!childSnap) continue;
+        boxes.push(renderedBoundaryFrame(childSnap));
+      }
+      return boxes;
+    }
+
+    /**
+     * Paint one boundary at the given frame. Only the rect and the text label
+     * move;
+     * dataset.currentX/currentY stay untouched because boundary drag-start and
+     * the keyboard nudge read them as the AUTHORED origin — rebasing them onto
+     * an auto-wrapped frame silently changed where the next staged boundary
+     * move started from (#163). The wrapped frame is remembered separately in
+     * dataset.wrap*, which is what an ancestor's re-wrap reads back.
+     *
+     * moveBoundary offsets the whole group with a transform, so the rect is
+     * written in the group's local space: absolute target minus that offset.
+     */
+    function paintBoundaryFrame(b, boundaryEl, frame) {
+      const offsetX = (boundaryEl.dataset.currentX !== undefined ? Number(boundaryEl.dataset.currentX) : b.x) - b.x;
+      const offsetY = (boundaryEl.dataset.currentY !== undefined ? Number(boundaryEl.dataset.currentY) : b.y) - b.y;
+      const rect = boundaryEl.querySelector('rect');
+      if (rect) {
+        rect.setAttribute('x', String(frame.x - offsetX));
+        rect.setAttribute('y', String(frame.y - offsetY));
+        rect.setAttribute('width', String(frame.width));
+        rect.setAttribute('height', String(frame.height));
+      }
+      const text = boundaryEl.querySelector('text');
+      if (text) {
+        text.setAttribute('x', String(frame.x + BOUNDARY_LABEL_OFFSET_X - offsetX));
+        text.setAttribute('y', String(frame.y + BOUNDARY_LABEL_OFFSET_Y - offsetY));
+      }
+      boundaryEl.dataset.wrapX = String(frame.x);
+      boundaryEl.dataset.wrapY = String(frame.y);
+      boundaryEl.dataset.wrapWidth = String(frame.width);
+      boundaryEl.dataset.wrapHeight = String(frame.height);
+    }
+
+    /** Re-wrap one boundary around its current children. Returns true if painted. */
+    function rewrapBoundary(b) {
+      const boundaryEl = findByDataId('g.boundary', b.id);
+      if (!boundaryEl) return false;
+      const frame = computeBoundaryWrap(boundaryWrapFrame(b), boundaryChildBoxes(b));
+      if (!Number.isFinite(frame.x) || !Number.isFinite(frame.y) ||
+          !(frame.width > 0) || !(frame.height > 0)) {
+        return false;
+      }
+      paintBoundaryFrame(b, boundaryEl, frame);
+      return true;
+    }
+
+    /**
+     * Re-wrap every boundary that encloses nodeId, then its ancestors,
+     * bottom-up until no parent remains — a frame that grew must not be left
+     * hanging outside the frame that contains it.
+     */
+    function updateEnclosingBoundariesForNode(nodeId) {
+      if (!visualLayout.boundaries || visualLayout.boundaries.length === 0) return;
+
+      let pending = [];
+      for (let bi = 0; bi < visualLayout.boundaries.length; bi++) {
+        const b = visualLayout.boundaries[bi];
+        if (b.childNodeIds && b.childNodeIds.indexOf(nodeId) !== -1) {
+          pending.push(b);
+        }
+      }
+
+      const visited = new Set();
+      // Bounded by the boundary count: every level consumes at least one
+      // unvisited frame, so a malformed cyclic payload cannot spin here.
+      for (let depth = 0; depth < visualLayout.boundaries.length && pending.length > 0; depth++) {
+        const parents = [];
+        for (let i = 0; i < pending.length; i++) {
+          const b = pending[i];
+          if (visited.has(b.id)) continue;
+          visited.add(b.id);
+          rewrapBoundary(b);
+          for (let bi = 0; bi < visualLayout.boundaries.length; bi++) {
+            const candidate = visualLayout.boundaries[bi];
+            if (candidate.childBoundaryIds &&
+                candidate.childBoundaryIds.indexOf(b.id) !== -1 &&
+                !visited.has(candidate.id)) {
+              parents.push(candidate);
+            }
+          }
+        }
+        pending = parents;
+      }
+    }
+
     function moveNode(nodeEl, x, y) {
       const baseX = Number(nodeEl.dataset.baseX);
       const baseY = Number(nodeEl.dataset.baseY);
@@ -2353,6 +2709,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       nodeEl.dataset.currentY = String(nextY);
       nodeEl.setAttribute('transform', 'translate(' + (nextX - baseX) + ' ' + (nextY - baseY) + ')');
       updateConnectedEdges(nodeEl.dataset.id);
+      updateEnclosingBoundariesForNode(nodeEl.dataset.id);
       expandCanvasForNode(nodeEl, nextX, nextY);
       return { x: nextX, y: nextY };
     }
@@ -2822,8 +3179,16 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         if (vbStr) {
           const parts = vbStr.split(/\s+/).map(Number);
           if (parts.length === 4) {
+            const oldAnchorX = baseViewBox.x + baseViewBox.w / 2;
+            const oldAnchorY = baseViewBox.y + baseViewBox.h / 2;
             originalViewBox = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
             baseViewBox = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
+            if (!firstRender) {
+              const newAnchorX = baseViewBox.x + baseViewBox.w / 2;
+              const newAnchorY = baseViewBox.y + baseViewBox.h / 2;
+              panX += (newAnchorX - oldAnchorX);
+              panY += (newAnchorY - oldAnchorY);
+            }
           }
         }
         // The element fills the container, so the viewBox alone drives what is
@@ -3478,49 +3843,66 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       // Check once: if getState() has a valid persisted draft, restore it
       // rather than starting clean. pendingRestoreState is set at init time
       // and consumed exactly once here.
+      let omittedDraftNotice = null;
       if (pendingRestoreState !== null) {
         const restore = pendingRestoreState;
         pendingRestoreState = null;
-        if (isValidPersistedDraftState(restore) && restore.stagedEdits.length > 0) {
-          const restored = {};
-          for (const entry of restore.stagedEdits) {
-            const edit = {};
-            if (entry.x !== undefined) edit.x = entry.x;
-            if (entry.y !== undefined) edit.y = entry.y;
-            if (entry.w !== undefined) edit.w = entry.w;
-            if (entry.h !== undefined) edit.h = entry.h;
-            if (entry.label !== undefined) edit.label = entry.label;
-            if (entry.description !== undefined) edit.description = entry.description;
-            if (entry.technology !== undefined) edit.technology = entry.technology;
-            if (entry.tags !== undefined) edit.tags = entry.tags;
-            if (entry.sprite !== undefined) edit.sprite = entry.sprite;
-            if (entry.locked !== undefined) edit.locked = entry.locked;
-            if (entry.newId !== undefined) edit.newId = entry.newId;
-            if (entry.boundaryId !== undefined) edit.boundaryId = entry.boundaryId;
-            if (entry.edgeId !== undefined) edit.edgeId = entry.edgeId;
-            if (entry.relType !== undefined) edit.relType = entry.relType;
-            if (entry.from !== undefined) edit.from = entry.from;
-            if (entry.to !== undefined) edit.to = entry.to;
-            restored[entry.id] = edit;
+        if (isValidPersistedDraftState(restore)) {
+          if (restore.zoom !== undefined && restore.panX !== undefined && restore.panY !== undefined) {
+            zoom = restore.zoom;
+            panX = restore.panX;
+            panY = restore.panY;
+            userAdjustedCamera = true;
+            applyZoomPan();
+            updateZoomDisplay();
           }
-          // Keep only edits that still correspond to nodes, boundaries, or edges in this layout.
-          const activeNodeIds = new Set(visualLayout.nodes.map(function(n) { return n.id; }));
-          const activeBoundaryIds = new Set(visualLayout.boundaries.map(function(b) { return b.id; }));
-          const activeEdgeIds = new Set(visualLayout.edges.map(function(e) { return e.id; }));
-          const validKeys = Object.keys(restored).filter(function(k) {
-            return activeNodeIds.has(k) || activeBoundaryIds.has(k) || activeEdgeIds.has(k);
-          });
-          if (validKeys.length > 0) {
-            for (const k of validKeys) {
-              stagedEdits[k] = restored[k];
+          if (restore.stagedEdits.length > 0) {
+            const restored = {};
+            for (const entry of restore.stagedEdits) {
+              const edit = {};
+              if (entry.x !== undefined) edit.x = entry.x;
+              if (entry.y !== undefined) edit.y = entry.y;
+              if (entry.w !== undefined) edit.w = entry.w;
+              if (entry.h !== undefined) edit.h = entry.h;
+              if (entry.label !== undefined) edit.label = entry.label;
+              if (entry.description !== undefined) edit.description = entry.description;
+              if (entry.technology !== undefined) edit.technology = entry.technology;
+              if (entry.tags !== undefined) edit.tags = entry.tags;
+              if (entry.sprite !== undefined) edit.sprite = entry.sprite;
+              if (entry.locked !== undefined) edit.locked = entry.locked;
+              if (entry.newId !== undefined) edit.newId = entry.newId;
+              if (entry.boundaryId !== undefined) edit.boundaryId = entry.boundaryId;
+              if (entry.edgeId !== undefined) edit.edgeId = entry.edgeId;
+              if (entry.relType !== undefined) edit.relType = entry.relType;
+              if (entry.from !== undefined) edit.from = entry.from;
+              if (entry.to !== undefined) edit.to = entry.to;
+              restored[entry.id] = edit;
             }
-            updateStagedChangesList();
-            if (restore.editMode) {
-              setEditMode(true);
+            // Keep only edits that still correspond to nodes, boundaries, or edges in this layout.
+            const activeNodeIds = new Set(visualLayout.nodes.map(function(n) { return n.id; }));
+            const activeBoundaryIds = new Set(visualLayout.boundaries.map(function(b) { return b.id; }));
+            const activeEdgeIds = new Set(visualLayout.edges.map(function(e) { return e.id; }));
+            const validKeys = Object.keys(restored).filter(function(k) {
+              return activeNodeIds.has(k) || activeBoundaryIds.has(k) || activeEdgeIds.has(k);
+            });
+            const omittedCount = Object.keys(restored).length - validKeys.length;
+            if (omittedCount > 0) {
+              omittedDraftNotice = 'Draft restored: ' + validKeys.length + ' staged changes; ' +
+                omittedCount + ' could not be restored because ' +
+                (omittedCount === 1 ? 'its target is' : 'their targets are') + ' no longer present.';
             }
-            const count = validKeys.length;
-            setLayoutStatus('Draft restored — ' + count + ' staged change' + (count === 1 ? '' : 's') + '.', 'info', 'dirty');
-            notifyDirtyChanged(true);
+            if (validKeys.length > 0) {
+              for (const k of validKeys) {
+                stagedEdits[k] = restored[k];
+              }
+              updateStagedChangesList();
+              if (restore.editMode) {
+                setEditMode(true);
+              }
+              const count = validKeys.length;
+              setLayoutStatus('Draft restored — ' + count + ' staged change' + (count === 1 ? '' : 's') + '.', 'info', 'dirty');
+              notifyDirtyChanged(true);
+            }
           }
         }
       } else if (discardedDraft) {
@@ -3544,6 +3926,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         );
       }
       renderMetricsTable(metrics);
+      // Opening-camera announcements use the same live region. Report lost
+      // entries afterwards so even a completely unrestorable draft is visible.
+      if (omittedDraftNotice) {
+        setLayoutStatus(omittedDraftNotice, 'info', dirty ? 'dirty' : 'clean');
+      }
     }
 
     /**
@@ -4169,9 +4556,27 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     window.addEventListener('message', event => {
+      if (!event || !event.data || typeof event.data !== 'object') return;
       const message = event.data;
       if (isRenderMessage(message)) {
         showSvg(message.payload.svg, message.payload.metrics, message.payload.visualLayout, message.payload.settings, message.payload.presentElementTypes, message.payload.legendSwatchColors);
+        if (typeof message.smokeRequest === 'string' && message.smokeRequest.length <= 64) {
+          // Test-only challenge supplied by the host. Report the actual DOM
+          // after rendering, never the incoming layout or the earlier ready event.
+          // getBoundingClientRect forces layout even when a background Electron
+          // window suspends animation frames; no paint callback is required.
+          const svg = contentEl.querySelector('svg');
+          if (!svg || svg.getBoundingClientRect().width <= 0 || svg.getBoundingClientRect().height <= 0) {
+            vscode.postMessage({ type: 'smoke.renderFailed', token: message.smokeRequest });
+            return;
+          }
+          const nodes = svg.querySelectorAll('g.node');
+          vscode.postMessage({
+            type: 'smoke.rendered', token: message.smokeRequest,
+            nodeCount: nodes.length,
+            text: Array.from(nodes).map(function(node) { return node.textContent || ''; }).join(' ').slice(0, 20000)
+          });
+        }
         return;
       }
       if (message && message.type === 'render') {

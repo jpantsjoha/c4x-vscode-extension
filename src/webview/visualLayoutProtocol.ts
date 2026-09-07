@@ -26,6 +26,17 @@ export interface VisualLayoutBoundarySnapshot {
     childNodeIds: string[];
     /** IDs of direct descendant boundaries nested inside this boundary. */
     childBoundaryIds: string[];
+    /**
+     * Manual geometry authored on the subgraph, mirrored from
+     * `PositionedBoundary`. The editor needs it to re-wrap a frame the way the
+     * host will on save (#163): a pinned origin is never auto-wrapped away,
+     * and `$w`/`$h` are minima clamped up to fit the children. All four are
+     * optional, so a host that does not send them stays compatible.
+     */
+    manualX?: boolean;
+    manualY?: boolean;
+    manualWidth?: number;
+    manualHeight?: number;
 }
 
 export interface VisualLayoutEdgeSnapshot {

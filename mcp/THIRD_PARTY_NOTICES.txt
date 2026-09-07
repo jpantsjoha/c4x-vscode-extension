@@ -55,7 +55,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-ajv@8.18.0
+ajv@8.20.0
 Declared license: MIT
 
 The MIT License (MIT)
@@ -107,7 +107,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-fast-uri@3.1.2
+fast-uri@3.1.6
 Declared license: BSD-3-Clause
 
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
@@ -168,7 +168,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-zod-to-json-schema@3.25.1
+zod-to-json-schema@3.25.2
 Declared license: ISC
 
 ISC License

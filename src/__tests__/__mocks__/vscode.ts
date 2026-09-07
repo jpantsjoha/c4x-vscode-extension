@@ -31,10 +31,27 @@ export const Uri = {
     file: (path: string) => ({ fsPath: path }),
 };
 
+// Information messages shown during a test, so a test can assert that the user
+// was told something once and only once.
+const informationMessages: string[] = [];
+
+export function recordedInformationMessages(): readonly string[] {
+    return informationMessages;
+}
+
+export function clearRecordedInformationMessages(): void {
+    informationMessages.length = 0;
+}
+
 export const window = {
     showWarningMessage: () => undefined,
     showErrorMessage: () => undefined,
-    showInformationMessage: () => undefined,
+    showInformationMessage: (message?: string) => {
+        if (typeof message === 'string') {
+            informationMessages.push(message);
+        }
+        return undefined;
+    },
     withProgress: async <T>(_options: unknown, task: (progress: unknown) => Promise<T>): Promise<T> => {
         return task({ report: () => undefined });
     },

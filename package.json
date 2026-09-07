@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.6.4",
+  "version": "1.7.0",
   "packageManager": "pnpm@10.18.3",
   "c4xToolchain": {
     "node": [
@@ -25,8 +25,7 @@
       "actions/checkout": "34e114876b0b11c390a56381ad16ebd13914f8d5",
       "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
       "pnpm/action-setup": "0ebf47130e4866e96fce0953f49152a61190b271",
-      "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
-      "actions/download-artifact": "d3f86a106a0bac45b974a628896c90dbdf5c8093"
+      "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02"
     }
   },
   "publisher": "jpantsjoha",
@@ -81,6 +80,16 @@
     ],
     "markdown.enableCommandUris": true,
     "commands": [
+      {
+        "command": "c4x.selectImageModel",
+        "title": "C4X: Select Gemini Image Model",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.selectModel",
+        "title": "C4X: Select Gemini Model",
+        "category": "C4X"
+      },
       {
         "command": "c4x.clearApiKey",
         "title": "C4X: Clear Gemini API Key",
@@ -295,8 +304,8 @@
         },
         "c4x.ai.model": {
           "type": "string",
-          "default": "gemini-3.6-flash",
-          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nVerified 2026-08-07:\n- gemini-3.6-flash — newest generally available flash (default)\n- gemini-3.5-flash — previous default, still generally available\n- gemini-3.1-flash-lite — budget option\n- gemini-3.1-pro-preview — best reasoning, used as failover. Preview: no generally available Pro exists in the 3.x line\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
+          "default": "gemini-3.8-flash",
+          "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nVerified 2026-09-05:\n- gemini-3.8-flash — newest generally available flash (default)\n- gemini-3.7-flash — previous generation, still generally available\n- gemini-3.6-flash — previous default, still generally available\n- gemini-3.1-flash-lite — budget option\n- gemini-3.1-pro-preview — best reasoning, used as failover. Preview: no generally available Pro exists in the 3.x line\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
         },
         "c4x.ai.imageModel": {
           "type": "string",
@@ -369,8 +378,21 @@
           "type": "number",
           "default": 0.5,
           "minimum": 0.2,
-          "maximum": 1.0,
+          "maximum": 1,
           "description": "Scale factor for C4X diagrams embedded in Markdown preview. 0.5 renders diagrams at half their intrinsic size. Changes apply on the next Markdown preview refresh."
+        },
+        "c4x.ai.modelStrategy": {
+          "type": "string",
+          "enum": [
+            "pinned",
+            "auto-ga"
+          ],
+          "default": "pinned",
+          "enumDescriptions": [
+            "Use exactly the model in c4x.ai.model. If it has been retired or your key cannot reach it, fall back to the newest generally available model in the same tier and tell you.",
+            "Automatically use the newest generally available model in the tier, so a new Gemini release is picked up without updating the extension. Preview and experimental models are never selected."
+          ],
+          "description": "How C4X chooses a generation model.\\n\\nEither way, a model your key cannot reach is replaced rather than left to fail, and you are told when that happens. Run 'C4X: Select Gemini Model' to see what your key can use."
         }
       }
     }
@@ -381,7 +403,6 @@
     "build:mcp": "node esbuild.config.js --mcp-only",
     "watch": "node esbuild.config.js --watch",
     "validate:toolchain": "node scripts/validate-toolchain-pins.js",
-    "validate:harness": "node scripts/validate-agent-harness.js",
     "lint": "eslint src mcp",
     "lint:md": "markdownlint *.md **/*.md --ignore node_modules --ignore out",
     "generate:parser": "peggy --format commonjs --output src/parser/c4x.generated.js src/parser/c4x.pegjs",
@@ -397,9 +418,7 @@
     "test:mcp": "node test/functional-mcp-server.js",
     "pretest:vsix-smoke": "pnpm run test:compile && pnpm run build && pnpm run package",
     "test:vsix-smoke": "node scripts/test-vsix-smoke.js",
-    "//coverage": "Tier A (unit). Exclusion rationale + Tier B ownership in docs/adrs/TDR-017-coverage-tiering-and-exemptions.md. WritebackTransaction.ts + SidecarPersistence.ts moved to Tier A in Wave A/A1 (#50) via vscode-boundary seam.",
     "coverage": "c8 --all --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --exclude=\"src/commands/**\" --exclude=\"src/webview/**\" --exclude=\"src/export/**\" --exclude=\"src/diagnostics/**\" --exclude=\"src/extension.ts\" --exclude=\"src/ai/AuthService.ts\" --exclude=\"src/ai/CodeContextExtractor.ts\" --exclude=\"src/ai/GeminiService.ts\" --exclude=\"src/completion/**\" --exclude=\"src/markdown/**\" --exclude=\"src/parser/plantuml/index.ts\" --exclude=\"src/parser/plantuml/macros.ts\" --exclude=\"src/themes/Theme.ts\" --exclude=\"src/model/C4Model.ts\" --check-coverage --lines 80 --statements 80 --functions 80 --branches 85 --reporter=text --reporter=lcov --src=src mocha --config .mocharc.unit.yml",
-    "//coverage:integration": "Tier B (extension-host). Evidence report, not a c8 gate. See TDR-017.",
     "coverage:integration": "c8 --all --reporter=text --reporter=lcov --report-dir=.coverage/integration --src=src pnpm test",
     "bench": "node -r ts-node/register test/benchmarks/performance.bench.ts",
     "verify:mcp": "node esbuild.config.js --check-mcp",
@@ -426,8 +445,10 @@
     "eslint": "^9.39.4",
     "eslint-plugin-security": "^3.0.1",
     "glob": "^11.0.3",
+    "js-yaml": "4.3.2",
     "markdownlint-cli": "^0.46.0",
     "mocha": "^11.7.6",
+    "ovsx": "1.1.1",
     "peggy": "^5.1.0",
     "playwright": "^1.56.1",
     "ts-node": "^10.9.2",
@@ -436,19 +457,23 @@
   },
   "pnpm": {
     "overrides": {
-      "@hono/node-server": "1.19.14",
+      "@hono/node-server": "1.19.15",
       "express-rate-limit": "8.5.2",
-      "fast-uri": "3.1.2",
-      "hono": "4.12.29",
-      "ip-address": "10.1.1",
+      "fast-uri": "3.1.6",
+      "hono": "4.12.34",
+      "ip-address": "10.3.1",
       "path-to-regexp": "8.4.2",
-      "qs": "6.15.3",
-      "yargs": "17.7.3"
+      "qs": "6.16.0",
+      "yargs": "17.7.3",
+      "linkify-it": "5.0.2",
+      "serialize-javascript": "7.0.5",
+      "minimatch@>=10.0.0 <10.2.3": "10.2.3",
+      "js-yaml@>=4.0.0 <4.3.1": "4.3.1"
     }
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "dagre": "^0.8.5",
-    "markdown-it": "^14.1.0"
+    "markdown-it": "^14.2.0"
   }
 }

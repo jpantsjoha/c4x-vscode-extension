@@ -196,6 +196,8 @@ async function compilePeg() {
 const WEBVIEW_EMBEDDED_HELPERS = [
     'formatMoveAnnouncement',
     'computeZoomToFit',
+    'computeOptimalConnectionPoints',
+    'computeBoundaryWrap',
     'isRelationshipEndpointLegal',
     'eligibleConnectTargets',
     'advanceConnectMode',
@@ -268,7 +270,7 @@ async function main() {
             await assertWebviewHelpersSurvivedBundling();
         }
 
-        // Report bundle size (TDR-006: target <1MB, alert >1.5MB)
+        // Report bundle size (legacy informational target <1MB, alert >1.5MB)
         try {
             const bundleStat = await fs.stat('dist/extension.js');
             const bundleBytes = bundleStat.size;
@@ -276,11 +278,11 @@ async function main() {
             const bundleMB = (bundleBytes / 1024 / 1024).toFixed(2);
             const MODE = production ? 'production' : 'development';
             if (bundleBytes > 1572864) {
-                console.error(`❌ Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — exceeds 1.5 MB alert threshold (TDR-006)`);
+                console.error(`❌ Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — exceeds 1.5 MB alert threshold`);
             } else if (bundleBytes > 1048576) {
-                console.warn(`⚠️  Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — exceeds 1 MB target (TDR-006)`);
+                console.warn(`⚠️  Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — exceeds 1 MB target`);
             } else {
-                console.log(`📦 Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — within TDR-006 target`);
+                console.log(`📦 Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — within informational target`);
             }
         } catch {
             // Non-fatal: size reporting only

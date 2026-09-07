@@ -1,6 +1,5 @@
 // Prompt construction logic for the C4X AI Agent.
 //
-// Extracted from GeminiService.ts as part of WS-5 decomposition.
 // Pure functions — no side effects, no VS Code API calls beyond reading
 // workspace files (which are passed in or read via vscode.workspace.fs).
 
@@ -74,8 +73,7 @@ export async function buildGenerationPrompt(
     }
 
     // Fallback: If not in workspace, use the built-in Expert Guidelines.
-    // Prompt body lives in src/ai/prompts/defaultGuidelines.ts (mirror of
-    // docs/prompts/c4x-default-guidelines.md — see TDR-015).
+    // Prompt body lives in src/ai/prompts/defaultGuidelines.ts.
     const contextSection = geminiParam ? `\n## DESIGN GUIDELINES & RULES (Adhere Strictly):\n${geminiParam}` : `\n## DESIGN GUIDELINES & RULES (Built-in Defaults):\n${DEFAULT_GUIDELINES}`;
     const examplesSection = examplesParam ? `\n## REFERENCE EXAMPLES:\n${examplesParam}` : "";
 

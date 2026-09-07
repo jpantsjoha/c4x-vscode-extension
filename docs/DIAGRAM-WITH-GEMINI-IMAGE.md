@@ -148,7 +148,7 @@ A professional C4 Container diagram PNG showing all components with proper styli
 ```json
 {
   "c4x.ai.apiKey": "YOUR_API_KEY",
-  "c4x.ai.model": "gemini-3.6-flash"  // For DSL generation (any Gemini model ID)
+  "c4x.ai.model": "gemini-3.8-flash"  // For DSL generation (any Gemini model ID)
 }
 ```
 

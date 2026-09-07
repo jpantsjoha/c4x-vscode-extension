@@ -1,11 +1,15 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { randomUUID } from 'node:crypto';
 import { runTests, downloadAndUnzipVSCode } from '@vscode/test-electron';
 import packageJson from '../package.json';
 
 async function main() {
   let tempDir: string | null = null;
+  const receiptDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-host-receipt-'));
+  const receiptPath = path.join(receiptDir, 'result.json');
+  const receiptToken = randomUUID();
 
   try {
     console.log('🧪 Starting C4X extension tests...');
@@ -38,7 +42,7 @@ async function main() {
 
       // Download VS Code to a stable temp directory to avoid re-downloading every time
       // We use a fixed name 'c4x-vscode-test-cache' in the system temp dir
-      const vscodeTestDir = path.join(os.tmpdir(), 'c4x-vscode-test-cache');
+      const vscodeTestDir = process.env.C4X_VSCODE_TEST_CACHE || path.join(os.tmpdir(), 'c4x-vscode-test-cache');
       console.log(`   Using VS Code cache at: ${vscodeTestDir}`);
       vscodeExecutablePath = await downloadAndUnzipVSCode({
         version: vscodeVersion,
@@ -71,7 +75,10 @@ async function main() {
 
     // Capture CLI arguments (specific test files)
     const testArgs = process.argv.slice(2);
-    const extensionTestsEnv: Record<string, string> = {};
+    const extensionTestsEnv: Record<string, string> = {
+      C4X_HOST_RECEIPT: receiptPath,
+      C4X_HOST_RECEIPT_TOKEN: receiptToken,
+    };
     if (testArgs.length > 0) {
       extensionTestsEnv['C4X_TEST_FILES'] = testArgs.join(',');
       console.log('🎯 Running specific tests:', testArgs);
@@ -87,11 +94,19 @@ async function main() {
       extensionTestsEnv // Pass environment variables
     });
 
-    console.log('✅ All tests passed!');
+    if (!fs.existsSync(receiptPath)) {
+      throw new Error('Extension host exited without a completed test receipt; no tests are proven.');
+    }
+    const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+    if (receipt.token !== receiptToken || !(receipt.passes > 0) || receipt.failures !== 0) {
+      throw new Error('Invalid extension-host test receipt');
+    }
+    console.log(`✅ Extension-host receipt: ${receipt.passes} passed, ${receipt.pending} pending.`);
   } catch (err) {
     console.error('❌ Failed to run tests:', err);
     process.exit(1);
   } finally {
+    fs.rmSync(receiptDir, { recursive: true, force: true });
     // Cleanup temp directory (but not immediately - VS Code may still be running)
     // Note: The temp directory will be cleaned up by the OS eventually
     if (tempDir) {

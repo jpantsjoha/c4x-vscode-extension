@@ -19,18 +19,19 @@ Run `C4X: Set Gemini API Key` from the Command Palette (`Cmd+Shift+P`). The key 
 
 ### 3. Choose a Model
 
-C4X defaults to `gemini-3.6-flash` with automatic failover to `gemini-3.1-pro-preview`.
+C4X defaults to `gemini-3.8-flash` with automatic failover to `gemini-3.1-pro-preview`.
 
 ```json
 {
-  "c4x.ai.model": "gemini-3.6-flash"
+  "c4x.ai.model": "gemini-3.8-flash"
 }
 ```
 
 | Model | Use case |
 |-------|----------|
-| `gemini-3.6-flash` | **Default**. Newest generally available flash model |
-| `gemini-3.5-flash` | Previous default, still generally available |
+| `gemini-3.8-flash` | **Default**. Newest generally available flash model |
+| `gemini-3.7-flash` | Previous generation, still generally available |
+| `gemini-3.6-flash` | Previous default, still generally available |
 | `gemini-3.1-flash-lite` | Budget option |
 | `gemini-3.1-pro-preview` | Best reasoning, used as the automatic failover. A preview model, because no generally available Pro exists in the 3.x line |
 | Any valid Gemini model ID | Accepted immediately, no extension update needed |
@@ -38,9 +39,39 @@ C4X defaults to `gemini-3.6-flash` with automatic failover to `gemini-3.1-pro-pr
 Defaults are only ever generally available models. Preview models are retired at
 short notice, so C4X does not ship one as a default.
 
+### Choosing from what your key can actually use
+
+Run **`C4X: Select Gemini Model`** (or **`C4X: Select Gemini Image Model`**). It
+asks the API which models your key can reach and lists them, newest first, with
+preview and retired ones marked. Free-tier and paid keys see different lists,
+which is why this beats typing an id into a setting.
+
+### When a model disappears
+
+Google retires models, sometimes at short notice. If the model you are pinned
+to can no longer be reached, C4X uses the newest generally available model in
+the same tier and tells you it did, once per session per substitution, rather
+than failing. The text and image tiers resolve independently, so each announces
+its own swap. Resolution happens twice over:
+before the call, if your key's model list no longer includes the pinned id, and
+during the call, if the API answers "not found" for a model it was still
+listing. A rejected key, an exhausted quota or a dropped connection is not a
+model fault and does not change your model. Set `c4x.ai.modelStrategy` to
+`auto-ga` if you would rather always be on the newest generally available model
+without waiting for an extension update; preview and experimental models are
+never chosen automatically.
+
+What this cannot do is spot a model Google has deprecated but still lists and
+still serves — the model list carries no lifecycle state, so nothing in the API
+distinguishes it from its replacement. That case is caught by the extension's
+own model registry and its release checks, not by discovery.
+
 **Runtime validation**: C4X validates your model ID at activation and warns if unrecognised. If a model's sunset date is within 30 days, you'll see a migration notification.
 
-**Smart fallback**: If your chosen model fails, C4X tries `gemini-3.1-pro-preview`, or `gemini-3.6-flash` if you were already on the Pro model.
+**Smart fallback (text generation)**: If your chosen text model fails for any other reason, or its healed replacement also fails, C4X tries `gemini-3.1-pro-preview`, or `gemini-3.8-flash` if you were already on the Pro model.
+
+The image tier has no Pro/Flash failover. After a failed heal, it retries with
+the corrective prompt as before.
 
 ---
 

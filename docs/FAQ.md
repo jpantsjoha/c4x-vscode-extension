@@ -135,11 +135,11 @@ A: Open **Settings** (Ctrl/Cmd + ,), search for `c4x.ai.model`, and enter any Ge
 
 ```json
 {
-  "c4x.ai.model": "gemini-3.6-flash"
+  "c4x.ai.model": "gemini-3.8-flash"
 }
 ```
 
-The default is `gemini-3.6-flash`.
+The default is `gemini-3.8-flash`.
 
 ### Q: Which models are supported?
 
@@ -147,8 +147,9 @@ A: C4X works with any Gemini model your API key supports. Here are the recommend
 
 | Model | Status | Best For |
 |-------|--------|----------|
-| `gemini-3.6-flash` | **Default** | Newest generally available flash model |
-| `gemini-3.5-flash` | Supported | Previous default, still generally available |
+| `gemini-3.8-flash` | **Default** | Newest generally available flash model |
+| `gemini-3.7-flash` | Supported | Previous generation, still generally available |
+| `gemini-3.6-flash` | Supported | Previous default, still generally available |
 | `gemini-3.1-flash-lite` | Supported | Budget option |
 | `gemini-3.1-pro-preview` | Failover | Best reasoning. A preview model: no generally available Pro exists in the 3.x line |
 | `gemini-2.5-pro` | Retires 2026-10-16 | Legacy, migrate before then |
@@ -167,7 +168,7 @@ A: C4X has **smart fallback** built in. If your configured model fails for any r
 
 1. Your configured model (with up to 3 self-correction retries)
 2. `gemini-3.1-pro-preview` (if your model was different)
-3. `gemini-3.6-flash` (if you were already on `gemini-3.1-pro-preview`)
+3. `gemini-3.8-flash` (if you were already on `gemini-3.1-pro-preview`)
 
 This happens transparently -- you will see a brief "Trying fallback..." message. If all models fail, you will get a clear error with guidance.
 
@@ -193,7 +194,7 @@ A: Open **Settings**, search for `c4x.ai.imageModel`, and enter an image-capable
 
 ### Q: Do I need a paid Gemini API key?
 
-A: No. The `gemini-3.6-flash` default is available on the free tier, though it is rate-limited. For heavier usage or access to `gemini-3.1-pro-preview`, a paid key removes rate limits and provides better throughput.
+A: No. The `gemini-3.8-flash` default is available on the free tier, though it is rate-limited. For heavier usage or access to `gemini-3.1-pro-preview`, a paid key removes rate limits and provides better throughput.
 
 - **Free key**: Go to [Google AI Studio](https://aistudio.google.com/apikey) and create one in seconds.
 - **Enterprise key**: Use your Google Cloud Console > APIs & Services > Credentials, with the Generative Language API enabled.
@@ -211,7 +212,7 @@ A: That depends on your key type:
 A: Work through these steps:
 
 1. **Check your API key**: Open Settings, search for `c4x.ai.apiKey`, and verify it is set correctly. You can test your key at [Google AI Studio](https://aistudio.google.com/).
-2. **Check your model**: Ensure `c4x.ai.model` is set to a valid, non-sunset model. Try `gemini-3.6-flash` (the default).
+2. **Check your model**: Ensure `c4x.ai.model` is set to a valid, non-sunset model. Try `gemini-3.8-flash` (the default).
 3. **Check your network**: AI features require an internet connection. Verify you can reach `generativelanguage.googleapis.com`.
 4. **Check rate limits**: Free-tier keys have request limits. If you see 429 errors, wait a minute or upgrade your key.
 5. **Check the Output panel**: Open VS Code's Output panel (View > Output) and select "C4X" from the dropdown for detailed error messages.
