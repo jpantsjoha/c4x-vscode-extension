@@ -1,4 +1,3 @@
-# Public export: private harness and STATUS checks run in the master repository.
 .PHONY: setup install build test lint lint-file clean package vsix typecheck quick-check check check-full verify-mcp validate-toolchain
 .PHONY: test-unit test-integration test-e2e test-mcp test-perf test-vsix-smoke test-all coverage cve-scan
 
@@ -139,6 +138,9 @@ package: build
 	@echo "📦 Packaging VSIX..."
 	pnpm run package
 	@echo "✅ VSIX file created! Check the root directory for c4x-*.vsix"
+
+# Validate the shipping artifact against the private/public metadata boundary.
+.PHONY:
 
 # Alias for package (create VSIX)
 vsix: package

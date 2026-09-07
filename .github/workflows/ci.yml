@@ -1,22 +1,7 @@
 name: CI
 
 on:
-  # Actions-spend reduction: docs-only pushes skip CI entirely, and the
-  # expensive jobs (cve-scan, e2e-browser, package) are gated to pull requests
-  # and release tags. Caveat: paths-ignore also applies to tag pushes, so a
-  # release tag placed on a docs-only commit will not build. Release commits
-  # bump package.json, so this does not arise in the normal flow.
-  #
-  # Those same jobs ALSO run on a push to main whose head commit is not a pull
-  # request merge — that is, a direct push (#170). On 2026-09-04 five commits
-  # went straight to main and the browser suite, the only gate that executes
-  # the webview script, never ran; a visual editor that threw on open reached
-  # main and every other gate stayed green. The normal flow costs nothing extra
-  # because a PR merge commit is excluded: it already ran these jobs on the PR.
-  #
-  # This detects a bypass, it does not prevent one. Prevention is branch
-  # protection — see .github/branch-protection.json and
-  # scripts/apply-branch-protection.sh.
+  # Product checks run for PRs, release tags and code pushes.
   push:
     branches: [main, develop]
     paths-ignore:

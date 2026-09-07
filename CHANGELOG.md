@@ -31,7 +31,7 @@ This release improves visual editing and save recovery, adds Gemini model select
 ### Security
 
 - Updated shipped Markdown/linkification and bundled MCP URI dependencies. The candidate dependency audit reports no high or critical findings.
-- Removed private engineering adapters from the VSIX and tightened public-export checks and the package allowlist.
+- Removed development-only files from the VSIX and tightened the package allowlist.
 
 ### Known limitations
 
@@ -79,10 +79,6 @@ This release improves visual editing and save recovery, adds Gemini model select
 
 - **A live generation gate** (`make test-live`). It calls the Gemini API for real against every model id the extension ships, parses the returned C4X with the extension's own parser, and checks the image models return actual image bytes. Every other gate mocks the model, which is exactly how a retired image model reached users. It skips without a key, so CI stays green, and runs as part of `make check-full`.
 
-### Internal
-
-- **The Extension Host suite is green again.** It had been red since 2026-08-05: PR #151 darkened element text colours to meet WCAG AA contrast, and three theme tests still asserted the old values. Eleven stale colour assertions corrected. `make quick-check` does not run this suite, which is why a red gate went unnoticed through a release.
-
 ### Changed
 
 - **Defaults are now generally available models only.** Preview models are retired at short notice, so C4X will not ship one in a default position. The failover model remains `gemini-3.1-pro-preview` because no generally available Pro model exists in the Gemini 3.x line; it is labelled as preview wherever it appears.
@@ -101,21 +97,21 @@ Laying a diagram out by hand now works the way you expect it to.
 
 ### Editor authoring fast-follow
 
-Pulled forward by maintainer decision on 2026-07-19, reversing the ADR-019 first-release deferral for the authoring gaps that UAT surfaced.
+This update adds connection and relationship editing to the visual editor.
 
-- **Connect mode: add a relationship (#66, PR #154)**: **Cmd/Ctrl+click two elements**, or use the **Connect** button on the canvas toolbar, to arm a two-click gesture — pick a source element, pick a target, then name the relationship. Eligible endpoints are outlined as you go and ineligible ones dim out, filtered by the same C4 legality rules the writeback service enforces, so a Deployment Node can never be wired directly to a logical element. The dialog collects a label (required), technology (optional) and direction (uses / async / sync). Escape cancels at any point. The whole gesture is keyboard-operable, and the result stages like every other change, with its own ✕ to un-stage before saving.
-- **Relationship property editing beyond the label (#138, PR #146)**: the edge inspector now edits technology and relationship type, and re-assigns either endpoint to a different element.
-- **Boundary frame reposition and resize (#137, PR #148)**: drag or resize a boundary frame; `$x`/`$y`/`$w`/`$h` persist to source.
-- **Editor initial zoom matches the Markdown preview scale (#134, PR #144)**: an editor opened from a Markdown fence now opens at `c4x.markdown.previewScale` instead of jumping to 100%.
-- **Canvas grows when a node is dragged out of bounds (#142, PR #143)**: dragging a node past the edge expands the canvas instead of clipping it.
-- **Bidirectional relationships no longer overlap (#140, PR #141)**: an A→B and B→A pair is offset into separate lanes rather than drawn on top of itself.
-- **Fixed "Waiting for render…" hang after nested re-wrap (#132, PR #133)**: a negative layout origin produced by re-wrapping a nested container left the preview stuck on its placeholder.
+- **Connect mode: add a relationship**: **Cmd/Ctrl+click two elements**, or use the **Connect** button on the canvas toolbar, to arm a two-click gesture — pick a source element, pick a target, then name the relationship. Eligible endpoints are outlined as you go and ineligible ones dim out, filtered by the same C4 legality rules the writeback service enforces, so a Deployment Node can never be wired directly to a logical element. The dialog collects a label (required), technology (optional) and direction (uses / async / sync). Escape cancels at any point. The whole gesture is keyboard-operable, and the result stages like every other change, with its own ✕ to un-stage before saving.
+- **Relationship property editing beyond the label**: the edge inspector now edits technology and relationship type, and re-assigns either endpoint to a different element.
+- **Boundary frame reposition and resize**: drag or resize a boundary frame; `$x`/`$y`/`$w`/`$h` persist to source.
+- **Editor initial zoom matches the Markdown preview scale**: an editor opened from a Markdown fence now opens at `c4x.markdown.previewScale` instead of jumping to 100%.
+- **Canvas grows when a node is dragged out of bounds**: dragging a node past the edge expands the canvas instead of clipping it.
+- **Bidirectional relationships no longer overlap**: an A→B and B→A pair is offset into separate lanes rather than drawn on top of itself.
+- **Fixed "Waiting for render…" hang after nested re-wrap**: a negative layout origin produced by re-wrapping a nested container left the preview stuck on its placeholder.
 
 ### Fixes from installed-VSIX UAT
 
 Found by installing the packaged extension and using it, not by the test suite — which was green throughout.
 
-- **Dragging a node no longer accelerates away from the cursor**: growing the canvas when an element is dragged out of bounds (#142) changes the SVG's transform mid-gesture. The drag was re-reading that transform on every frame, so the delta was measured against a coordinate frame that had already moved — and because a bigger delta grows the canvas further, the error compounded. The drag now pins to the frame captured when the pointer went down.
+- **Dragging a node no longer accelerates away from the cursor**: growing the canvas when an element is dragged out of bounds changes the SVG's transform mid-gesture. The drag was re-reading that transform on every frame, so the delta was measured against a coordinate frame that had already moved — and because a bigger delta grows the canvas further, the error compounded. The drag now pins to the frame captured when the pointer went down.
 - **A saved boundary frame keeps its position and keeps its children**: two separate faults. Children carrying their own `$x`/`$y` were shifted a second time by the frame's own movement, even though an authored coordinate is absolute. And the frame was sized from the span of its children rather than from its own corner, so once its position was pinned the frame came out too small and elements hung out of the right and bottom edges after saving.
 - **Elements no longer overlap on densely connected diagrams**: layout balances pushing elements apart against keeping them clear of relationship labels. On a busy dynamic view — the OAuth sample has twelve relationships between four elements — the two goals fight and the balancing gives up, which could leave two boxes drawn on top of each other. Pushing elements apart now gets the final say; label spacing stays best-effort.
 - **Save and Discard moved to the top bar** beside *Exit edit mode*. At the foot of the sidebar the two decisions that end an editing session could scroll out of view.
@@ -124,86 +120,69 @@ Found by installing the packaged extension and using it, not by the test suite �
 
 ### Correctness and accessibility fixes
 
-- **Stale-range guard now detects content change (PR #152)**: `isRangeConsistentWithSource` only verified that a range's offsets still agreed with their cached line/column values — geometry, not identity. A same-length rewrite (`Person(a, "A")` becoming `Person(x, "X")`) passed the check, after which the anchored planner could edit the wrong statement. Element-anchored planners now re-derive the declared identifier; relationship-anchored planners, whose `rel-N` ids appear nowhere in the source, compare against the exact text captured with the range.
-- **Multi-view documents no longer reject a new relationship (PR #154)**: the structural-equivalence check applied the global relationship-add count to every view and demanded each add appear in all of them. A relationship lands only in the views containing both endpoints, so connect mode failed on any document with more than one view.
-- **Every theme's label text now meets WCAG AA contrast (PR #151)**: all six themes set element `text` equal to `stroke`, and a colour tuned for a 2px border is not readable as glyphs. Five of six themes shipped label text below the 4.5:1 minimum — including `classic`, the default, where the Component token measured 2.03:1. Text colours are darkened; `fill` and `stroke` keep their official C4 and VS Code palette values, so diagrams look unchanged apart from legible labels.
+- **Stale-range guard now detects content change**: `isRangeConsistentWithSource` only verified that a range's offsets still agreed with their cached line/column values — geometry, not identity. A same-length rewrite (`Person(a, "A")` becoming `Person(x, "X")`) passed the check, after which the anchored planner could edit the wrong statement. Element-anchored planners now re-derive the declared identifier; relationship-anchored planners, whose `rel-N` ids appear nowhere in the source, compare against the exact text captured with the range.
+- **Multi-view documents no longer reject a new relationship**: the structural-equivalence check applied the global relationship-add count to every view and demanded each add appear in all of them. A relationship lands only in the views containing both endpoints, so connect mode failed on any document with more than one view.
+- **Every theme's label text now meets WCAG AA contrast**: all six themes set element `text` equal to `stroke`, and a colour tuned for a 2px border is not readable as glyphs. Five of six themes shipped label text below the 4.5:1 minimum — including `classic`, the default, where the Component token measured 2.03:1. Text colours are darkened; `fill` and `stroke` keep their official C4 and VS Code palette values, so diagrams look unchanged apart from legible labels.
 
 ### Packaging
 
-- **VSIX cut from 3.64 MB to 1.17 MB (68% smaller, #46)**: the package was shipping a 741 KB source map and ~2.6 MB of marketplace listing imagery. `vsce` rewrites every relative README link to a `raw/HEAD` GitHub URL, so those images are fetched from GitHub and were never read out of the package. Only the declared extension icon now ships. This brings the VSIX under the TDR-006 2.5 MB target for the first time.
+- **VSIX cut from 3.64 MB to 1.17 MB (68% smaller, #46)**: the package was shipping a 741 KB source map and ~2.6 MB of marketplace listing imagery. `vsce` rewrites every relative README link to a `raw/HEAD` GitHub URL, so those images are fetched from GitHub and were never read out of the package. Only the declared extension icon now ships. This brings the VSIX under the 2.5 MB package target.
 - **Guard against minifying the extension bundle**: the webview client script is assembled at runtime from `fn.toString()`, and the hand-written half calls those helpers by name from a template literal the bundler cannot rewrite. Minifying renames the declarations and the editor dies on `ReferenceError` the moment it opens — `keepNames` does not help, because it fixes the `.name` property rather than the emitted source. The build now fails loudly instead of shipping a broken editor.
 
-### Build and tooling
-
-- **GitHub Actions spend reduced (PR #150)**: docs-only pushes skip CI; the CVE scan, browser E2E and VSIX packaging jobs are gated to pull requests and release tags; pnpm store caching is enabled. Also fixes step ordering — `setup-node`'s `cache: 'pnpm'` resolves the store path by calling `pnpm store path`, so pnpm must be installed first.
-- **MCP bundle refreshed (PR #153)**: the tracked bundle had drifted from what `build:mcp` produces, so `make verify-mcp` — and therefore `make quick-check` — could not pass.
-
-### Visual Layout Mode (Issue #21-#25, #30)
+### Visual Layout Mode
 
 - **Interactive Canvas & Accessibility**: Pointer drag-and-drop enables node coordinate updates. Dynamic canvas panning and mouse wheel zooming with a toolbar panel (Zoom In, Zoom Out, Reset 100%) are integrated. Keyboard movement, selection, focus outlines, and live status announcements are included in the UAT baseline.
 - **Layout Overlap Nudging & Container Growth**: Added post-layout nudging post-processing to eliminate node-node and node-label overlaps. Implemented boundary auto-expansion to wrap shifted elements and locked node immobility during automatic layout runs.
 - **Safe Source Writeback & Sidecar Persistence**: Completed moves persist as inline C4X layout metadata or route to a deterministic `.c4x-layout.json` sidecar. Native updates are revision-checked, reparsed, structurally validated, and rolled back when post-edit validation fails.
 - **Gemini 3.5 Upgrade**: Uplifted defaults to `gemini-3.5-flash` with active sunset warning checks and fallback failovers.
 
-### Visual C4 Editor UAT increment (Issues #70, #72, #73, #74)
+### Visual C4 Editor UAT increment
 
 - **Native `.c4x` property editing and safe identifier rename**: The staged inspector now updates label, technology, description, tags, and sprite with bounded validation. The Rename dialog rewrites the declaration and every supported C4X relationship endpoint in one atomic `WorkspaceEdit` / undo unit, rejecting invalid or colliding identifiers.
 - **Browser acceptance coverage**: Added a deterministic 14-scenario Visual C4 Editor suite, including inspector editing, rename impact, combined staged changes, discard, keyboard flow, rejection announcements, and a visual baseline. Source transaction/undo behaviour remains covered in Tier A writeback tests.
 - **UAT documentation reconciliation**: The feature matrix, how-to, docs index, and Wiki source now describe the actual native `.c4x` surface. Markdown C4X fences still render but do not currently open the editor. The Wiki source awaits one-time GitHub Wiki initialisation before publishing.
 
-### Visual C4 Editor refinement increment (Issues #71, #83–#88, #90)
+### Visual C4 Editor refinement increment
 
 Merged to `main`, pending UAT sign-off.
 
-- **Un-stage individual staged changes (#85)**: Every entry in the Staged Changes list now carries an accessible ✕ button (keyboard-focusable, polite live-region announcement) that removes only that element's staged edits. Removing a position edit reverts the canvas translation; removing a property edit restores the inspector from the original snapshot. Save disables when the list empties.
-- **Source-diff panel (#83)**: A collapsible **Source diff** section in the editor sidebar shows a unified line diff between the original C4X block and the draft-materialised source with all staged edits applied, updating live as edits are staged. Backed by a dependency-free LCS line diff and a shared draft materialiser also used by the Save path.
-- **Close-while-dirty protection and draft survival (#84)**: Closing a dirty editor panel raises a warning with a Reopen Preview option. Staged edits persist as webview state, so a draft survives webview reload (announced as "Draft restored — N staged changes") and a panel serializer restores the editor after extension-host restart.
-- **External-change conflict banner with recovery actions (#71, closes the B16 recovery-UX gap)**: When the anchored source block changes while the editor is dirty, an assertive conflict banner replaces the silent re-render and Save is disabled. Three recovery actions are offered: **Reload source and discard draft**, **View diff** (opens the source-diff panel against the draft), and **Rebase draft** (re-anchors to the new source while keeping the draft, failing with a descriptive message when the block can no longer be located). The Save-time revision race still fails closed as a redundant guard.
-- **Locked checkbox in the Properties Inspector (#86)**: Toggles `$locked true/false` as a staged metadata edit with live dashed-outline feedback on the canvas; persists on Save in native mode and is preserved by the sidecar.
-- **Live inline validation in the Properties Inspector (#87)**: Label, technology, tags, sprite, and identifier fields validate as you type with inline field-level error messages, `aria-invalid` styling, and an assertive announcement on first error. Save is gated until every field error is cleared. Bounds now come from a shared validator module used by both the webview and the native mutation planner.
-- **Zoom-to-fit and multi-select group move (#88)**: A **Fit** toolbar button zooms and pans the canvas to fit all nodes. Shift+click builds a multi-selection; pointer drag or Arrow keys move every selected element by the same delta, one staged entry per element.
-- **Theme sweep across the new editor chrome (#90)**: Error banners, toolbar shadow, and dialog backdrop now resolve to `--vscode-*` theme tokens (inheriting light/dark/high-contrast), and every new interactive control has a `:focus-visible` outline, enforced by a static audit test.
+- **Un-stage individual staged changes**: Every entry in the Staged Changes list now carries an accessible ✕ button (keyboard-focusable, polite live-region announcement) that removes only that element's staged edits. Removing a position edit reverts the canvas translation; removing a property edit restores the inspector from the original snapshot. Save disables when the list empties.
+- **Source-diff panel**: A collapsible **Source diff** section in the editor sidebar shows a unified line diff between the original C4X block and the draft-materialised source with all staged edits applied, updating live as edits are staged. Backed by a dependency-free LCS line diff and a shared draft materialiser also used by the Save path.
+- **Close-while-dirty protection and draft survival**: Closing a dirty editor panel raises a warning with a Reopen Preview option. Staged edits persist as webview state, so a draft survives webview reload (announced as "Draft restored — N staged changes") and a panel serializer restores the editor after extension-host restart.
+- **External-change conflict banner with recovery actions**: When the anchored source block changes while the editor is dirty, an assertive conflict banner replaces the silent re-render and Save is disabled. Three recovery actions are offered: **Reload source and discard draft**, **View diff** (opens the source-diff panel against the draft), and **Rebase draft** (re-anchors to the new source while keeping the draft, failing with a descriptive message when the block can no longer be located). The Save-time revision race still fails closed as a redundant guard.
+- **Locked checkbox in the Properties Inspector**: Toggles `$locked true/false` as a staged metadata edit with live dashed-outline feedback on the canvas; persists on Save in native mode and is preserved by the sidecar.
+- **Live inline validation in the Properties Inspector**: Label, technology, tags, sprite, and identifier fields validate as you type with inline field-level error messages, `aria-invalid` styling, and an assertive announcement on first error. Save is gated until every field error is cleared. Bounds now come from a shared validator module used by both the webview and the native mutation planner.
+- **Zoom-to-fit and multi-select group move**: A **Fit** toolbar button zooms and pans the canvas to fit all nodes. Shift+click builds a multi-selection; pointer drag or Arrow keys move every selected element by the same delta, one staged entry per element.
+- **Theme sweep across the new editor chrome**: Error banners, toolbar shadow, and dialog backdrop now resolve to `--vscode-*` theme tokens (inheriting light/dark/high-contrast), and every new interactive control has a `:focus-visible` outline, enforced by a static audit test.
 - **Edges-on-top rendering option (UAT)**: New `c4x.edgesOnTop` setting (default `true`) renders relationship arrows above diagram nodes so connectors stay visible over large containers and deployment nodes. Set to `false` for the legacy paint order (edges behind nodes).
 
-### UAT remediation wave (Issues #92, #100, #110; PRs #93–#114)
+### Editing reliability
 
 - **Markdown fence save path repaired (root cause of the UAT 'Save does nothing' reports)**: the fence writeback boundary computed absolute positions against the fence body instead of the full Markdown document, throwing `RangeError` on every save; the panel's virtual document also returned a frozen pre-edit body, breaking post-save validation. Both fixed, with a regression test wired exactly like the panel.
-- **Panel restore binding (#100)**: restored editor panels rebind to their document after window reload (persisted binding: kind, URI, Markdown block ordinal) instead of returning as unbound zombies showing "No active diagram document selected".
+- **Panel restore binding**: restored editor panels rebind to their document after window reload (persisted binding: kind, URI, Markdown block ordinal) instead of returning as unbound zombies showing "No active diagram document selected".
 - **Save observability**: Save shows immediate "Saving…" feedback; an 8-second watchdog surfaces any silent host with a pointer to the new **C4X output channel**, which logs every writeback decision and transaction duration. The message dispatch can no longer throw silently.
 - **Layout truthfulness**: manually positioned (`$x`/`$y`) elements are never nudged after save; nested deployment groups re-wrap around moved children; ancestor-descendant containment is exempt from overlap prevention. Nested arrangements (AWS > VPC > DB) now survive save exactly as placed.
-- **Relationship inspection and label editing**: click or Tab+Enter a relationship arrow in edit mode to inspect it (From/To/Label/Type); Escape restores the element inspector. Label editing (Phase 2, #105) shipped in PR #116: the edge inspector label field stages set/replace/clear through a bounded planner (`planRelationshipLabelUpdate`) with 11 unit tests and Playwright scenarios 28–29.
+- **Relationship inspection and label editing**: click or Tab+Enter a relationship arrow in edit mode to inspect it (From/To/Label/Type); Escape restores the element inspector. The edge inspector label field supports staged set, replace and clear operations.
 - **`c4x.legend.show` setting**: hide the diagram legend and reclaim its 130px canvas reservation.
 - **Tighter canvas**: diagram bounding-box padding reduced from 100px to 50px.
 - **Render performance**: the sidecar layout file is no longer read on every render for native-persistence documents; repeated Markdown fence scans during save are cached per document version.
 - **Hygiene**: removed the unused ELK layout engine and `elkjs` dependency (dead code, already excluded from the bundle).
 - **UAT versioning**: builds identify as `1.6.0-uat.N` prerelease; plain `1.6.0` stays reserved for the Marketplace publish.
 
-### Editor UX and release-readiness increment (Issues #96–#98, #111, #119, #124, #128, #46)
+### Editor experience
 
-- **Live edge repaint during drag (#119)**: relationship arrows now repaint continuously while a node is dragged instead of snapping into place on drop, keeping connectors attached to the moved element. Pinned by a Playwright E2E spec (`test/playwright/edge-repaint.spec.ts`).
-- **Live canvas text preview (#97)**: typing in an inspector label, technology, or description field updates the rendered node text immediately as a staged preview, before Save; un-staging the entry or Discard restores the original text.
-- **Exit-edit-mode confirmation (#96)**: toggling edit mode off with unsaved staged changes now asks for confirmation instead of silently dropping the draft; the banner hides on external re-render so it cannot go stale, and the Discard path announces its outcome in the status text (PR #130).
-- **Auto-fit on open and adaptive canvas padding (#111)**: the preview zooms and pans to fit the whole diagram when it is first opened — configurable via `c4x.canvas.autoFitOnOpen` (default `true`) — and canvas padding adapts to diagram size. Ships alongside the `c4x.layout.spacing` presets (`compact`/`balanced`/`spacious`) with automatic tightening for small groups (PR #115).
-- **Draggable, contextual legend overlay (#98)**: the static SVG legend is replaced by a floating overlay listing only the element types present in the current diagram. Reposition it by pointer drag or keyboard (Tab to the legend, Arrow keys, Shift for a larger step) with a live-region announcement on each drop; the position is session-only and never persisted. `c4x.legend.show` still hides it entirely.
-- **Responsive Markdown diagram scaling (#124)**: C4X diagrams embedded in Markdown preview now scale to fit the preview column instead of overflowing at intrinsic size.
-- **`c4x.markdown.previewScale` setting (#128)**: scales diagrams embedded in Markdown preview (default `0.5`, range `0.2`–`1.0`). A per-block `width=` attribute can shrink a diagram further but cannot exceed the scaled cap; HTML/PDF export and print keep the intrinsic size.
-- **VSIX packaging exclusions (#46)**: `.vscodeignore` now excludes non-runtime content (`assets/cloud/**`, `wiki/**`, `audit/**`), shrinking the packaged VSIX from 5.29 MB (575 files) to 3.61 MB (26 files) — the 6.91 MB figure quoted in the issue was the earlier UAT.4 artifact, since pruned. TDR-006 v2.0 revises the budgets to ≤ 2.5 MB VSIX / ≤ 3.5 MB production bundle: the 3.29 MB bundle is within budget and the 3.61 MB VSIX is accepted for UAT, with the remaining gap deferred to the marketplace-listing phase.
-
-### Quality
-
-- **Deterministic local and Extension Host gates**: live Gemini calls are explicit opt-in, unit tests run on supported Node versions, and the preview command is covered in a real Extension Host.
-- **Real quality-gate increment merged in PR #38**: focused integration, parser-to-SVG performance thresholds, an honest all-source coverage ratchet, and clean packaged-VSIX smoke replace silent stubs.
-- **Reproducible quality toolchain merged in PR #42** (`cd24e6e`, head `686ee9f`): Node.js, pnpm, VS Code Electron, hosted runner families, and third-party GitHub Actions are pinned; all six required jobs in Actions run `29285494087` passed, including the fresh Linux/macOS/Windows packaged-VSIX matrix. Issue #18 remains open for its canonical Make-target acceptance.
-- **CVE gate restored and bundle-size reporting (Issues #81, #46)**: `make cve-scan` scans `pnpm-lock.yaml` with osv-scanner v2.3.8 (registry-independent, `pnpm audit` fallback), replacing the `pnpm audit` gate broken by the retired npm audit endpoint on pnpm ≤ 9.x. CI runs the scan as a report-only job with SARIF and table artifacts; the gate stays report-only until the two known production high advisories (lodash via `dagre`, linkify-it via `markdown-it`) are resolved (TDR-007 v2.0). Every build now prints the production bundle size against the TDR-006 threshold; at the time `dist/extension.js` measured 3.23 MB and the VSIX 5.25 MB, both over the original budgets — remediation has since shipped in #46 (see the Editor UX and release-readiness increment above).
-- **Edit-mode performance budgets for large diagrams (Issue #89)**: a deterministic 120-node / 158-edge fixture and Playwright spec now budget edit-mode enable under 1500 ms, arrow-key move round-trip under 200 ms, and stage-plus-save under 3000 ms, extending the render-only benchmark gate to interactive editing.
+- **Live edge repaint during drag**: relationship arrows now repaint continuously while a node is dragged instead of snapping into place on drop, keeping connectors attached to the moved element. Pinned by a Playwright E2E spec (`test/playwright/edge-repaint.spec.ts`).
+- **Live canvas text preview**: typing in an inspector label, technology, or description field updates the rendered node text immediately as a staged preview, before Save; un-staging the entry or Discard restores the original text.
+- **Exit-edit-mode confirmation**: toggling edit mode off with unsaved staged changes now asks for confirmation instead of silently dropping the draft; the banner hides on external re-render so it cannot go stale, and the Discard path announces its outcome in the status text.
+- **Auto-fit on open and adaptive canvas padding**: the preview zooms and pans to fit the whole diagram when it is first opened — configurable via `c4x.canvas.autoFitOnOpen` (default `true`) — and canvas padding adapts to diagram size. Ships alongside the `c4x.layout.spacing` presets (`compact`/`balanced`/`spacious`) with automatic tightening for small groups.
+- **Draggable, contextual legend overlay**: the static SVG legend is replaced by a floating overlay listing only the element types present in the current diagram. Reposition it by pointer drag or keyboard (Tab to the legend, Arrow keys, Shift for a larger step) with a live-region announcement on each drop; the position is session-only and never persisted. `c4x.legend.show` still hides it entirely.
+- **Responsive Markdown diagram scaling**: C4X diagrams embedded in Markdown preview now scale to fit the preview column instead of overflowing at intrinsic size.
+- **`c4x.markdown.previewScale` setting**: scales diagrams embedded in Markdown preview (default `0.5`, range `0.2`–`1.0`). A per-block `width=` attribute can shrink a diagram further but cannot exceed the scaled cap; HTML/PDF export and print keep the intrinsic size.
+- **VSIX packaging exclusions**: `.vscodeignore` now excludes non-runtime content (`assets/cloud/**`, `wiki/**`, `audit/**`), shrinking the packaged VSIX from 5.29 MB (575 files) to 3.61 MB (26 files) — the 6.91 MB figure quoted in the issue was the earlier UAT.4 artifact, since pruned. Further package-size improvements follow in later updates.
 
 ### Documentation
 
-- **Living visual-editing documentation (Issue #74)**: Added an evidence-backed capability matrix, current native `.c4x` UAT how-to, and explicit Known Limitations. The docs distinguish verified UAT functionality from planned Markdown entry, relationship authoring, and release work.
-- **UI checkpoint merged in PR #39**: reconciled the roadmap, project status, improvement plan, high-level/low-level design, proposed Visual Layout ADR, layered visual-validation decision, user guide, launch guardrails, and engineering runbooks.
-- Clarified that v1.4.x provides the public static source-first preview; the v1.6 Visual C4 Editor remains a `main`-merged prerelease capability (`1.6.0-uat.N` builds) pending UAT sign-off and release closeout.
-- Added repeatable milestone validation/merge and clean packaged-VSIX smoke runbooks.
-- **v1.6 refinement documentation reconciliation**: The capability matrix, visual-editing how-to, and docs index now describe the refinement increment (per-entry un-stage, source-diff panel, close-while-dirty protection and draft survival, conflict banner with recovery actions, lock toggle, inline validation, zoom-to-fit, multi-select group move). Added a DRAFT Medium article on the Visual C4 Editor journey under `docs/marketplace/` (issue #91 marketing component).
+- **Living visual-editing documentation**: Added an evidence-backed capability matrix, current native `.c4x` UAT how-to, and explicit Known Limitations. The docs distinguish verified UAT functionality from planned Markdown entry, relationship authoring, and release work.
 
 ### Bug Fixes
 - **Standalone preview restored**: `C4X: Open Preview` and `C4X: Refresh Preview` are registered again, with editor menus and the documented `Ctrl/Cmd+K V` shortcut for `.c4x`, `.dsl`, and `.puml` sources. Export commands now offer to open the preview when no rendered SVG is available.
@@ -232,15 +211,6 @@ Merged to `main`, pending UAT sign-off.
 - Removed unused `acquireVsCodeApi()` call that could conflict with other extensions.
 - CSP hardened: replaced `unsafe-inline` with nonce-based style policy.
 - Per-document debounce in DiagnosticsManager (was single shared timer).
-
-### Quality
-- **398 unit tests** (parser 94%, model 98% coverage) with visual snapshot regression tests.
-- **GeminiService decomposed** from 767 to 293 LOC — extracted PromptBuilder, FallbackStrategy, SyntaxValidator.
-- **Default model changed** to `gemini-3-flash-preview` (free tier) with `gemini-3.1-pro-preview` failover.
-- **SvgBuilder decomposed** from 671 to 194 LOC — extracted ElementRenderer, BoundaryRenderer, EdgeRouter, LabelRenderer.
-- Layout improvements: Dagre centering, smooth bezier arrow curves, label backgrounds, larger arrowheads.
-- Dependency cleanup: removed Playwright and elkjs from production bundle.
-- ESLint 8 migrated to ESLint 9 flat config. API key migrated to SecretStorage.
 
 ### Documentation
 - **24 new architecture pattern examples**: CQRS, event sourcing, saga, BFF, hexagonal, IoT, CI/CD, zero-trust, and more.
@@ -300,9 +270,6 @@ Merged to `main`, pending UAT sign-off.
 - **`c4x.ai.visualGroundingContext`**: New user setting (up to 300 characters) to override the default visual style prompt for PNG diagram generation.
 - **Default**: Falls back to `"Elegant, simple C4 model diagram against white background, logically organised and well spaced"`.
 - **Use Cases**: Customize colour schemes, backgrounds, styling, or add domain-specific context.
-
-### 🔒 Sync Script Safety
-- Hardened `publish-to-public.sh` with strict file allowlisting and post-sync safety checks.
 
 ## [1.2.11] - 2025-12-21
 

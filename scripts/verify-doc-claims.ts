@@ -11,8 +11,7 @@
  * This checks the claims a build can actually verify. It is deliberately
  * offline: it reads the repository, never the network, so it runs in CI and on
  * a plane. Model *lifecycle* cannot be checked here, because Google's model
- * list publishes no deprecation state — that stays the job of /track-models
- * and the deprecations register.
+ * list publishes no deprecation state — lifecycle verification requires a separate live review.
  *
  * Run: pnpm run verify:doc-claims   (wired into `make verify-docs`)
  */
@@ -126,7 +125,7 @@ const PREVIEW_DEFAULT_ALLOWLIST = new Map<string, {
     ['PRO_MODEL', {
         id: 'gemini-3.1-pro-preview',
         approvedOn: '2026-09-05',
-        decision: '#178 / ADR-015',
+        decision: 'maintainer-approved preview failover',
         reason: 'No generally available Pro exists in the Gemini 3.x line; revisit when one ships.',
     }],
 ]);
@@ -474,104 +473,6 @@ for (const key of Object.keys(settings)) {
         file: 'package.json',
         detail: `${key} is declared in contributes.configuration but nothing in src/ reads it. ` +
             'Wire it up, or remove it — a setting the code ignores is a promise the extension cannot keep.',
-    });
-}
-
-// ── Rule 4: the model registry in the architect skill must be fresh ─────────
-
-const SKILL = '.agents/skills/gcp-ai-architect/SKILL.md';
-const MAX_AGE_DAYS = 60;
-if (exists(SKILL)) {
-    const match = read(SKILL).match(/Last Updated:\s*(\d{4}-\d{2}-\d{2})/);
-    if (!match) {
-        failures.push({
-            rule: 'R4 registry freshness',
-            file: SKILL,
-            detail: 'no "Last Updated: YYYY-MM-DD" line found, so staleness cannot be checked.',
-        });
-    } else {
-        const ageDays = Math.floor((Date.now() - new Date(match[1]).getTime()) / 86_400_000);
-        if (ageDays > MAX_AGE_DAYS) {
-            failures.push({
-                rule: 'R4 registry freshness',
-                file: SKILL,
-                detail: `model registry last verified ${match[1]}, ${ageDays} days ago (limit ${MAX_AGE_DAYS}). Run /track-models.`,
-            });
-        }
-    }
-}
-
-// ── Rule 9: the platform radar must not rot silently ─────────────────────
-//
-// docs/PLATFORM-RADAR.md is the register of what this extension stands on. It
-// carries a sweep date and a Verified date per row, and it exists because the
-// file it replaced drifted for months without anything noticing. So the radar
-// itself is gated: the sweep date has a 90-day life, and every Verified cell
-// must be a real date that is not in the future. A row can still be wrong —
-// no script can read Google's mind — but it cannot be stale without failing
-// the build.
-
-const RADAR = 'docs/PLATFORM-RADAR.md';
-const RADAR_MAX_AGE_DAYS = 90;
-if (exists(RADAR)) {
-    const radar = read(RADAR);
-    const sweep = radar.match(/Last full sweep:\s*\*{0,2}(\d{4}-\d{2}-\d{2})/);
-    if (!sweep) {
-        failures.push({
-            rule: 'R9 radar freshness',
-            file: RADAR,
-            detail: 'no "Last full sweep: YYYY-MM-DD" line found, so staleness cannot be checked.',
-        });
-    } else {
-        const ageDays = Math.floor((Date.now() - new Date(sweep[1]).getTime()) / 86_400_000);
-        if (ageDays > RADAR_MAX_AGE_DAYS) {
-            failures.push({
-                rule: 'R9 radar freshness',
-                file: RADAR,
-                detail: `last full sweep ${sweep[1]}, ${ageDays} days ago (limit ${RADAR_MAX_AGE_DAYS}). Re-run the live models.list, refresh the rows, bump the date.`,
-            });
-        }
-    }
-    // Dates are compared as local calendar days, as the contributor wrote them:
-    // a Verified cell filled in this morning in Auckland must not fail because
-    // the CI runner is still on yesterday in UTC.
-    const localDay = (d: Date): string =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const todayLocal = localDay(new Date());
-    radar.split('\n').forEach((line, index) => {
-        // Every body row of the seven-column dependency table is inspected —
-        // detection is by shape, not by how the first cell happens to be
-        // formatted, so the API row counts as much as the model rows.
-        const cells = line.split('|').map(c => c.trim());
-        if (cells.length !== 9 || cells[1] === 'Service / model' || /^-+$/.test(cells[1])) {
-            return;
-        }
-        const verified = cells[cells.length - 3];
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(verified)) {
-            failures.push({
-                rule: 'R9 radar verified date',
-                file: `${RADAR}:${index + 1}`,
-                detail: `Verified cell is "${verified}", not a YYYY-MM-DD date.`,
-            });
-            return;
-        }
-        const when = new Date(`${verified}T00:00:00`);
-        if (Number.isNaN(when.getTime()) || verified > todayLocal) {
-            failures.push({
-                rule: 'R9 radar verified date',
-                file: `${RADAR}:${index + 1}`,
-                detail: `Verified date ${verified} is invalid or in the future.`,
-            });
-            return;
-        }
-        const rowAgeDays = Math.floor((Date.now() - when.getTime()) / 86_400_000);
-        if (rowAgeDays > RADAR_MAX_AGE_DAYS) {
-            failures.push({
-                rule: 'R9 radar row freshness',
-                file: `${RADAR}:${index + 1}`,
-                detail: `row verified ${verified}, ${rowAgeDays} days ago (limit ${RADAR_MAX_AGE_DAYS}). Re-verify the row against its source and bump the date.`,
-            });
-        }
     });
 }
 

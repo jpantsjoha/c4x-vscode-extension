@@ -4,11 +4,7 @@
 // docs/C4X-GENERATION-GUIDELINES.md nor GEMINI.md is available in the
 // workspace.
 //
-// Source of truth: docs/prompts/c4x-default-guidelines.md
-// (See ADR/TDR-015 — externalised AI prompt. Keep this file and the doc in sync;
-// `make check-prompts` (planned, see IMPROVEMENT-PLAN.md WS-5 T5.5) will diff them.)
-//
-// Extracted from GeminiService.ts on 2026-05-02 as the first WS-5 decomposition step.
+// Keep this embedded fallback consistent with the documented generation guidelines.
 
 export const DEFAULT_GUIDELINES = `
 ## 🎨 Expert Visual Architect - Layout Strategy (v2.0)

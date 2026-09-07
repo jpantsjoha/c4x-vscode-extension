@@ -1,6 +1,5 @@
 // Smart model fallback / elevation logic for the C4X AI Agent.
 //
-// Extracted from GeminiService.ts as part of WS-5 decomposition.
 // Independently testable — no VS Code UI dependencies beyond progress reporting.
 
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';

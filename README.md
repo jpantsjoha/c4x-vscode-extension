@@ -260,8 +260,6 @@ Full specification: [Syntax Guide](./docs/c4x-syntax.md)
 
 C4X integrates with Google Gemini to draft architecture models from code, text, or file selections.
 
-<img src="assets/marketplace/screenshots/generate-from-folder-component-diagram.png" width="900" alt="C4 component diagram generated from source code" />
-
 ### Setup
 
 1. Obtain a Gemini API key from [Google AI Studio](https://aistudio.google.com/). Generation sends the selected context to the Gemini API; local parsing, layout and SVG rendering work offline.

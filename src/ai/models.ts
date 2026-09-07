@@ -3,8 +3,6 @@
 // Centralises all Gemini model references so that GeminiService, FallbackStrategy,
 // and configuration defaults share a single source of truth.
 //
-// Extracted from GeminiService.ts as part of WS-5 decomposition.
-// Model registry, validation, and sunset alerting added as part of G3/G4.
 
 // Every default below MUST be a generally available id, except the one exact,
 // dated PRO_MODEL decision allowed by verify-doc-claims R1. Preview ids are

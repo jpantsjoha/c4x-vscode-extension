@@ -1,6 +1,5 @@
 // Self-correction and response-cleaning logic for AI-generated C4X DSL.
 //
-// Extracted from GeminiService.ts as part of WS-5 decomposition.
 // Independently testable — the core functions are pure (no VS Code state),
 // except for progress reporting passed through as an optional callback.
 

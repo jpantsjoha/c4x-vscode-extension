@@ -1,7 +1,7 @@
 /**
  * Draft state schema for webview persistence via VS Code's setState/getState API.
  *
- * ADR-019 constraint: NO hidden files. The only persistence layer allowed is the
+ * Persistence contract: no hidden files. The only persistence layer allowed is the
  * VS Code webview state API (setState / getState). This module defines the schema
  * and the pure validation guard used by both the client script and host tests.
  */
