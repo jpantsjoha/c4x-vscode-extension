@@ -1,106 +1,78 @@
 # C4X - C4 Model Diagrams for VS Code
+>
+> **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards.
 
-[![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/jpantsjoha.c4x?label=VS%20Code%20Marketplace&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
-[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/jpantsjoha/c4x?label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jpantsjoha/c4x)
-[![Version](https://img.shields.io/visual-studio-marketplace/v/jpantsjoha.c4x?label=version)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
 ![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 ![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
 
-Fast, offline C4 architecture diagrams with a source-driven SVG preview and optional AI-powered generation via Google Gemini. Mermaid-inspired DSL, C4-compliant rendering, PNG export, and 1500+ cloud icons.
+> **Make C4 architectural diagrams as easy as Mermaid in VS Code** - Jaroslav
 
-> **Trusted in production by thousands of developers** — installs and downloads are tracked live via the badges above ([VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x) · [Open VSX](https://open-vsx.org/extension/jpantsjoha/c4x)).
+Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats.
 
-<img src="assets/marketplace/screenshots/visual-editor-markdown-split.png" width="900" alt="C4X source in a Markdown file on the left, the live editable diagram on the right" />
+## ✨ Features
 
-## Watch
+- ⚡ **Instant preview** - Sub-50ms rendering for 30-node diagrams
+- 🔍 **Real-time Validation** - Syntax highlighting and error reporting as you type
+- 📝 **Markdown Integration** - Render ` ```c4x ` blocks directly in your README files
+- 🎨 **5 built-in themes** - Classic, Modern, Muted, High Contrast, Auto
+- 📝 **Simple DSL** - Mermaid-inspired C4X syntax
+- 🚀 **Zero dependencies** - No Java, no Graphviz, no external servers
+- 📦 **Tiny bundle** - 386KB (63% under 1MB target)
+- 🔒 **Secure** - CSP-compliant, no external CDN dependencies
+- 📤 **Export** - Save as SVG/PNG or Print to PDF
+- ☁️ **Cloud Icons** - AWS, Azure, GCP & Tech Stack icons (via PlantUML syntax)
+- 🔄 **PlantUML Support** - Use standard PlantUML C4 syntax directly
+- ⚡ **Lightning fast activation** - 0.15ms startup (99.9% faster than 200ms target)
 
-| [30s tour](https://youtu.be/qR1bbctj2rQ) | [Editing a diagram by dragging it](https://youtu.be/SjSg5LAIUwg) |
-|---|---|
-| [![Watch the C4X 30s tour](https://img.youtube.com/vi/qR1bbctj2rQ/mqdefault.jpg)](https://youtu.be/qR1bbctj2rQ) | [![Watch the C4X visual editor demo](https://img.youtube.com/vi/SjSg5LAIUwg/mqdefault.jpg)](https://youtu.be/SjSg5LAIUwg) |
+## 🚀 Quick Start
 
-## How it works
+### Installation
 
-1. **Generate.** Point C4X at your project folder and Gemini reads the code and writes the C4 model as text. Optional, and off until you add a key.
-2. **Fine-tune.** A generated model is complete and valid, but it does not know your style. Drag elements, group them into boundaries and arrange the layout until the diagram tells the story you want it to tell.
-3. **Keep it.** The diagram is text in your repo, so it reviews in pull requests and renders the same for everyone on the team.
+**From VS Code Marketplace** (Recommended):
 
-## New in v1.6: the Visual C4 Editor
+1. Open VS Code
+2. Press `Ctrl+Shift+X` (or `Cmd+Shift+X` on Mac)
+3. Search for "C4X"
+4. Click "Install"
 
-Step 2 is what v1.6 added. Diagrams stay text. You can now arrange them by dragging.
+**From Command Line**:
 
-> **v1.6.2 highlights** · Drag an element and it stays where you drop it · Diagrams open centred and ready to edit · Edit, Save and Discard sit together at the top left
-
-- **Lay a diagram out by hand**: Drag elements until the picture reads the way you would draw it on a whiteboard, then save. Auto-layout gets you started; you decide where things go
-- **Edit an element without hunting through the source**: Click it and change its name, technology, description, tags or icon in the inspector. Rename it and every relationship that mentions it is updated too
-- **Draw a relationship**: Pick two elements and name the connection. Point an existing arrow somewhere else when the design moves on
-- **Group things that belong together**: Move and resize a boundary and its contents travel with it
-- **See what you are about to change**: Every edit is listed, reversible one by one, and shown as a diff against your source before you save. Nothing is written until you say so
-- **Keep the source trustworthy**: A save that cannot be applied cleanly is rolled back rather than half-written, and you are warned if the file changed underneath you. Structurizr and PlantUML files are never rewritten; their layout is kept alongside them
-- **Edit the diagrams already in your docs**: Open the editor straight from a `c4x` block in any Markdown file, so the architecture in your README stays as current as the code
-- **Work without a mouse**: Every gesture has a keyboard equivalent, announced for screen readers
-
-### The editor
-
-| | |
-|---|---|
-| <img src="assets/marketplace/screenshots/visual-editor-element-inspector.png" alt="Element selected, with its properties in the inspector" /> | <img src="assets/marketplace/screenshots/visual-editor-relationship-inspector.png" alt="Relationship selected, with staged changes listed in the sidebar" /> |
-| Select an element to edit its properties | Select a relationship to re-target or relabel it. Every change is staged before it is saved |
-
-## New in v1.4.0
-
-- **PNG export**: Canvas-based at 1x/2x/4x resolution, no Chromium needed
-- **C4 Standard theme**: Official filled-box convention as the new default
-- **Auto-layout**: LR for small diagrams, TB for large
-- **24 architecture pattern examples**: [CQRS, Saga, BFF, Hexagonal, IoT, CI/CD, Zero-Trust, and more](./docs/EXAMPLES-PATTERNS.md)
-- **All C4 view levels documented**: [C1 through C4 + Dynamic diagrams](./docs/EXAMPLES-VIEWS.md)
-
-## Features
-
-- **Source-first Preview**: Open or refresh a deterministic SVG view from the supported diagram source
-- **Visual editing**: Drag elements, edit properties, draw relationships; every change written back to your source
-- **AI Generation (Gemini)**: Code-to-diagram, text-to-diagram, and visual PNG generation
-- **All C4 Levels**: System Context, Container, Component, Deployment, and Dynamic views
-- **6 Themes**: C4 Standard (default), Classic, Modern, Muted, High Contrast, Auto
-- **Export**: PNG (1x/2x/4x), SVG, Copy SVG with theme preservation
-- **1500+ Icons**: AWS, Azure, GCP with IntelliSense autocomplete (`$sprite` syntax)
-- **Markdown Integration**: Render `c4x` blocks directly in README and architecture docs
-- **Auto-Layout**: horizontal for small diagrams, vertical for large
-- **Self-Correcting AI**: Parser-validated output with automatic retry and self-remediation
-- **MCP Server**: Built-in validator for Claude, Cursor, and other AI assistants
-
-## Quick Start
-
-### Install
-
-**VS Code Marketplace** (recommended): Search "C4X" in Extensions (`Cmd+Shift+X`) and install.
-
-**Command line**: `code --install-extension jpantsjoha.c4x`
-
-### Create a Diagram
-
-1. Create a file `architecture.c4x`
-2. Write your diagram:
-
-```c4x
-%%{ c4: system-context }%%
-graph TB
-
-Customer[Customer<br/>Person]
-Banking[Banking System<br/>Software System]
-Email[Email System<br/>Software System<br/>External]
-
-Customer -->|Uses| Banking
-Banking -->|Sends notifications| Email
+```bash
+code --install-extension jpantsjoha.c4x
 ```
 
-1. Open preview: `Cmd+K V` (or `Ctrl+K V`)
+### Usage
 
-No Java, no servers, no configuration needed.
+1. **Create a C4X file**: `banking-system.c4x`
+2. **Write your diagram**:
 
-### Embed in Markdown
+   ```c4x
+   %%{ c4: system-context }%%
+   graph TB
+
+   Customer[Customer<br/>Person]
+   Banking[Banking System<br/>Software System]
+   Email[Email System<br/>Software System<br/>External]
+
+   Customer -->|Uses| Banking
+   Banking -->|Sends notifications| Email
+   ```
+
+3. **Open preview**: Press `Ctrl+K V` (or `Cmd+K V` on Mac)
+4. **See instant results**: Your diagram renders in < 50ms!
+
+That's it! No Java, no servers, no configuration needed.
+
+### Markdown Integration
+
+You can embed C4X diagrams directly in your markdown files (e.g., `README.md`, `ARCHITECTURE.md`).
 
 ````text
+# My Architecture
+
+Here is the system context:
+
 ```c4x
 %%{ c4: system-context }%%
 graph TB
@@ -110,37 +82,89 @@ graph TB
 ```
 ````
 
-The extension renders `c4x` code blocks as visual diagrams in VS Code's Markdown Preview.
+The extension will automatically render this code block as a visual SVG diagram in the VS Code Markdown Preview.
 
-## DSL Syntax
+## 📚 Examples & Use Cases
+
+C4X makes it easy to visualize complex architectures, from traditional web apps to advanced AI agent systems.
+
+### Featured Example: Multi-Agent Marketing System (C1 - System Context)
+
+This diagram visualizes the high-level interactions for an AI-powered marketing system, featuring human roles, the multi-agent platform, and external AI services.
+
+![Multi-Agent System Context](assets/marketplace/images/multi-agent-context.png)
+
+### C2: Multi-Agent Orchestrator (Container Diagram)
+
+A container-level view of the Multi-Agent Marketing System, detailing the main building blocks within the Multi-Agent System.
+
+![Multi-Agent Orchestrator](assets/marketplace/images/multi-agent-container.png)
+
+For more examples, including theme showcases and other system architectures, refer to the full [C4X Examples Gallery](./EXAMPLES.md).
+
+---
+
+## 📖 C4X-DSL Syntax Guide
 
 ### Elements
 
 ```text
-%% Bracket syntax
-Admin[Administrator<br/>Person]
-API[Payment API<br/>Software System<br/>External]
-
-%% Function syntax (supports icons, technology, description)
-Container(WebApp, "Web App", "React", $sprite="c4xicons.aws.elastic-beanstalk-application")
-ContainerDb(DB, "Database", "PostgreSQL")
-Person(User, "End User")
+ElementID[Label<br/>Type<br/>Tags]
 ```
 
-Types: `Person`, `Software System`, `Container`, `ContainerDb`, `Component`, `ComponentDb`, plus `*_Ext` variants for external elements.
+**Supported Types**:
+
+- `Person` - Users of the system
+- `Software System` - High-level software systems
+- `Container` - Applications, services, databases
+- `Component` - Code-level components
+
+**Example**:
+
+```c4x
+Admin[Administrator<br/>Person]
+API[Payment API<br/>Software System]
+DB[User Database<br/>Container<br/>Internal]
+```
 
 ### Relationships
 
 ```text
-A -->|Label| B        %% Standard dependency
-A ==>|Label| B        %% Synchronous / blocking
-A -.->|Label| B       %% Asynchronous / event-driven
+%% Uses (Dashed)
+FromID -->|Label| ToID
+%% Async (Dashed)
+FromID -.->|Label| ToID
+%% Sync / Strong (Solid)
+FromID ==>|Label| ToID
 ```
 
-### Boundaries
+**Example**:
 
 ```c4x
-%%{ c4: container }%%
+User[User<br/>Person]
+Dashboard[Reporting Dashboard<br/>Container]
+API[Reporting API<br/>Container]
+Database[Reporting Database<br/>Container]
+
+User -->|Views reports| Dashboard
+Dashboard -.->|Fetches data| API
+API ==>|Queries| Database
+```
+
+### Boundaries / Subgraphs
+
+Group elements into systems or containers using subgraphs.
+
+```text
+subgraph BoundaryId {
+    Element1[Label<br/>Type]
+    Element2[Label<br/>Type]
+}
+```
+
+**Example**:
+
+```c4x
 graph TB
     User[User<br/>Person]
 
@@ -156,172 +180,170 @@ graph TB
 ### View Types
 
 ```text
-%%{ c4: system-context }%%      %% C1
-%%{ c4: container }%%           %% C2
-%%{ c4: component }%%           %% C3
-%%{ c4: deployment }%%          %% C4
-%%{ c4: dynamic }%%             %% Sequence/interaction
+%% C1 - System Context
+%%{ c4: system-context }%%
+%% C2 - Container (coming soon)
+%%{ c4: container }%%
+%% C3 - Component (coming soon)
+%%{ c4: component }%%
 ```
 
-Full reference: [Syntax Guide](./docs/c4x-syntax.md)
+## 🎨 Themes
 
-## AI Generation (Gemini)
+Choose from 5 built-in themes to match your documentation style:
 
-C4X uses Google Gemini to generate diagrams from code, text, or selections.
+| Theme | Description | Use Case |
+|-------|-------------|----------|
+| **Classic** | Official C4 Model colors (Simon Brown spec) | Standard C4 documentation |
+| **Modern** | Vibrant colors with rounded corners | Presentations, modern docs |
+| **Muted** | Grayscale minimalist | Professional reports, B&W printing |
+| **High Contrast** | WCAG AAA compliant (7:1 ratio) | Accessibility, readability |
+| **Auto** | Adapts to VS Code light/dark theme | Match your editor theme |
 
-<img src="assets/marketplace/screenshots/generate-from-folder-component-diagram.png" width="900" alt="A C4 component diagram generated from a source folder, open in the visual editor with staged changes listed" />
+**Change Theme**:
 
-*Generated from a source folder, then arranged by hand. The diagram above is C4X's own `src/` directory: Gemini read the code and wrote the component model, and the layout is the part a person decided.*
+- Command Palette: `C4X: Change Theme`
+- Settings: `"c4x.theme": "modern"`
 
-**Setup**
+## 📤 Export Diagrams
 
-1. Get a free API key from [Google AI Studio](https://aistudio.google.com/), or use a [Google Cloud](https://cloud.google.com/) Vertex AI key for enterprise compliance.
-2. In VS Code, press `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows and Linux) and run **`C4X: Set Gemini API Key`**.
-3. Paste the key. It is stored in VS Code's encrypted SecretStorage, never in your settings file or your repository.
+Export your diagrams to SVG or PNG with theme preservation:
 
-To replace an expired key, run the same command again. To remove it, run **`C4X: Clear Gemini API Key`**.
+**Export Commands**:
 
-> The key is **not** a setting. There is no box for it on the extension's settings page, by design: settings are stored in plain text and synced. If you are looking for `c4x.ai.apiKey`, it is deprecated and any value left there is migrated to secure storage automatically.
+- `C4X: Export SVG` - Vector format for editing (Figma, Sketch, Adobe Illustrator)
+- `C4X: Export PNG` - Raster format for documentation and presentations
+- `C4X: Copy SVG to Clipboard` - Quick paste into other applications
 
-**Default model**: `gemini-3.6-flash`, with automatic failover to `gemini-3.1-pro-preview`. Set any Gemini model id in `c4x.ai.model`; retired preview ids are redirected to their replacements rather than failing.
+**Features**:
 
-| Command | What it does |
-|---------|-------------|
-| `C4X: Generate Diagram Here (Gemini)` | Read the surrounding folder and write a C4 model at the cursor |
-| `C4X: Diagram from Selection` (`Alt+V`) | Generate a visual PNG from the highlighted text |
-| `C4X: Set Gemini API Key` | Store or replace your API key in encrypted storage |
+- ✅ Theme preservation (exported diagrams match your selected theme)
+- ✅ High-quality rendering (no pixelation in SVG)
+- ✅ Design tool compatibility (Figma, Sketch tested)
+- ✅ Small file sizes (~20-50KB for typical diagrams)
 
-All AI-generated diagrams are parser-validated with up to 3 self-correction retries.
+## 📋 Commands
 
-Full guide: [Gemini AI Guide](./docs/GEMINI_GUIDE.md) | [Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| `C4X: Open Preview` | `Ctrl+K V` (Mac: `Cmd+K V`) | Open live preview panel |
+| `C4X: Export SVG` | - | Export diagram to SVG file |
+| `C4X: Export PNG` | - | Export diagram to PNG file |
+| `C4X: Copy SVG to Clipboard` | - | Copy SVG to clipboard |
+| `C4X: Change Theme` | - | Switch between 5 built-in themes |
 
-## Icons
+## ⚡ Performance
 
-1500+ built-in cloud and technology icons with IntelliSense autocomplete.
+Exceeds all targets by 72-99%:
 
-![C4X Icons Example](assets/marketplace/icons/c4x-icons-example.png)
+| Metric | Target | Achieved | Status |
+|--------|--------|----------|--------|
+| **Activation Time** | < 200ms | **0.15ms** | ✅ 99.9% faster |
+| **Bundle Size** | < 1MB | **386KB** | ✅ 63% under target |
+| **C4X Parse** | < 50ms | **10ms avg** | ✅ 80% faster |
+| **Preview Render** | < 250ms | **55ms avg** | ✅ 78% faster |
+| **Full Pipeline** | < 300ms | **55ms avg** | ✅ 82% faster |
 
-```c4x
-Container(S3, "Storage", "AWS S3", $sprite="c4xicons.aws.simple-storage-service-bucket")
-ContainerDb(DB, "Database", "Cloud SQL", $sprite="c4xicons.gcp.cloudsql")
-```
+**Tested with**: 30-node diagrams (typical real-world size)
 
-Full icon catalog: [Icons & Examples](./docs/EXAMPLES-with-ICONS.md)
+## 🛠️ Configuration
 
-## Export
+### Settings
 
-| Command | Format | Notes |
-|---------|--------|-------|
-| `C4X: Export Diagram as PNG` | PNG | 1x, 2x, or 4x resolution. Canvas-based, no Chromium. |
-| `C4X: Export SVG` | SVG | Vector format for Figma, Sketch, Illustrator |
-| `C4X: Copy SVG To Clipboard` | SVG | Quick paste into other apps |
-
-Exported diagrams preserve your selected theme.
-
-## Themes
-
-| Theme | Description |
-|-------|-------------|
-| **C4 Standard** | Official filled-box convention (default) |
-| Classic | White-fill with colored borders |
-| Modern | Vibrant colors, rounded corners |
-| Muted | Grayscale minimalist |
-| High Contrast | WCAG AAA compliant |
-| Auto | Adapts to VS Code light/dark |
-
-Change via Command Palette (`C4X: Change Theme`) or settings (`"c4x.theme": "modern"`).
-
-## Examples & Documentation
-
-| Guide | Content |
-|-------|---------|
-| [Example Gallery](./docs/EXAMPLES.md) | Banking, Microservices, AI Agents |
-| [All C4 View Levels](./docs/EXAMPLES-VIEWS.md) | C1-C4 + Dynamic, relationship types, database variants |
-| [Architecture Patterns](./docs/EXAMPLES-PATTERNS.md) | CQRS, Event Sourcing, Saga, BFF, Hexagonal, IoT, CI/CD, and more |
-| [Cloud Icons](./docs/EXAMPLES-with-ICONS.md) | AWS, Azure, GCP sprites with autocomplete |
-| [Layout Guide](./docs/EXAMPLES-LAYOUT.md) | Direction control, nested layouts, manual positioning |
-| [Ordering Guide](./docs/EXAMPLES-ORDERING.md) | Controlling element placement |
-| [Visual Editing Status](./docs/features/visual-c4-editor.md) | Verified capability matrix, current how-to, and Known Limitations |
-| [Visual C4 Editor Wiki](https://github.com/jpantsjoha/c4x-vscode-extension/wiki/Visual-C4-Editor) (in-repo source: [`wiki/Visual-C4-Editor.md`](./wiki/Visual-C4-Editor.md)) | v1.6 Visual C4 Editor overview — what ships today, what's planned, safety promises, try-it-locally steps |
-| [Visual Diagrams](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md) | AI-powered PNG generation |
-| [Syntax Reference](./docs/c4x-syntax.md) | Complete DSL specification |
-| [Generation Guidelines](./docs/C4X-GENERATION-GUIDELINES.md) | Advanced AI prompting |
-
-## MCP Server
-
-A C4X source checkout includes a tracked, self-contained Model Context Protocol server for AI assistant integration. It starts without loading packages from `node_modules`, so it remains reliable in iCloud-backed workspaces and clean clones. The server is distributed with the source repository, not the Marketplace VSIX.
+Configure C4X in your VS Code settings (`Ctrl+,` or `Cmd+,`):
 
 ```json
 {
-  "mcpServers": {
-    "c4x-validator": {
-      "command": "node",
-      "args": ["/absolute/path/to/c4x-vscode-extension/mcp/c4x-mcp-server.bundle.cjs"]
-    }
-  }
+  // Choose your preferred theme
+  "c4x.theme": "classic",
+  // Options: "classic", "modern", "muted", "high-contrast", "auto"
 }
 ```
 
-For a trusted Codex project, use `.codex/config.toml`:
+### File Associations
 
-```toml
-[mcp_servers.c4x-validator]
-command = "node"
-cwd = "/absolute/path/to/c4x-vscode-extension"
-args = ["mcp/c4x-mcp-server.bundle.cjs"]
-startup_timeout_sec = 10
-tool_timeout_sec = 10
-```
+C4X automatically recognizes these file extensions:
 
-Restart the MCP client after changing its configuration. Maintainers can regenerate and verify the bundle and its `THIRD_PARTY_NOTICES.txt` file with `pnpm run build:mcp` and `pnpm run verify:mcp`.
+- `.c4x` - C4X-DSL (Mermaid-inspired syntax)
 
-**Tool**: `validate_c4x` validates syntax, returns line/column errors for auto-correction.
-**Resources**: `c4x://guidelines`, `c4x://syntax`, `c4x://examples/*`
+## 🏗️ Project Status
 
-Works with Claude Desktop, Cursor, Windsurf, Cline, and any MCP-compatible client.
+**Phase 1 (M0 - Scaffolding)**: ✅ Complete (v0.1.0)
+**Phase 2 (M1 - C4X-DSL MVP)**: ✅ Complete (v0.2.0)
+**Phase 3 (M2 - Themes & Export)**: ✅ Complete (v0.3.0)
+**Phase 4 (M3 - Structurizr DSL)**: ⏳ Deferred to v1.2
+**Phase 5 (M4 - PlantUML C4)**: ⏳ Deferred to v1.2
 
-## Performance
+See [docs/STATUS.md](./docs/STATUS.md) for detailed roadmap.
 
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| Activation | < 200ms | **0.15ms** |
-| Bundle Size | < 1MB | **386KB** |
-| Parse | < 50ms | **10ms** |
-| Preview Render | < 250ms | **55ms** |
+## 🗺️ Roadmap
 
-These are historical v1.4 measurements from a 30-node fixture. Current development and release claims use the evidence gates recorded in [`STATUS.md`](./STATUS.md) and [`docs/ROADMAP.md`](./docs/ROADMAP.md).
+### v1.0.0 (December 2025) ✅ Shipping Release
 
-## Roadmap
+- ✅ C4X-DSL with Mermaid-inspired syntax (100% working)
+- ✅ 5 built-in themes with instant switching
+- ✅ SVG/PNG export with theme preservation
+- ✅ Sub-50ms rendering for 30-node diagrams
+- ✅ Markdown Integration (Render ```c4x code blocks)
+- ✅ Live Error Highlighting (Diagnostics)
+- ✅ C4 Snippets & Templates
 
-**Shipped**
+### v1.1.0 (Q1 2026) 🚧 UX & Tooling
+- 📐 **Advanced Layout Control** - Manual positioning, mixed TB/LR direction, and grid alignment
+- 🔨 **Quick Fixes** - Automated solutions for syntax errors
+- 🔨 **Interactive Preview** - Zoom, pan, and click-to-navigate
+- 🔨 **Diagnostics View** - Dedicated panel for workspace-wide issues
 
-- **v1.6.2** (August 2026): Visual C4 Editor on the Marketplace and Open VSX: drag-to-edit with guarded writeback, connect mode, boundary reposition/resize, staged changes with source diff
-- **v1.4.0** (May 2026): PNG export, auto-layout, C4-compliant renderer, model validation
+### v1.2.0 (Q2 2026) 🏗️ Advanced Visuals & Compatibility
 
-**Deferred beyond v1.6**, and openly so: an element palette, and delete for elements and relationships. Both are authoring gestures whose writeback consequences deserve their own release rather than a corner of this one.
+- 🔮 **Deployment Diagrams** - Visualize infrastructure (Nodes, Pods, Regions)
+- 🔄 **Dynamic Diagrams** - Visualize runtime message flows (Sequence-like)
+- ✅ **Compatibility** - Support for PlantUML C4 (Shipped in v1.0.9)
+- ⏳ **Structurizr DSL** - Deferred to v1.3
 
-Known limitations are tracked in the [Visual Editing Status](./docs/features/visual-c4-editor.md) matrix. Full roadmap: [docs/ROADMAP.md](./docs/ROADMAP.md)
+### v2.0.0 (Q3 2026) 🤖 AI & Agents
 
-## Contributing
+- 🧠 **Agent Syntax** - First-class support for `AI_Agent`, `Memory`, `Tool`
+- ✨ **Generative Architecture** - Text-to-Diagram via LLM integration
+- 🛡️ **Architecture Analysis** - Automated detection of bottlenecks and security risks
 
-Contributions welcome via [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) and pull requests. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+## 📚 Documentation
 
-## More from the Author
+- [Contributing](./CONTRIBUTING.md) - Contribution guidelines
 
-Built by **[Jaroslav Pantsjoha](https://jpantsjoha.com)**.
+## 🤝 Contributing
 
-- **[Pine Script (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)**: Syntax highlighting, snippets, and linting for TradingView's Pine Script
+Contributions welcome! We'd love your help to make C4X even better.
 
-## License
+**Ways to contribute**:
 
-MIT. See [LICENSE](./LICENSE).
+- 🐛 Report bugs or suggest features via [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues)
+- 📝 Improve documentation or examples
+- 🎨 Design new themes or icons
+- 🧪 Write tests for edge cases
+- ⚡ Performance optimizations
 
-## Acknowledgments
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
-- [C4 Model](https://c4model.com/) by Simon Brown
-- [Mermaid.js](https://mermaid.js.org/): DSL syntax inspiration
-- [Dagre](https://github.com/dagrejs/dagre): Graph layout engine
+## 👤 More from the Author
+
+Check out my other VS Code extension:
+
+- **[Pine Script™ (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)** - Syntax highlighting, snippets, and linting for TradingView's Pine Script.
+  - [GitHub Repository](https://github.com/jpantsjoha/pinescript-vscode-extension)
+
+## 📄 License
+
+MIT License - see [LICENSE](./LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- [C4 Model](https://c4model.com/) by Simon Brown - The architectural modeling standard
+- [Mermaid.js](https://mermaid.js.org/) - Inspiration for C4X-DSL syntax
+- [Dagre.js](https://github.com/dagrejs/dagre) - Hierarchical graph layout engine
+
+Read more about the [Story Behind C4X](./ABOUT.md).
 
 ---
 
-**Made with [Gemini](https://blog.google/products/gemini/gemini-3/) for architects who value simplicity** | [Jaroslav Pantsjoha](https://jpantsjoha.com) | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)
+**Made with [Gemini](https://blog.google/products/gemini/gemini-3/) ❤️ for architects who value simplicity** | [Report Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) | [Star on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension)

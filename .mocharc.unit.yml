@@ -1,8 +1,0 @@
-## Mocha configuration for unit tests (standalone, no VS Code host)
-require:
-  - ./scripts/register-unit-ts.js
-spec: "src/__tests__/**/*.test.ts"
-recursive: true
-timeout: 10000
-ui: bdd
-color: true

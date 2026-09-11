@@ -5,6 +5,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Claude Code configuration (private)
+.claude/
+CLAUDE.md
 
 # Build output
 dist/
@@ -12,16 +15,7 @@ out/
 .vscode-test/
 test-output*
 *.svg
-!src/__tests__/snapshots/golden/*.svg
 *.html
-
-# Build artifacts (packaged extensions)
-*.vsix
-
-# Private agent configurations (Antigravity/Gemini)
-.gemini/
-local.gemini.md
-.claude/worktrees/
 
 # IDE
 .vscode/settings.json
@@ -53,4 +47,3 @@ logs/
 # Test results
 test-results/
 playwright-report/
-.archive/

@@ -1,82 +1,72 @@
-# Source and build tooling (not needed at runtime)
-src/**
-node_modules/**
+# IDE & Version Control
 .vscode/**
 .vscode-test/**
-.codex/**
-.agents/**
-.claude/**
 .git/**
-.github/**
-.githooks/**
-scripts/**
-mcp/**
-test/**
-coverage/**
-test-results/**
-
-# Docs (keep README, CHANGELOG, LICENSE at root)
-docs/**
-examples/**
-samples/**
-wiki/**
-
-# Non-runtime assets (cloud icons are compiled inline into src/assets/*.ts)
-assets/cloud/**
-
-# Marketplace listing imagery. vsce rewrites every relative link in README.md
-# to https://github.com/<repo>/raw/HEAD/<path>, so the Marketplace and Open VSX
-# render these straight from GitHub and never read them out of the VSIX. Only
-# the icon declared in package.json ("icon") has to ship. Verified by
-# unpacking the VSIX: zero relative image links survive in the packaged README.
-assets/marketplace/**
-!assets/marketplace/icon.png
-
-# Source maps never ship. The extension bundle is deliberately unminified
-# (see esbuild.config.js), so a shipped .map buys nothing and cost 741 KB.
-**/*.map
-
-# Build config files
-tsconfig.json
-tsconfig.unit.json
-.mocharc.unit.yml
-esbuild.config.js
-eslint.config.mjs
-.eslintrc.json
 .gitignore
 .gitattributes
-.nvmrc
-.markdownlint.json
+.claude/**
+
+# Dependencies
+node_modules/**
+
+# Coverage
+coverage/**
+.nyc_output/**
+
+# Source & Build
+src/**
+test/**
+tests/**
+tsconfig.json
+package-lock.json
+*.tsbuildinfo
+*.map
+**/*.map
+
+# Documentation (dev only - keep README.md for marketplace)
+docs/**
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+!ABOUT.md
+!EXAMPLES.md
+
+# Agent definitions (private)
+multi-agent-devex/**
+.CLAUDE.md
+
+# GitHub workflows (not needed in extension)
+.github/**
+
+# Scripts & Tools
+v6/scripts/**
+v6/raw/**
+scripts/**
+
+# Examples & Test Files
+examples/**
+
+# Development files
+check-functions.js
+test-comprehensive-validator.js
+test-validation.pine
+PRE-RELEASE-CLEANUP-REPORT.md
+
+# Session debugging/testing files (exclude all)
+test-*.js
+test-*.pine
+debug-*.js
+analyze-*.js
+check-*.js
+find-*.js
 .mcp.json
-Makefile
-pnpm-lock.yaml
-*.code-workspace
+settings.json
+mcp/**
 
-# Non-shipping markdown
-CONTRIBUTING.md
+# OS & IDE
+.DS_Store
+Thumbs.db
 
-# Test and temp files
-.tmp/**
-*.test.ts
-*.test.js
-out/test/**
-out/**
-test_output*.log
+# Build artifacts
 *.vsix
-.env
-
-# Private development harness and planning files
-CLAUDE.md
-claude.md
-GEMINI.md
-AGENTS.md
-STATUS.md
-IMPROVEMENT-PLAN.md
-playwright.config.ts
-audit/**
-audit_prompt_v1_6.md
-
-# Local build archive. Gitignored, and must never ship: it holds old VSIX
-# builds and superseded marketplace imagery, which added 0.7 MB to a package
-# whose whole point is to stay small.
-.archive/**
