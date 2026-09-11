@@ -1,0 +1,7 @@
+%%{ c4: system-context }%%
+graph TB
+    Customer[Customer<br/>Person]
+    Banking[Internet Banking System<br/>Software System]
+    Email[Email System<br/>Software System<br/>External]
+    Customer -->|Uses| Banking
+    Banking -->|Sends emails via| Email

@@ -1,0 +1,133 @@
+name: Release
+
+# A release must never be filtered out.
+#
+# ci.yml carries `paths-ignore: ['docs/**', '*.md']` to save Actions spend on
+# docs pushes, and GitHub applies that filter to tag pushes as well. A release
+# tag sitting on a docs-only commit therefore produced no run at all, silently.
+# This workflow has no path filter for exactly that reason, and it does not
+# depend on the CI matrix, so a red test leg on one Node version cannot strand
+# a release that is otherwise ready.
+#
+# workflow_dispatch exists so a failed publish can be retried without moving a
+# tag that has already been pushed.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag to build and publish (for example v1.6.2)'
+        required: true
+        type: string
+      publish:
+        description: 'Publish to the marketplaces. Unticked, this builds and packages only.'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Package and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      # Fail before doing any work, rather than after a five-minute build.
+      # A missing publishing token is the single most common release stall.
+      - name: Check publishing credentials
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::error::VSCE_PAT is not set on this repository, so publishing cannot authenticate."
+            echo "Add it with: gh secret set VSCE_PAT --repo ${{ github.repository }}"
+            echo "The token needs the Marketplace: Manage scope on the jpantsjoha publisher."
+            exit 1
+          fi
+          echo "VSCE_PAT is present."
+
+      # pnpm must be installed before setup-node, because `cache: 'pnpm'`
+      # resolves the store path by shelling out to `pnpm store path`.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+        with:
+          version: 10.18.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20.20.2'
+          cache: 'pnpm'
+
+      - name: Validate and record pinned toolchain
+        env:
+          C4X_EXPECTED_NODE_VERSION: '20.20.2'
+        run: pnpm run validate:toolchain
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify the tag matches package.json
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          REF_NAME="${{ inputs.ref || github.ref_name }}"
+          TAG_VERSION="${REF_NAME#v}"
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION does not match package.json $PACKAGE_VERSION."
+            exit 1
+          fi
+          echo "Version verified: $PACKAGE_VERSION"
+          echo "VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Verify the CHANGELOG documents this version
+        run: |
+          if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$VERSION]' entry."
+            exit 1
+          fi
+          echo "CHANGELOG entry present for $VERSION."
+
+      - name: Run unit tests
+        run: pnpm run test:unit
+
+      - name: Package, install and smoke test the VSIX
+        run: xvfb-run -a pnpm run test:vsix-smoke
+
+      - name: Upload the VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: c4x-vsix-${{ env.VERSION }}
+          path: "*.vsix"
+          retention-days: 30
+
+      - name: Publish to the VS Code Marketplace
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: pnpm exec vsce publish --packagePath "c4x-${VERSION}.vsix"
+
+      # Open VSX is skipped rather than failed when no token is configured:
+      # it has always been published by hand, and a missing optional token
+      # should not fail a release that reached the Marketplace.
+      - name: Publish to Open VSX
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$OVSX_PAT" ]; then
+            echo "::warning::OVSX_PAT is not set, so Open VSX was skipped. Publish it by hand:"
+            echo "  npx ovsx publish c4x-${VERSION}.vsix -p \$OVSX_PAT"
+            exit 0
+          fi
+          npx --yes ovsx publish "c4x-${VERSION}.vsix" -p "$OVSX_PAT"

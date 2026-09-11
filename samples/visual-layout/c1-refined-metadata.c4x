@@ -1,0 +1,8 @@
+%%{ c4: system-context }%%
+graph TB
+    Person(customer, "Customer", "Client of the bank", $x="150.0", $y="50.0")
+    System(banking, "Banking System", "Main platform", $x="150.0", $y="220.0", $locked="true")
+    System_Ext(email, "Email System", "Notifications", $x="420.0", $y="220.0")
+
+    customer -->|Uses| banking
+    banking -->|Sends mail to| email

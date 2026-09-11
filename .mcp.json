@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "c4x-validator": {
+      "command": "node",
+      "cwd": ".",
+      "args": [
+        "mcp/c4x-mcp-server.bundle.cjs"
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+%%{ c4: container }%%
+graph TB
+    Person(user, "User", "Platform User", $x="200.0", $y="50.0")
+
+    subgraph BankingSystem {
+        Container(spa, "Single Page App", "React", $x="200.0", $y="180.0")
+        Container(api, "API Application", "Node.js", $x="200.0", $y="320.0", $locked="true")
+        ContainerDb(db, "Database", "PostgreSQL", $x="400.0", $y="320.0")
+    }
+
+    user -->|Uses| spa
+    spa -->|JSON/HTTPS| api
+    api -->|Reads/Writes| db

@@ -1,0 +1,16 @@
+%%{ c4: container }%%
+graph TB
+    Person(Customer, "Customer")
+    System_Boundary(banking, "Internet Banking System") {
+        Container(WebApp, "Web Application", "Java and Spring MVC")
+        Container(API, "API Application", "Java and Spring Boot")
+        Container(SPA, "Single-Page App", "JavaScript and React")
+        ContainerDb(DB, "Database", "PostgreSQL")
+    }
+    System_Ext(MailSystem, "E-Mail System")
+    Customer -->|Visits| WebApp
+    Customer -->|Uses| SPA
+    SPA -->|Makes API calls to| API
+    WebApp -->|Delivers to| SPA
+    API -->|Reads from and writes to| DB
+    API -->|Sends e-mails using| MailSystem
