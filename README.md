@@ -1,5 +1,5 @@
 # C4X - C4 Model Diagrams for VS Code
->
+[![Open VSX](https://img.shields.io/open-vsx/v/jpantsjoha/c4x?label=Open%20VSX)](https://open-vsx.org/extension/jpantsjoha/c4x) [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/jpantsjoha.c4x?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)>
 > **Status (2025-12-01)**: ✅ **v1.0 STABLE** - Visual styling now matches official C4 Model standards.
 
 ![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
 
 > **Make C4 architectural diagrams as easy as Mermaid in VS Code** - Jaroslav
-
+Available on [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x) and [Open VSX](https://open-vsx.org/extension/jpantsjoha/c4x) (compatible with VSCodium, **Antigravity AI powered IDE by Google**, and others).
 Fast, offline, Mermaid-inspired C4 diagrams with real-time preview and support for multiple DSL formats.
 
 ## ✨ Features
