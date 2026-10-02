@@ -2,6 +2,8 @@
 
 C4 architecture diagrams as version-controlled text in your repository, edited visually by dragging.
 
+Build, run and test: see [run_instruction.md](run_instruction.md).
+
 [![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/jpantsjoha.c4x?label=VS%20Code%20Marketplace&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/jpantsjoha/c4x?label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jpantsjoha/c4x)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/jpantsjoha.c4x?label=version)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
