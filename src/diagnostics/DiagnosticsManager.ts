@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { c4xParser } from '../parser/C4XParser';
-import { C4XParseError } from '../parser/types';
+import { C4XParseError, type ParseResult } from '../parser/types';
+import type { LintOptions } from '../model/lint';
+import { lintDiagnostics, readLintOptions } from './lintDiagnostics';
 
 export class DiagnosticsManager {
     private collection: vscode.DiagnosticCollection;
@@ -33,6 +35,15 @@ export class DiagnosticsManager {
             }),
             vscode.workspace.onDidCloseTextDocument(doc => {
                 this.collection.delete(doc.uri);
+            }),
+            // Lint severities are settings, so a change re-checks every open
+            // document instead of waiting for the next edit.
+            vscode.workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration('c4x.lint')) {
+                    vscode.workspace.textDocuments
+                        .filter(doc => this.isRelevantDocument(doc))
+                        .forEach(doc => this.validate(doc));
+                }
             })
         );
     }
@@ -67,9 +78,10 @@ export class DiagnosticsManager {
 
     private validate(document: vscode.TextDocument) {
         const diagnostics: vscode.Diagnostic[] = [];
+        const lintOptions = readLintOptions(document.uri);
 
         if (document.languageId === 'c4x') {
-            this.validateC4XContent(document.getText(), 0, diagnostics);
+            this.validateC4XContent(document.getText(), 0, diagnostics, lintOptions);
         } else if (document.languageId === 'markdown') {
             const text = document.getText();
             const regex = /```c4x\n([\s\S]*?)\n```/g;
@@ -78,18 +90,28 @@ export class DiagnosticsManager {
                 // Calculate start line of the code block
                 const startOffset = match.index + match[0].indexOf('\n') + 1;
                 const startPos = document.positionAt(startOffset);
-                this.validateC4XContent(match[1], startPos.line, diagnostics);
+                this.validateC4XContent(match[1], startPos.line, diagnostics, lintOptions);
             }
         }
 
         this.collection.set(document.uri, diagnostics);
     }
 
-    private validateC4XContent(text: string, startLineOffset: number, diagnostics: vscode.Diagnostic[]) {
+    /**
+     * Syntax errors first; notation lint only for a source that parsed. Lint
+     * findings are advisory and never replace or suppress a syntax error.
+     */
+    private validateC4XContent(
+        text: string,
+        startLineOffset: number,
+        diagnostics: vscode.Diagnostic[],
+        lintOptions: LintOptions,
+    ) {
         if (!text.trim()) { return; }
 
+        let parsed: ParseResult;
         try {
-            c4xParser.parse(text);
+            parsed = c4xParser.parse(text);
         } catch (e) {
             if (e instanceof C4XParseError) {
                 // Peggy parser lines are 1-based
@@ -113,7 +135,10 @@ export class DiagnosticsManager {
 
                 diagnostics.push(diagnostic);
             }
+            return;
         }
+
+        diagnostics.push(...lintDiagnostics(parsed, lintOptions, startLineOffset));
     }
 
     dispose(): void {

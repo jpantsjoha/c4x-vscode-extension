@@ -24,6 +24,7 @@ import {
     connectModePrompt,
     advanceConnectMode,
     computeStageAddRelationship,
+    checkStageAddRelationship,
     formatAddRelationshipSummary,
 } from '../../webview/previewClientScript';
 import { isVisualLayoutMessage, VISUAL_LAYOUT_PROTOCOL_VERSION } from '../../webview/visualLayoutProtocol';
@@ -200,6 +201,48 @@ describe('connect mode: staged adds satisfy the wire protocol (#66)', () => {
         let staged = computeStageAddRelationship('web', 'api', 'Calls', 'uses', null, {});
         staged = computeStageAddRelationship('web', 'api', 'Calls', 'uses', null, staged);
         assert.strictEqual(isVisualLayoutMessage(wrap(staged)), false);
+    });
+});
+
+describe('connect mode: what may be staged (#260)', () => {
+    const wrap = (edits: Record<string, Record<string, unknown>>) => ({
+        type: 'visualLayout.applySemanticEdits',
+        protocolVersion: VISUAL_LAYOUT_PROTOCOL_VERSION,
+        revision: '7',
+        edits: Object.keys(edits).map(id => ({ id, ...edits[id] })),
+    });
+
+    it('allows a first relationship, and the same target with another label', () => {
+        assert.strictEqual(checkStageAddRelationship('web', 'api', 'Calls', {}), null);
+        const staged = computeStageAddRelationship('web', 'api', 'Calls', 'uses', null, {});
+        assert.strictEqual(checkStageAddRelationship('web', 'api', 'Reads', staged), null);
+    });
+
+    it('refuses the same target and label from the same source', () => {
+        const staged = computeStageAddRelationship('web', 'api', 'Calls', 'uses', null, {});
+        assert.match(checkStageAddRelationship('web', 'api', 'Calls', staged) ?? '', /already staged/);
+        // A different source is a different relationship.
+        assert.strictEqual(checkStageAddRelationship('person', 'api', 'Calls', staged), null);
+    });
+
+    it('refuses a 65th relationship from one source', () => {
+        let staged: Record<string, Record<string, unknown>> = {};
+        for (let i = 0; i < 64; i++) {
+            assert.strictEqual(checkStageAddRelationship('web', 'n' + i, 'Calls', staged), null);
+            staged = computeStageAddRelationship('web', 'n' + i, 'Calls', 'uses', null, staged);
+        }
+        assert.match(checkStageAddRelationship('web', 'extra', 'Calls', staged) ?? '', /At most 64/);
+    });
+
+    it('allows a hyphenated target, which the grammar and the wire protocol both accept', () => {
+        assert.strictEqual(checkStageAddRelationship('web', 'api-gw', 'Calls', {}), null);
+        const staged = computeStageAddRelationship('web', 'api-gw', 'Calls', 'uses', null, {});
+        assert.strictEqual(isVisualLayoutMessage(wrap(staged)), true);
+    });
+
+    it('refuses a target id the grammar cannot spell', () => {
+        assert.match(checkStageAddRelationship('web', '1bad', 'Calls', {}) ?? '', /cannot be used/);
+        assert.match(checkStageAddRelationship('web', 'has space', 'Calls', {}) ?? '', /cannot be used/);
     });
 });
 

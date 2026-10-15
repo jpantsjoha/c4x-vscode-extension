@@ -8,6 +8,7 @@ import { promptForApiKey } from './ai/AuthService';
 import { selectModelCommand } from './commands/selectModel';
 import { VisualDiagramCommand } from './commands/VisualDiagramCommand';
 import { C4XCompletionItemProvider } from './completion/C4XCompletionItemProvider';
+import { C4XCodeHoverProvider } from './completion/C4XCodeHoverProvider';
 import { exportPngCommand } from './commands/exportPng';
 import { exportSvgCommand } from './commands/exportSvg';
 import { copySvgCommand } from './commands/copySvg';
@@ -15,7 +16,9 @@ import { changeThemeCommand } from './commands/changeTheme';
 import { PreviewPanel } from './webview/PreviewPanel';
 import { executeResetLayoutTransaction } from './writeback/WritebackTransaction';
 import { C4XCodeLensProvider } from './markdown/C4XCodeLensProvider';
+import { registerMarkdownEditUriHandler } from './commands/MarkdownEditUriHandler';
 import { registerEditMarkdownBlockCommand } from './commands/EditMarkdownBlockCommand';
+import { registerConformanceCommands } from './commands/conformance';
 
 /**
  * Activate the C4X extension
@@ -139,7 +142,10 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // Register command for editing a specific Markdown fenced c4x block.
-  context.subscriptions.push(registerEditMarkdownBlockCommand(context));
+  context.subscriptions.push(registerEditMarkdownBlockCommand(context), registerMarkdownEditUriHandler());
+
+  // Architecture conformance export and checker-result mapping (#219).
+  registerConformanceCommands(context);
 
   // Register CodeLens provider: shows "Edit C4 diagram" above each fence in .md files.
   context.subscriptions.push(
@@ -156,8 +162,15 @@ export function activate(context: vscode.ExtensionContext) {
       new C4XCompletionItemProvider(),
       '"', // Trigger character
       "'", // Trigger character
-      '.'  // Trigger character for namespaces
+      '.', // Trigger character for namespaces
+      '$', // Attribute names ($code)
+      '/'  // $code path segments
     )
+  );
+
+  // Hover for $code mappings: each glob and how many files it matches.
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(['markdown', 'c4x'], new C4XCodeHoverProvider())
   );
 
   // Return extendMarkdownIt for VS Code's markdown preview integration
@@ -169,7 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
     } : {}),
     extendMarkdownIt(md: import('markdown-it')) {
       try {
-        return c4xPlugin(md);
+        return c4xPlugin(md, { editLinkScheme: vscode.env.uriScheme });
       } catch (error) {
         console.error('[C4X] Failed to extend Markdown-It:', error);
         // Return unmodified instance to prevent breaking markdown preview

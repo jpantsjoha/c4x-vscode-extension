@@ -49,6 +49,9 @@ function createFixture(options: {
     includeProInRegistry?: boolean;
     proChannel?: 'ga' | 'preview';
     faqDefault?: string;
+    /** One more declared setting, and a source file that may or may not read it. */
+    extraSetting?: string;
+    extraSource?: string;
 } = {}): string {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-doc-claims-'));
     const current = 'gemini-3.8-flash';
@@ -64,6 +67,9 @@ const config = vscode.workspace.getConfiguration('c4x.ai');
 config.get('model');
 config.get('imageModel');
 `);
+    if (options.extraSource) {
+        writeFixtureFile(root, 'src/scoped-settings.ts', options.extraSource);
+    }
     writeFixtureFile(root, 'package.json', JSON.stringify({
         contributes: {
             configuration: {
@@ -73,6 +79,7 @@ config.get('imageModel');
                         description: `Verified 2026-09-05:\n- ${current} — newest generally available flash (default)`,
                     },
                     'c4x.ai.imageModel': { default: 'gemini-3.1-flash-image' },
+                    ...(options.extraSetting ? { [options.extraSetting]: { type: 'boolean', default: true } } : {}),
                 },
             },
             commands: [],
@@ -145,5 +152,22 @@ describe('doc-claim model policy', () => {
         const result = verify(fixture());
         assert.strictEqual(result.status, 0, result.output);
         assert.doesNotMatch(result.output, /CHANGELOG\.md/);
+    });
+
+    it('counts a setting read through a resource-scoped getConfiguration (R7, #214)', () => {
+        const result = verify(fixture({
+            extraSetting: 'c4x.lint.enabled',
+            extraSource: "const scoped = vscode.workspace.getConfiguration('c4x', document.uri);\nscoped.get<unknown>('lint.enabled');\n",
+        }));
+        assert.strictEqual(result.status, 0, result.output);
+    });
+
+    it('still rejects a declared setting that nothing reads (R7)', () => {
+        const result = verify(fixture({
+            extraSetting: 'c4x.lint.enabled',
+            extraSource: "const scoped = vscode.workspace.getConfiguration('c4x', document.uri);\nscoped.get('lint.rules');\n",
+        }));
+        assert.strictEqual(result.status, 1, result.output);
+        assert.match(result.output, /c4x\.lint\.enabled is declared in contributes\.configuration but nothing in src\/ reads it/);
     });
 });

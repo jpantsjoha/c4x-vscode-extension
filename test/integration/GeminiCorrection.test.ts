@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { GeminiService } from '../../src/ai/GeminiService';
 import { C4XParser } from '../../src/parser/C4XParser';
+import { fakeGenAI, textResponse } from '../../src/__tests__/__mocks__/genai';
 
 describe('Gemini Self-Correction Integration Test', function () {
     this.timeout(60000); // 60 seconds
@@ -19,20 +20,16 @@ describe('Gemini Self-Correction Integration Test', function () {
 
             if (this.attempt === 1) {
                 // Return conversational garbage + invalid syntax
-                return {
-                    response: {
-                        text: () => "Here is the code, I hope you like it.\n```c4x\ngraph TB\n  User[User]\n  User -> System\n```\nIt is great." // -> is invalid, should be -->
-                    }
-                };
+                return textResponse(
+                    "Here is the code, I hope you like it.\n```c4x\ngraph TB\n  User[User]\n  User -> System\n```\nIt is great." // -> is invalid, should be -->
+                );
             }
 
             if (this.attempt === 2) {
                 // Return fixed code VALID C4X
-                return {
-                    response: {
-                        text: () => "```c4x\ngraph TB\n  User[User<br/>Person]\n  User --> System\n```" // Fixed --> and Valid Node
-                    }
-                };
+                return textResponse(
+                    "```c4x\ngraph TB\n  User[User<br/>Person]\n  User --> System\n```" // Fixed --> and Valid Node
+                );
             }
 
             throw new Error("Too many attempts");
@@ -54,10 +51,9 @@ describe('Gemini Self-Correction Integration Test', function () {
         // Wait for initialization to complete before overwriting
         await service.initialize();
 
-        // Inject mock model
+        // Inject a mock client: every model id is answered by the same mock.
         const mockModel = new MockGenerativeModel();
-        (service as any).model = mockModel;
-        (service as any).genAI = { getGenerativeModel: () => mockModel };
+        (service as unknown as { genAI: unknown }).genAI = fakeGenAI(({ contents }) => mockModel.generateContent(String(contents)));
 
         // Execute
         const result = await service.generateDiagram([], "Create a diagram");
@@ -95,21 +91,8 @@ graph TB
         // its dependencies; otherwise it can overwrite the mock with a real model.
         await service.initialize();
 
-        // Inject mock genAI (needed for fallback mechanism)
-        (service as any).genAI = {
-            getGenerativeModel: () => ({
-                generateContent: async () => ({
-                    response: { text: () => dirtyResponse }
-                })
-            })
-        };
-
-        // Inject mock model returning dirty response
-        (service as any).model = {
-            generateContent: async () => ({
-                response: { text: () => dirtyResponse }
-            })
-        };
+        // Inject a mock client returning the dirty response for every model
+        (service as unknown as { genAI: unknown }).genAI = fakeGenAI(async () => textResponse(dirtyResponse));
 
         const result = await service.generateDiagram([], 'clean me');
 

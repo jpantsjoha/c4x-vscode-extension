@@ -16,6 +16,7 @@ Module._resolveFilename = function (request: string, ...args: unknown[]) {
 import * as vscodeMock from '../__mocks__/vscode';
 
 import { DEFAULT_MODEL, PRO_MODEL } from '../../ai/models';
+import { fakeGenAI, textResponse } from '../__mocks__/genai';
 
 // ---------------------------------------------------------------------------
 // Valid C4X DSL that the parser will accept
@@ -32,43 +33,27 @@ interface ModelBehavior {
     [modelName: string]: Array<string | Error>;
 }
 
+/**
+ * A `@google/genai` client whose `models.generateContent` answers each model id
+ * from its own script. The primary is called by name through the same client,
+ * so there is no separate primary-model mock to keep in step with it.
+ */
 function createMockGenAI(behaviors: ModelBehavior) {
     const callCounts: Record<string, number> = {};
 
-    return {
-        getGenerativeModel: ({ model }: { model: string }) => {
-            if (!callCounts[model]) { callCounts[model] = 0; }
-
-            return {
-                generateContent: async (_prompt: string) => {
-                    const idx = callCounts[model]++;
-                    const responses = behaviors[model];
-                    if (!responses) {
-                        throw new Error(`Unexpected model: ${model}`);
-                    }
-                    const item = responses[idx % responses.length];
-                    if (item instanceof Error) {
-                        throw item;
-                    }
-                    return { response: { text: () => item } };
-                },
-            };
-        },
-        _callCounts: callCounts,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
-}
-
-function createMockPrimaryModel(responses: Array<string | Error>) {
-    let callIndex = 0;
-    return {
-        generateContent: async (_prompt: string) => {
-            const item = responses[callIndex++ % responses.length];
-            if (item instanceof Error) { throw item; }
-            return { response: { text: () => item } };
-        },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    return fakeGenAI(async ({ model }) => {
+        if (!callCounts[model]) { callCounts[model] = 0; }
+        const idx = callCounts[model]++;
+        const responses = behaviors[model];
+        if (!responses) {
+            throw new Error(`Unexpected model: ${model}`);
+        }
+        const item = responses[idx % responses.length];
+        if (item instanceof Error) {
+            throw item;
+        }
+        return textResponse(item);
+    });
 }
 
 function createMockProgress(): { progress: { report: (v: { message?: string }) => void }; messages: string[] } {
@@ -114,14 +99,13 @@ describe('generateWithFallback', () => {
     it('should succeed on primary model (no fallback triggered)', async () => {
         patchModelSetting(DEFAULT_MODEL);
 
-        const primaryModel = createMockPrimaryModel([validResponse]);
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [validResponse],
             [PRO_MODEL]: [validResponse],
         });
         const { progress } = createMockProgress();
 
-        const result = await generateWithFallback(genAI, primaryModel, 'generate diagram', progress);
+        const result = await generateWithFallback(genAI, 'generate diagram', progress);
 
         assert.ok(result.includes('graph TB'), 'Should return valid C4X DSL');
         assert.ok(result.includes('Person(user'), 'Should contain Person element');
@@ -131,14 +115,13 @@ describe('generateWithFallback', () => {
         // getConfiguration returns undefined -> should use DEFAULT_MODEL
         patchModelSetting(undefined);
 
-        const primaryModel = createMockPrimaryModel([validResponse]);
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [validResponse],
             [PRO_MODEL]: [validResponse],
         });
         const { progress } = createMockProgress();
 
-        const result = await generateWithFallback(genAI, primaryModel, 'prompt', progress);
+        const result = await generateWithFallback(genAI, 'prompt', progress);
         assert.ok(result.includes('graph TB'), 'Should succeed with default model');
     });
 
@@ -149,16 +132,14 @@ describe('generateWithFallback', () => {
     it('should fall back to PRO_MODEL when primary fails', async () => {
         patchModelSetting(DEFAULT_MODEL);
 
-        // Primary model always fails
-        const primaryModel = createMockPrimaryModel([new Error('Primary model error')]);
-        // GenAI provides the fallback model
+        // Primary model always fails; GenAI provides the fallback model
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [new Error('Primary model error')],
             [PRO_MODEL]: [validResponse],
         });
         const { progress, messages } = createMockProgress();
 
-        const result = await generateWithFallback(genAI, primaryModel, 'prompt', progress);
+        const result = await generateWithFallback(genAI, 'prompt', progress);
 
         assert.ok(result.includes('graph TB'), 'Fallback should return valid result');
         // Should have reported the fallback attempt
@@ -172,14 +153,13 @@ describe('generateWithFallback', () => {
         // User has configured PRO_MODEL as their primary
         patchModelSetting(PRO_MODEL);
 
-        const primaryModel = createMockPrimaryModel([new Error('Pro model error')]);
         const genAI = createMockGenAI({
             [PRO_MODEL]: [new Error('Pro model error')],
             [DEFAULT_MODEL]: [validResponse],
         });
         const { progress, messages } = createMockProgress();
 
-        const result = await generateWithFallback(genAI, primaryModel, 'prompt', progress);
+        const result = await generateWithFallback(genAI, 'prompt', progress);
 
         assert.ok(result.includes('graph TB'), 'Fallback to DEFAULT should succeed');
         assert.ok(
@@ -191,7 +171,6 @@ describe('generateWithFallback', () => {
     it('should throw clear error when both models fail', async () => {
         patchModelSetting(DEFAULT_MODEL);
 
-        const primaryModel = createMockPrimaryModel([new Error('Primary fails')]);
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [new Error('Primary fails')],
             [PRO_MODEL]: [new Error('Fallback also fails')],
@@ -199,7 +178,7 @@ describe('generateWithFallback', () => {
         const { progress } = createMockProgress();
 
         await assert.rejects(
-            () => generateWithFallback(genAI, primaryModel, 'prompt', progress),
+            () => generateWithFallback(genAI, 'prompt', progress),
             (error: Error) => {
                 assert.ok(error.message.includes('AI generation failed'), 'Error should say AI generation failed');
                 assert.ok(error.message.includes(DEFAULT_MODEL), 'Error should mention the primary model name');
@@ -217,7 +196,6 @@ describe('generateWithFallback', () => {
         // But let's test the error message structure.
         patchModelSetting('some-custom-model');
 
-        const primaryModel = createMockPrimaryModel([new Error('Custom model error')]);
         const genAI = createMockGenAI({
             'some-custom-model': [new Error('Custom model error')],
             [PRO_MODEL]: [new Error('Fallback fails too')],
@@ -225,7 +203,7 @@ describe('generateWithFallback', () => {
         const { progress } = createMockProgress();
 
         await assert.rejects(
-            () => generateWithFallback(genAI, primaryModel, 'prompt', progress),
+            () => generateWithFallback(genAI, 'prompt', progress),
             (error: Error) => {
                 assert.ok(error.message.includes('some-custom-model'), 'Error should mention the custom model');
                 return true;
@@ -240,14 +218,13 @@ describe('generateWithFallback', () => {
     it('should report progress during fallback', async () => {
         patchModelSetting(DEFAULT_MODEL);
 
-        const primaryModel = createMockPrimaryModel([new Error('fail')]);
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [new Error('fail')],
             [PRO_MODEL]: [validResponse],
         });
         const { progress, messages } = createMockProgress();
 
-        await generateWithFallback(genAI, primaryModel, 'prompt', progress);
+        await generateWithFallback(genAI, 'prompt', progress);
 
         // Check that we got a "Model failed" message and a message about the fallback model
         assert.ok(
@@ -259,14 +236,13 @@ describe('generateWithFallback', () => {
     it('should work without progress (progress is optional)', async () => {
         patchModelSetting(DEFAULT_MODEL);
 
-        const primaryModel = createMockPrimaryModel([validResponse]);
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [validResponse],
             [PRO_MODEL]: [validResponse],
         });
 
         // Should not throw when progress is undefined
-        const result = await generateWithFallback(genAI, primaryModel, 'prompt', undefined);
+        const result = await generateWithFallback(genAI, 'prompt', undefined);
         assert.ok(result.includes('graph TB'), 'Should succeed without progress');
     });
 
@@ -278,14 +254,13 @@ describe('generateWithFallback', () => {
         const customModel = 'gemini-custom-model';
         patchModelSetting(customModel);
 
-        const primaryModel = createMockPrimaryModel([new Error('primary fails')]);
         const genAI = createMockGenAI({
             [customModel]: [new Error('primary fails')],
             [PRO_MODEL]: [validResponse],
         });
         const { progress, messages } = createMockProgress();
 
-        const result = await generateWithFallback(genAI, primaryModel, 'prompt', progress);
+        const result = await generateWithFallback(genAI, 'prompt', progress);
 
         assert.ok(result.includes('graph TB'), 'Should fall back and succeed');
         // The fallback message should reference the custom model name in the warning
@@ -304,14 +279,13 @@ describe('generateWithFallback', () => {
 
         const invalidResponse = 'this is broken syntax';
         // Primary model: first call returns invalid, second (fix) returns valid
-        const primaryModel = createMockPrimaryModel([invalidResponse, validResponse]);
         const genAI = createMockGenAI({
             [DEFAULT_MODEL]: [invalidResponse, validResponse],
             [PRO_MODEL]: [validResponse],
         });
         const { progress } = createMockProgress();
 
-        const result = await generateWithFallback(genAI, primaryModel, 'prompt', progress);
+        const result = await generateWithFallback(genAI, 'prompt', progress);
 
         assert.ok(result.includes('graph TB'), 'Should succeed via self-correction, no fallback needed');
     });

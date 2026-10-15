@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { C4XParseError, c4xParser } from '../parser';
 import { loadBinding, saveBinding, clearBinding } from './editorBinding';
 import { parseStructurizrDSL, StructurizrLexerError, StructurizrParserError } from '../parser/structurizr';
+import { takeUnseenWarnings } from '../model/modelWarnings';
 import { parsePlantUMLtoC4Model } from '../parser/plantuml';
 import { c4ModelBuilder } from '../model/C4ModelBuilder';
 import { C4Element } from '../model/C4Model';
@@ -23,9 +24,9 @@ import {
     SourceDiffMessage,
     ExternalChangeConflictMessage,
     VisualLayoutSnapshot,
-    VisualLayoutBoundarySnapshot,
     VISUAL_LAYOUT_PROTOCOL_VERSION,
 } from './visualLayoutProtocol';
+import { buildBoundarySnapshots } from './boundarySnapshots';
 import { materialiseDraft } from '../writeback/draftMaterialiser';
 import { computeLineDiff } from '../writeback/lineDiff';
 import { PREVIEW_CLIENT_SCRIPT } from './previewClientScript';
@@ -78,6 +79,8 @@ interface RenderPayload {
 
 export class PreviewPanel {
     private static instance: PreviewPanel | undefined;
+    /** Keys of import warnings already shown this session, so a re-render does not repeat them. */
+    private static readonly shownImportWarnings = new Set<string>();
     /** Separate instance for Markdown block editing (one at a time). */
     private static markdownInstance: PreviewPanel | undefined;
 
@@ -955,6 +958,11 @@ export class PreviewPanel {
                 model = parseStructurizrDSL(text);
                 parseTime = performance.now() - parseStart;
                 modelTime = 0;
+                // Non-fatal import notes (an unusable `code` property): each distinct problem is
+                // shown once per session, keyed by element and value rather than by its location.
+                for (const warning of takeUnseenWarnings(model.warnings, PreviewPanel.shownImportWarnings)) {
+                    void vscode.window.showWarningMessage(`C4X: ${warning.message}`);
+                }
             } else if (isPlantUML) {
                 // PlantUML C4: Parse directly to C4Model (no separate model building)
                 model = parsePlantUMLtoC4Model(text);
@@ -997,9 +1005,6 @@ export class PreviewPanel {
             const svg = svgBuilder.build(layout, { theme });
             const renderTime = performance.now() - renderStart;
 
-            const elementIdSet = new Set(layout.elements.map(el => el.id));
-            const boundaryIdSet = new Set(layout.boundaries?.map(b => b.id) ?? []);
-
             const visualLayout: VisualLayoutSnapshot = {
                 revision: documentRevision,
                 nodes: layout.elements.map(element => ({
@@ -1016,44 +1021,7 @@ export class PreviewPanel {
                     tags: element.element.tags,
                     sprite: element.element.sprite,
                 })),
-                boundaries: (layout.boundaries ?? []).map(boundary => {
-                    const childNodeIds: string[] = [];
-                    const childBoundaryIds: string[] = [];
-                    for (const childId of boundary.boundary.elements) {
-                        if (elementIdSet.has(childId)) {
-                            childNodeIds.push(childId);
-                        } else if (boundaryIdSet.has(childId)) {
-                            childBoundaryIds.push(childId);
-                        }
-                    }
-                    const snapshot: VisualLayoutBoundarySnapshot = {
-                        id: boundary.id,
-                        label: boundary.boundary.label,
-                        x: boundary.x,
-                        y: boundary.y,
-                        width: boundary.width,
-                        height: boundary.height,
-                        childNodeIds,
-                        childBoundaryIds,
-                    };
-                    // Manual geometry travels with the frame so the editor's
-                    // live re-wrap honours a pinned origin and treats $w/$h as
-                    // minima, exactly as adjustBoundariesToContainChildren
-                    // does on save (#163).
-                    if (boundary.manualX) {
-                        snapshot.manualX = true;
-                    }
-                    if (boundary.manualY) {
-                        snapshot.manualY = true;
-                    }
-                    if (boundary.manualWidth !== undefined) {
-                        snapshot.manualWidth = boundary.manualWidth;
-                    }
-                    if (boundary.manualHeight !== undefined) {
-                        snapshot.manualHeight = boundary.manualHeight;
-                    }
-                    return snapshot;
-                }),
+                boundaries: buildBoundarySnapshots(layout),
                 edges: layout.relationships.map(relationship => ({
                     id: relationship.id,
                     from: relationship.relationship.from,
@@ -1393,6 +1361,11 @@ export class PreviewPanel {
     #content.visual-layout-editing g.boundary:active {
       cursor: grabbing;
     }
+    #content.visual-layout-editing g.boundary.boundary-fixed,
+    #content.visual-layout-editing g.boundary.boundary-fixed:active {
+      cursor: default;
+      touch-action: auto;
+    }
     #content.visual-layout-editing g.boundary:focus-visible {
       outline: 2px solid var(--vscode-focusBorder);
       outline-offset: 3px;
@@ -1416,11 +1389,46 @@ export class PreviewPanel {
       stroke: var(--vscode-focusBorder) !important;
       stroke-width: 3 !important;
     }
-    .canvas-toolbar {
+    /* Bottom overlay dock (#250). The canvas toolbar and the legend share one
+       flex row instead of being pinned independently to opposite corners,
+       so they can never overlap: side by side when the canvas is wide
+       enough, and the legend wraps onto its own line above the toolbar when
+       it is not (wrap-reverse puts the first line, the toolbar, at the
+       bottom). The dock covers the whole canvas so a dragged legend
+       (position: absolute) keeps the canvas as its coordinate space; it lets
+       pointer events through everywhere except on its children. */
+    #canvas-overlay-dock {
       position: absolute;
-      bottom: 20px;
-      left: 20px;
+      inset: 0;
+      box-sizing: border-box;
+      padding: 20px;
       display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .canvas-overlay-row {
+      display: flex;
+      flex-wrap: wrap-reverse;
+      /* wrap-reverse flips the cross axis: flex-start is the bottom edge, so
+         this bottom-aligns the toolbar and the legend on a shared line. */
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+    .canvas-overlay-row > * {
+      pointer-events: auto;
+    }
+    .canvas-toolbar {
+      /* Above the legend in the dock's stacking context: a legend the user
+         drags onto the toolbar slides underneath it, never over it. */
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      max-width: 100%;
+      box-sizing: border-box;
       gap: 6px;
       background: var(--vscode-editorWidget-background, rgba(30, 30, 30, 0.8));
       backdrop-filter: blur(8px);
@@ -1428,7 +1436,6 @@ export class PreviewPanel {
       border-radius: 6px;
       padding: 4px;
       box-shadow: 0 4px 12px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.25));
-      z-index: 100;
     }
     .canvas-toolbar button {
       appearance: none;
@@ -1457,11 +1464,13 @@ export class PreviewPanel {
       outline-offset: 1px;
     }
     /* Legend overlay (#98): draggable, keyboard-repositionable, themed like
-       the canvas toolbar. Default anchor follows audit Appendix B. */
+       the canvas toolbar. Default anchor (audit Appendix B) is bottom-right:
+       it sits in the overlay dock's row after the toolbar, pushed right by
+       its auto margin, inside the dock's 20px gutter (#250). Once dragged it
+       leaves the row (.legend-floating) and takes explicit left/top. */
     #legend-overlay {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
+      flex: 0 0 auto;
+      margin-left: auto;
       min-width: 140px;
       max-width: 240px;
       background: var(--vscode-editorWidget-background, rgba(30, 30, 30, 0.8));
@@ -1470,12 +1479,15 @@ export class PreviewPanel {
       border-radius: 6px;
       padding: 8px 10px;
       box-shadow: 0 4px 12px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.25));
-      z-index: 100;
       cursor: grab;
       user-select: none;
       touch-action: none;
       font-size: 12px;
       color: var(--vscode-foreground);
+    }
+    #legend-overlay.legend-floating {
+      position: absolute;
+      margin: 0;
     }
     #legend-overlay:active {
       cursor: grabbing;
@@ -1981,20 +1993,6 @@ export class PreviewPanel {
     <div id="content">
       <div id="svg-container"></div>
       <div id="placeholder">Waiting for render...</div>
-      <div class="canvas-toolbar" role="toolbar" aria-label="Canvas controls">
-        <button id="zoom-in" type="button" title="Zoom In" aria-label="Zoom In">+</button>
-        <button id="zoom-out" type="button" title="Zoom Out" aria-label="Zoom Out">−</button>
-        <button id="zoom-reset" type="button" title="Reset Zoom" aria-label="Reset Zoom">100%</button>
-        <button id="zoom-fit" type="button" title="Zoom to Fit" aria-label="Zoom to Fit">Fit</button>
-        <button
-          id="connect-mode"
-          type="button"
-          title="Add a relationship between two elements"
-          aria-label="Connect: add a relationship"
-          aria-pressed="false"
-          disabled
-        >Connect</button>
-      </div>
       <!-- Global stats reference (#160). One node, two homes: floating in the
            canvas corner while previewing, docked at the top of the sidebar
            above the Properties Inspector once the sidebar is open. setEditMode
@@ -2003,15 +2001,36 @@ export class PreviewPanel {
         <h3>Diagram Stats</h3>
         <div id="metrics"></div>
       </div>
-      <div
-        id="legend-overlay"
-        role="region"
-        aria-label="Diagram legend. Drag to move, or focus and use arrow keys to reposition."
-        tabindex="0"
-        hidden
-      >
-        <div class="legend-title">Legend</div>
-        <ul id="legend-items"></ul>
+      <!-- Bottom overlay dock (#250): toolbar and legend share one wrapping
+           row, so the legend never covers a toolbar button. DOM order is the
+           Tab order: toolbar first, then the legend. -->
+      <div id="canvas-overlay-dock">
+        <div class="canvas-overlay-row">
+          <div class="canvas-toolbar" role="toolbar" aria-label="Canvas controls">
+            <button id="zoom-in" type="button" title="Zoom In" aria-label="Zoom In">+</button>
+            <button id="zoom-out" type="button" title="Zoom Out" aria-label="Zoom Out">−</button>
+            <button id="zoom-reset" type="button" title="Reset Zoom" aria-label="Reset Zoom">100%</button>
+            <button id="zoom-fit" type="button" title="Zoom to Fit" aria-label="Zoom to Fit">Fit</button>
+            <button
+              id="connect-mode"
+              type="button"
+              title="Add a relationship between two elements"
+              aria-label="Connect: add a relationship"
+              aria-pressed="false"
+              disabled
+            >Connect</button>
+          </div>
+          <div
+            id="legend-overlay"
+            role="region"
+            aria-label="Diagram legend. Drag to move, or focus and use arrow keys to reposition."
+            tabindex="0"
+            hidden
+          >
+            <div class="legend-title">Legend</div>
+            <ul id="legend-items"></ul>
+          </div>
+        </div>
       </div>
     </div>
     <div id="editor-sidebar" style="display: none;">

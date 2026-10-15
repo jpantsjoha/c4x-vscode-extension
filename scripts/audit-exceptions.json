@@ -1,0 +1,11 @@
+{
+  "comment": "Accepted dependency-advisory exceptions. Each id here must match package.json pnpm.auditConfig.ignoreGhsas exactly, and make cve-scan fails once `expires` has passed: renew with a new dated entry (new decision date, new expiry) or delete the exception and its ignoreGhsas id.",
+  "exceptions": [
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "accepted": "2026-10-08",
+      "expires": "2026-11-07"
+    }
+  ]
+}

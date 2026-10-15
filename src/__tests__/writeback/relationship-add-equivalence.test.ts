@@ -74,7 +74,60 @@ describe('relationship-add structural equivalence (#66)', () => {
             const after = model([view([element('a'), element('b')], [rel('rel-1', 'a', 'b')])]);
             assert.throws(
                 () => assertStructuralEquivalence(before, after, new Set(['a']), undefined, undefined, undefined, undefined, [ADD]),
-                /Relationships count changed/,
+                /Relationship rel-1 was added or source\/target changed/,
+            );
+        });
+
+        it('accepts an add at the tail that duplicates an existing endpoint pair (#259)', () => {
+            const before = model([view([element('a'), element('b')], [rel('rel-0', 'a', 'b')])]);
+            const after = model([view([element('a'), element('b')], [rel('rel-0', 'a', 'b'), rel('rel-1', 'a', 'b')])]);
+            assert.doesNotThrow(
+                () => assertStructuralEquivalence(before, after, new Set(['a']), undefined, undefined, undefined, undefined, [ADD]),
+            );
+        });
+
+        it('rejects an add that renumbers the relationships after it (#259)', () => {
+            const before = model([view([element('a'), element('b'), element('c')], [rel('rel-0', 'b', 'c', 'Calls')])]);
+            const after = model([view([element('a'), element('b'), element('c')], [rel('rel-0', 'a', 'b'), rel('rel-1', 'b', 'c', 'Calls')])]);
+            assert.throws(
+                () => assertStructuralEquivalence(before, after, new Set(['a']), undefined, undefined, undefined, undefined, [ADD]),
+                /added or source\/target changed unexpectedly/,
+            );
+        });
+
+        // On main the add is accepted wherever it sits, because only the id is
+        // looked at; a survivor that still has its own id does not make it the tail.
+        it('rejects a new relationship that sits before an original one, even with its own id (#259)', () => {
+            const before = model([view([element('a'), element('b'), element('c')], [rel('rel-0', 'b', 'c', 'Calls')])]);
+            const after = model([view([element('a'), element('b'), element('c')], [rel('rel-9', 'a', 'b'), rel('rel-0', 'b', 'c', 'Calls')])]);
+            assert.throws(
+                () => assertStructuralEquivalence(before, after, new Set(['a']), undefined, undefined, undefined, undefined, [ADD]),
+                /Relationship rel-9 was added or source\/target changed/,
+            );
+        });
+
+        it('requires several adds in staging order', () => {
+            const ab: AllowedAdd = { from: 'a', to: 'b', label: 'Uses', relType: 'uses' };
+            const ac: AllowedAdd = { from: 'a', to: 'c', label: 'Reads', relType: 'uses' };
+            const els = [element('a'), element('b'), element('c')];
+            const before = model([view(els, [rel('rel-0', 'b', 'c', 'Calls')])]);
+            const inOrder = model([view(els, [rel('rel-0', 'b', 'c', 'Calls'), rel('rel-1', 'a', 'b'), rel('rel-2', 'a', 'c', 'Reads')])]);
+            const reversed = model([view(els, [rel('rel-0', 'b', 'c', 'Calls'), rel('rel-1', 'a', 'c', 'Reads'), rel('rel-2', 'a', 'b')])]);
+            assert.doesNotThrow(
+                () => assertStructuralEquivalence(before, inOrder, new Set(['a']), undefined, undefined, undefined, undefined, [ab, ac]),
+            );
+            assert.throws(
+                () => assertStructuralEquivalence(before, reversed, new Set(['a']), undefined, undefined, undefined, undefined, [ab, ac]),
+                /was added or source\/target changed/,
+            );
+        });
+
+        it('lets one allowed add account for only one new relationship (#259)', () => {
+            const before = model([view([element('a'), element('b')], [])]);
+            const after = model([view([element('a'), element('b')], [rel('rel-0', 'a', 'b'), rel('rel-1', 'a', 'b')])]);
+            assert.throws(
+                () => assertStructuralEquivalence(before, after, new Set(['a']), undefined, undefined, undefined, undefined, [ADD]),
+                /was added or source\/target changed/,
             );
         });
     });

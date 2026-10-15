@@ -203,24 +203,34 @@ function validateWritebackEdits(edits: readonly BoundedTextEdit[]): void {
 /**
  * Several independently bounded planners may append to the same syntactic
  * slot (for example technology, `$tags`, and coordinates on a minimal
- * element call). Joining only zero-width insertions preserves one atomic
- * WorkspaceEdit without weakening the overlap guard for replacements.
+ * element call), and every connect-mode relationship add is written at one
+ * offset, the end of the diagram (#259). Zero-width insertions at one offset
+ * are joined into a single insertion, in the order they were planned. Joining
+ * them wherever they sit in the list, not only when they are neighbours,
+ * matters because another element's staged change can be planned between two
+ * adds (#268). The caller lists the adds after every other edit, so the
+ * insertion of a last statement that ends at the same offset (a bracket-form
+ * element's `$x`/`$y`) is written first and the new statements follow it. The
+ * overlap guard still sees every replacement, and two insertions at one
+ * offset can no longer reach it.
  */
 function coalesceSameOffsetInsertions(edits: readonly BoundedTextEdit[]): BoundedTextEdit[] {
     const result: BoundedTextEdit[] = [];
+    const joinedByOffset = new Map<number, { range: SourceRange; newText: string }>();
     for (const edit of edits) {
         const isInsertion = edit.range.start.offset === edit.range.end.offset;
-        const previous = result[result.length - 1];
-        if (isInsertion && previous &&
-            previous.range.start.offset === previous.range.end.offset &&
-            previous.range.start.offset === edit.range.start.offset) {
-            result[result.length - 1] = {
-                range: previous.range,
-                newText: previous.newText + edit.newText,
-            };
-        } else {
-            result.push(edit);
+        if (isInsertion) {
+            const joined = joinedByOffset.get(edit.range.start.offset);
+            if (joined) {
+                joined.newText += edit.newText;
+                continue;
+            }
+            const first = { range: edit.range, newText: edit.newText };
+            joinedByOffset.set(edit.range.start.offset, first);
+            result.push(first);
+            continue;
         }
+        result.push(edit);
     }
     return result;
 }
@@ -266,6 +276,12 @@ export async function executeWritebackTransaction(
                        textTrim.startsWith('@startuml');
 
     const edits: BoundedTextEdit[] = [];
+    // New relationships are planned into their own list and appended after
+    // every other edit: each is an insertion at the end of the diagram, which
+    // is also where the last statement's own insertion may sit (a bracket-form
+    // element's `$x`/`$y`), and that one has to be written first. Within the
+    // list they keep staging order, which the equivalence check expects.
+    const addEdits: BoundedTextEdit[] = [];
     const persistenceMode = boundary.getLayoutPersistenceMode();
     const useSidecar = persistenceMode === 'sidecar' || isStructurizrDsl || isPlantUML;
 
@@ -320,6 +336,16 @@ export async function executeWritebackTransaction(
         }
         return undefined;
     }
+
+    // An element renamed in this Save is spelled with its new id in a new
+    // relationship, as the rename leaves no element with the old one.
+    const renamedIds = new Map<string, string>();
+    for (const staged of message.edits) {
+        if (staged.newId !== undefined) {
+            renamedIds.set(staged.id, staged.newId);
+        }
+    }
+    const idAfterSave = (id: string): string => renamedIds.get(id) ?? id;
 
     for (const stagedEdit of message.edits) {
         targetIds.add(stagedEdit.id);
@@ -467,7 +493,8 @@ export async function executeWritebackTransaction(
             };
             // Each add is planned as an independent insertion at the same
             // anchor. They are zero-width insertions at one offset, so the
-            // overlap guard coalesces rather than rejects them.
+            // transaction joins them in staging order rather than rejecting
+            // them, wherever other staged edits sit between them (#268).
             for (const add of stagedEdit.addRelationship) {
                 const targetC4Element = findModelElement(add.targetId);
                 if (!targetC4Element) {
@@ -481,13 +508,14 @@ export async function executeWritebackTransaction(
                     throw new WritebackTransactionError('validation_failed', legality.reason ?? 'Illegal relationship');
                 }
                 try {
-                    edits.push(...planRelationshipAdd(
+                    addEdits.push(...planRelationshipAdd(
                         originalText,
                         sourceRef,
-                        add.targetId,
+                        idAfterSave(add.targetId),
                         add.label,
                         add.technology ?? null,
                         add.relType,
+                        idAfterSave(stagedEdit.id),
                     ));
                 } catch (error) {
                     throw new WritebackTransactionError(
@@ -496,15 +524,16 @@ export async function executeWritebackTransaction(
                     );
                 }
                 allowedRelationshipAdds.push({
-                    from: stagedEdit.id,
-                    to: add.targetId,
+                    from: idAfterSave(stagedEdit.id),
+                    to: idAfterSave(add.targetId),
                     label: add.label,
                     relType: add.relType,
                     technology: add.technology ?? undefined,
                 });
             }
-            targetIds.add(stagedEdit.id);
-            continue;
+            // No `continue`: the element's other staged fields (position,
+            // label, description, technology, tags, rename) are planned below,
+            // like those of any element without an add (#269).
         }
 
         if (stagedEdit.description !== undefined) {
@@ -630,6 +659,8 @@ export async function executeWritebackTransaction(
         }
     }
 
+    edits.push(...addEdits);
+
     if (edits.length === 0) {
         return true;
     }
@@ -704,7 +735,9 @@ function normalizeMessage(message: VisualLayoutMessage): ApplySemanticEditsMessa
             revision: message.revision,
             edits: [{
                 id: message.sourceId,
-                description: `Added relationship ${message.sourceId} → ${message.targetId}: ${message.label}`,
+                // No `description`: the element's other staged fields are now
+                // planned beside the add (#269), so a summary string here
+                // would be written into the element's own description.
                 addRelationship: [{
                     targetId: message.targetId,
                     label: message.label,
@@ -802,6 +835,10 @@ export function assertStructuralEquivalence(
                 ((origEl.sprite ?? '') !== (updEl.sprite ?? '') && !allowance?.sprite)) {
                 throw new Error(`Structural property mismatch on element ${id}`);
             }
+            // The $code mapping has no visual editor: no staged edit may change it.
+            if (JSON.stringify(origEl.codePaths ?? null) !== JSON.stringify(updEl.codePaths ?? null)) {
+                throw new Error(`Code mapping ($code) changed on element ${id}`);
+            }
 
             // If it is NOT one of the target elements, the metadata MUST be completely identical
             if (!targets.has(id)) {
@@ -831,10 +868,40 @@ export function assertStructuralEquivalence(
         // adds that actually materialised in THIS view may increase it.
         const remapId = (id: string): string => allowedSemanticChanges.get(id)?.newId ?? id;
         const origRelsById = new Map(origView.relationships.map(r => [r.id, r]));
+        // Allowed adds are matched in staging order: the planner writes them
+        // in that order, and ids (and a dynamic view's step order) follow it.
+        // An add that lands in no view of this relationship list is skipped.
+        let nextAdd = 0;
         let addsMatchedInThisView = 0;
-        for (const updRel of updView.relationships) {
+        for (let relIndex = 0; relIndex < updView.relationships.length; relIndex++) {
+            const updRel = updView.relationships[relIndex];
             let origRel = origRelsById.get(updRel.id);
             if (!origRel) {
+                // A relationship whose id is new may be an explicitly allowed
+                // add. This is tried BEFORE any endpoint-pair match, or an add
+                // that duplicates an existing pair would be mistaken for it.
+                // Ids follow the parser's processing order, so an add is only
+                // acceptable as the tail of the list: anywhere earlier it
+                // would have renumbered, and so silently re-pointed, the
+                // relationships after it (#259). Each allowed add matches once,
+                // and in staging order.
+                let addIndex = -1;
+                if (relIndex >= origView.relationships.length) {
+                    addIndex = allowedRelationshipAdds.findIndex((add, i) =>
+                        i >= nextAdd &&
+                        add.from === updRel.from &&
+                        add.to === updRel.to &&
+                        add.label === updRel.label &&
+                        add.relType === updRel.relType &&
+                        (add.technology ?? '') === (updRel.technology ?? '')
+                    );
+                }
+                if (addIndex !== -1) {
+                    nextAdd = addIndex + 1;
+                    addsSeenInSomeView.add(addIndex);
+                    addsMatchedInThisView++;
+                    continue;
+                }
                 // Stable rel-N ids may be absent in synthetic test models; fall
                 // back to matching by the remapped endpoint pair.
                 origRel = origView.relationships.find(r =>
@@ -842,19 +909,6 @@ export function assertStructuralEquivalence(
                 );
             }
             if (!origRel) {
-                // The relationship may be an explicitly allowed new relationship.
-                const addIndex = allowedRelationshipAdds.findIndex(add =>
-                    add.from === updRel.from &&
-                    add.to === updRel.to &&
-                    add.label === updRel.label &&
-                    add.relType === updRel.relType &&
-                    (add.technology ?? '') === (updRel.technology ?? '')
-                );
-                if (addIndex !== -1) {
-                    addsSeenInSomeView.add(addIndex);
-                    addsMatchedInThisView++;
-                    continue;
-                }
                 throw new Error(`Relationship ${updRel.id} was added or source/target changed`);
             }
             const allowance = allowedRelationshipChanges.get(origRel.id);

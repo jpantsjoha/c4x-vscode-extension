@@ -90,6 +90,18 @@ describe('planBoundaryMetadataUpdate (#137)', () => {
         );
     });
 
+    it('rejects each typed boundary form with a message that names it (#271)', () => {
+        for (const keyword of ['System_Boundary', 'Container_Boundary', 'Enterprise_Boundary']) {
+            const source = `graph TB\n${keyword}(sb, "Shop") {\n    System(x, "X")\n}`;
+            const ref = boundaryRef(source, 'shop-boundary-0');
+            assert.throws(
+                () => planBoundaryMetadataUpdate(source, ref, { x: 1, y: 2 }),
+                (error: unknown) => error instanceof UnsupportedNativeSyntaxError &&
+                    error.message.includes('"Shop"') && error.message.includes(keyword),
+            );
+        }
+    });
+
     it('rejects non-finite and out-of-range coordinates', () => {
         const source = 'graph TB\nsubgraph Backend {\n    Container(API, "API")\n}';
         const ref = boundaryRef(source, 'backend-boundary-0');

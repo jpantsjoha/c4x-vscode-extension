@@ -156,10 +156,10 @@ A professional C4 Container diagram PNG showing all components with proper styli
 
 ## Test Script
 
-Verify the image model works with your API key:
+Verify the image model works with your API key. The script reads the key from the `GEMINI_API_KEY` environment variable only, and writes the image to a new folder under your system's temp directory, never into the repository:
 
 ```bash
-npx ts-node scripts/test-gemini-image.ts
+GEMINI_API_KEY=your-key npx ts-node scripts/test-gemini-image.ts
 ```
 
 Expected output:

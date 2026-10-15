@@ -2,6 +2,7 @@
 import * as assert from 'assert';
 import { GeminiService } from '../../src/ai/GeminiService';
 import { buildGenerationPrompt } from '../../src/ai/PromptBuilder';
+import { fakeGenAI, textResponse } from '../../src/__tests__/__mocks__/genai';
 import * as vscode from 'vscode';
 
 describe('Gemini Issue Reproduction', () => {
@@ -29,30 +30,29 @@ describe('Gemini Issue Reproduction', () => {
         // I will inspect the buildPrompt method output indirectly if possible, 
         // but for now let's Mock the model to ensure the wiring is correct.
 
-        (geminiService as any).model = {
-            generateContent: async (prompt: string) => {
-                // LOG THE PROMPT TO SEE IF IT IS CORRECT
-                console.log("PROMPT RECEIVED:", prompt);
+        (geminiService as unknown as { genAI: unknown }).genAI = fakeGenAI(async ({ contents }) => {
+                    const prompt = String(contents);
+                    // LOG THE PROMPT TO SEE IF IT IS CORRECT
+                    console.log("PROMPT RECEIVED:", prompt);
 
-                if (prompt.includes('DETECTION RULES')) {
-                    // Simulate CORRECT behavior based on prompt text
-                    if (prompt.includes('--->')) {
-                        return { response: { text: () => JSON.stringify({ bestType: 'C1', direction: 'LR', confidence: 0.9 }) } };
+                    if (prompt.includes('DETECTION RULES')) {
+                        // Simulate CORRECT behavior based on prompt text
+                        if (prompt.includes('--->')) {
+                            return textResponse(JSON.stringify({ bestType: 'C1', direction: 'LR', confidence: 0.9 }));
+                        }
+                        return textResponse(JSON.stringify({ bestType: 'C1', direction: 'TB', confidence: 0.9 }));
                     }
-                    return { response: { text: () => JSON.stringify({ bestType: 'C1', direction: 'TB', confidence: 0.9 }) } };
-                }
 
-                if (prompt.includes('FORCE LAYOUT')) {
-                    // Check if FORCE LAYOUT is present
-                    if (prompt.includes('FORCE LAYOUT: You MUST use `graph LR`')) {
-                        return { response: { text: () => "```c4x\ngraph LR\n...```" } };
+                    if (prompt.includes('FORCE LAYOUT')) {
+                        // Check if FORCE LAYOUT is present
+                        if (prompt.includes('FORCE LAYOUT: You MUST use `graph LR`')) {
+                            return textResponse("```c4x\ngraph LR\n...```");
+                        }
                     }
-                }
 
-                // Simulate Generation
-                return { response: { text: () => "```c4x\ngraph TB\n...```" } }; // Default response
-            }
-        };
+                    // Simulate Generation
+                    return textResponse("```c4x\ngraph TB\n...```"); // Default response
+        });
     });
 
     it('Should detect LR from arrow notation', async () => {

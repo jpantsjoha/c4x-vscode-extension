@@ -1,0 +1,15 @@
+{
+  "name": "c4x-vsix-uat-bridge",
+  "displayName": "C4X Installed UAT Bridge",
+  "description": "Test-only development host that lets scripts/test-vsix-installed-uat.js read documents and run commands in the VS Code window that has the packaged C4X VSIX installed. It is never packaged.",
+  "version": "0.0.0",
+  "publisher": "c4x-tests",
+  "private": true,
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "engines": {
+    "vscode": "^1.80.0"
+  }
+}

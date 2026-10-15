@@ -18,16 +18,22 @@ import {
     C4Rel,
     C4ElementType,
 } from '../../model/C4Model';
+import { CODE_MAPPABLE_TYPES, parseCodePaths } from '../../model/codePaths';
+import { C4ModelWarning } from '../../model/modelWarnings';
 import { C4ViewType } from '../types';
 
 /**
  * Adapter to convert Structurizr AST to C4Model IR
  */
 export class StructurizrAdapter {
+    /** Non-fatal notes from the last `convert` (one per element, not per view). */
+    private warnings: C4ModelWarning[] = [];
+
     /**
      * Convert a Structurizr WorkspaceNode to C4Model
      */
     public convert(workspace: WorkspaceNode): C4Model {
+        this.warnings = [];
         const views: C4View[] = [];
 
         if (workspace.views && workspace.model) {
@@ -37,6 +43,7 @@ export class StructurizrAdapter {
         return {
             workspace: workspace.name,
             views,
+            ...(this.warnings.length > 0 ? { warnings: [...this.warnings] } : {}),
         };
     }
 
@@ -113,7 +120,7 @@ export class StructurizrAdapter {
      * Convert Structurizr ElementNode to C4Element
      */
     private convertElement(node: ElementNode): C4Element {
-        return {
+        const element: C4Element = {
             id: node.identifier,
             label: node.name,
             type: this.mapElementType(node.elementType),
@@ -121,6 +128,44 @@ export class StructurizrAdapter {
             technology: node.technology,
             description: node.description,
         };
+        const code = node.properties?.code;
+        if (code !== undefined) {
+            element.codePaths = this.convertCodePaths(node, element.type, code);
+        }
+        return element;
+    }
+
+    /**
+     * Map a `properties { "code" "src/parser/**" }` entry onto `codePaths`,
+     * with the same splitting and validation as the C4X `$code` attribute.
+     *
+     * Unlike C4X's `$code`, a Structurizr `code` property is a general
+     * key-value pair that a workspace may already use for something else
+     * (`"code" "SYS:001"` on a software system). So a value C4X cannot use is a
+     * warning on the model, and the value is ignored, rather than a parse error
+     * that would stop an otherwise valid workspace from rendering.
+     */
+    private convertCodePaths(node: ElementNode, type: C4ElementType, code: string): string[] | undefined {
+        // The key leaves the location out, so the same problem keeps one identity
+        // while lines above it are edited; the location is for the reader only.
+        const key = `structurizr-code\u0000${node.identifier}\u0000${code}`;
+        const where = `${node.location.line}:${node.location.column}`;
+        if (!CODE_MAPPABLE_TYPES.has(type)) {
+            this.warn(key, `Element "${node.identifier}" (${where}): the code property maps source paths only on containers and components, not on a ${node.elementType}; it is ignored.`);
+            return undefined;
+        }
+        try {
+            return parseCodePaths(code);
+        } catch (error) {
+            this.warn(key, `Element "${node.identifier}" (${where}): the code property is not a source-path mapping and is ignored: ${error instanceof Error ? error.message : String(error)}.`);
+            return undefined;
+        }
+    }
+
+    private warn(key: string, message: string): void {
+        if (!this.warnings.some(warning => warning.key === key)) {
+            this.warnings.push({ key, message });
+        }
     }
 
     /**

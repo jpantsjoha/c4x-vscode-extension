@@ -11,8 +11,15 @@
 
 import * as assert from 'assert';
 import { spawnSync } from 'child_process';
-import { isPersistedDraftState, type PersistedDraftState } from '../../webview/draftState';
-import { serializeDraftState, deserializeDraftState } from '../../webview/previewClientScript';
+import {
+    dropInvalidPersistedAdds,
+    dropUnmovableBoundaryEdits,
+    formatUnmovableBoundaryNotice,
+    isPersistedAddRelationshipList,
+    isPersistedDraftState,
+    type PersistedDraftState,
+} from '../../webview/draftState';
+import { serializeDraftState, deserializeDraftState, PREVIEW_CLIENT_SCRIPT } from '../../webview/previewClientScript';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -248,6 +255,162 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
     });
 });
 
+// ── addRelationship (connect mode, #260) ────────────────────────────────────
+
+describe('staged relationship additions survive a draft round trip (#260)', () => {
+    const ADD = { targetId: 'api', label: 'Calls', relType: 'sync', technology: 'HTTPS' };
+
+    it('persists a connect-only draft and restores the same add', () => {
+        const original: Record<string, Record<string, unknown>> = {
+            web: { addRelationship: [ADD] },
+        };
+        const state = serializeDraftState(original, null, true);
+        assert.deepStrictEqual(state.stagedEdits, [{ id: 'web', addRelationship: [ADD] }]);
+        assert.strictEqual(isPersistedDraftState(state), true);
+        assert.deepStrictEqual(deserializeDraftState(state), original);
+    });
+
+    it('survives a JSON round trip, as vscode.setState / getState does', () => {
+        const original: Record<string, Record<string, unknown>> = {
+            web: { addRelationship: [ADD, { targetId: 'db', label: 'Reads', relType: 'uses' }] },
+        };
+        const stored: unknown = JSON.parse(JSON.stringify(serializeDraftState(original, null, true)));
+        assert.strictEqual(isPersistedDraftState(stored), true);
+        assert.deepStrictEqual(deserializeDraftState(stored as PersistedDraftState), original);
+    });
+
+    it('keeps a move and an add staged on the same source element', () => {
+        const original: Record<string, Record<string, unknown>> = {
+            web: { x: 40, y: 60, addRelationship: [ADD] },
+        };
+        const state = serializeDraftState(original, 'web', true);
+        assert.deepStrictEqual(state.stagedEdits, [{ id: 'web', x: 40, y: 60, addRelationship: [ADD] }]);
+        assert.deepStrictEqual(deserializeDraftState(state), original);
+    });
+
+    it('persists only the allowlisted fields of each add', () => {
+        const state = serializeDraftState({
+            web: { addRelationship: [{ ...ADD, injected: '<script>', sourceId: 'x' }] },
+        }, null, true);
+        assert.deepStrictEqual(state.stagedEdits[0].addRelationship, [ADD]);
+    });
+
+    it('is additive: the schema version stays 1 so an older reader ignores the field', () => {
+        const state = serializeDraftState({ web: { addRelationship: [ADD] } }, null, true);
+        assert.strictEqual(state.schemaVersion, 1);
+    });
+
+    describe('restore validation (exact allowlist)', () => {
+        function withAdd(addRelationship: unknown): unknown {
+            return makeValidState({ stagedEdits: [{ id: 'web', addRelationship } as never] });
+        }
+        const accepted = (v: unknown): boolean => isPersistedDraftState(v);
+
+        it('accepts a well-formed add, with and without technology', () => {
+            assert.strictEqual(accepted(withAdd([ADD])), true);
+            assert.strictEqual(accepted(withAdd([{ targetId: 'api', label: 'Calls', relType: 'uses' }])), true);
+        });
+
+        it('rejects a non-array, an empty array and an over-long array', () => {
+            assert.strictEqual(accepted(withAdd('api')), false);
+            assert.strictEqual(accepted(withAdd([])), false);
+            const many = Array.from({ length: 65 }, (_, i) => ({ targetId: 'n' + i, label: 'L', relType: 'uses' }));
+            assert.strictEqual(accepted(withAdd(many)), false);
+        });
+
+        it('rejects unknown keys, including sourceId', () => {
+            assert.strictEqual(accepted(withAdd([{ ...ADD, extra: 1 }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, sourceId: 'web' }])), false);
+        });
+
+        it('rejects a bad target id, relType, label or technology', () => {
+            assert.strictEqual(accepted(withAdd([{ ...ADD, targetId: '1bad' }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, targetId: 'has space' }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, relType: 'bidirectional' }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, label: '' }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, label: 'a|b' }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, label: 'x'.repeat(121) }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, technology: 'x'.repeat(121) }])), false);
+            assert.strictEqual(accepted(withAdd([{ ...ADD, technology: 7 }])), false);
+            assert.strictEqual(accepted(withAdd([null])), false);
+        });
+
+        it('rejects two adds with the same target and label, which the protocol refuses', () => {
+            assert.strictEqual(accepted(withAdd([ADD, { ...ADD }])), false);
+        });
+    });
+});
+
+describe('a bad staged relationship never discards the rest of the draft (#260)', () => {
+    const GOOD = { targetId: 'api', label: 'Calls', relType: 'uses' as const };
+    const repair = (state: unknown) => dropInvalidPersistedAdds(state, isPersistedAddRelationshipList);
+
+    it('round-trips a target id with a hyphen, which the grammar allows', () => {
+        const original = { web: { x: 5, y: 6, addRelationship: [{ ...GOOD, targetId: 'api-gw' }] } };
+        const stored: unknown = JSON.parse(JSON.stringify(serializeDraftState(original, null, true)));
+        assert.strictEqual(isPersistedDraftState(stored), true);
+        assert.deepStrictEqual(deserializeDraftState(stored as PersistedDraftState), original);
+    });
+
+    it('leaves a valid draft untouched', () => {
+        const state = makeValidState({ stagedEdits: [{ id: 'web', x: 1, y: 2, addRelationship: [GOOD] }] });
+        const { state: repaired, dropped } = repair(state);
+        assert.strictEqual(dropped, 0);
+        assert.deepStrictEqual(repaired, state);
+    });
+
+    it('drops only a duplicate add and keeps the first, the move and the other edits', () => {
+        const state = makeValidState({
+            editMode: true,
+            stagedEdits: [
+                { id: 'web', x: 1, y: 2, addRelationship: [GOOD, { ...GOOD }] },
+                { id: 'db', label: 'Store' },
+            ],
+        });
+        const { state: repaired, dropped } = repair(state);
+        assert.strictEqual(dropped, 1);
+        assert.strictEqual(isPersistedDraftState(repaired), true);
+        assert.deepStrictEqual((repaired as PersistedDraftState).stagedEdits, [
+            { id: 'web', x: 1, y: 2, addRelationship: [GOOD] },
+            { id: 'db', label: 'Store' },
+        ]);
+    });
+
+    it('drops the adds past the 64-entry cap and keeps the first 64', () => {
+        const many = Array.from({ length: 70 }, (_, i) => ({ targetId: 'n' + i, label: 'L', relType: 'uses' }));
+        const { state: repaired, dropped } = repair(makeValidState({ stagedEdits: [{ id: 'web', addRelationship: many as never }] }));
+        assert.strictEqual(dropped, 6);
+        assert.strictEqual((repaired as PersistedDraftState).stagedEdits[0].addRelationship?.length, 64);
+        assert.strictEqual(isPersistedDraftState(repaired), true);
+    });
+
+    it('drops a corrupted add (unknown key, bad type) and keeps a good one beside it', () => {
+        const { state: repaired, dropped } = repair(makeValidState({
+            stagedEdits: [{ id: 'web', addRelationship: [{ ...GOOD, extra: 1 }, GOOD, { ...GOOD, relType: 'x' }] as never }],
+        }));
+        assert.strictEqual(dropped, 2);
+        assert.deepStrictEqual((repaired as PersistedDraftState).stagedEdits, [{ id: 'web', addRelationship: [GOOD] }]);
+    });
+
+    it('removes an entry that has nothing left, and counts a non-array field once', () => {
+        const { state: repaired, dropped } = repair(makeValidState({
+            stagedEdits: [
+                { id: 'web', addRelationship: [{ ...GOOD, label: '' }] as never },
+                { id: 'api', addRelationship: 'oops' as never },
+                { id: 'db', label: 'Store' },
+            ],
+        }));
+        assert.strictEqual(dropped, 2);
+        assert.deepStrictEqual((repaired as PersistedDraftState).stagedEdits, [{ id: 'db', label: 'Store' }]);
+        assert.strictEqual(isPersistedDraftState(repaired), true);
+    });
+
+    it('ignores state it cannot read', () => {
+        assert.deepStrictEqual(repair(undefined), { state: undefined, dropped: 0 });
+        assert.deepStrictEqual(repair('oops'), { state: 'oops', dropped: 0 });
+    });
+});
+
 // Exercise the real host callbacks in a separate process so the VS Code mock
 // cannot pollute modules shared with other unit suites.
 const DIRTY_CLOSE_HOST = String.raw`
@@ -355,5 +518,59 @@ describe('dirty-close warning — real PreviewPanel callbacks', () => {
 
     it('reopens the native editor through the warning action', () => {
         verifyDirtyClose([{ type: 'dirtyStateChanged', dirty: true }], 1, true);
+    });
+});
+
+describe('a staged move of a boundary the source cannot position is not restored (#271)', () => {
+    const BOUNDARIES = [
+        { id: 'shop-boundary-0', label: 'Shop', movable: false },
+        { id: 'backend-boundary-1', label: 'Backend' },
+    ];
+
+    it('drops the typed boundary edit and keeps the element and subgraph edits', () => {
+        const edits = {
+            'shop-boundary-0': { boundaryId: 'shop-boundary-0', x: 10, y: 20 },
+            'backend-boundary-1': { boundaryId: 'backend-boundary-1', w: 300, h: 200 },
+            web: { x: 1, y: 2 },
+        };
+        const result = dropUnmovableBoundaryEdits(edits, BOUNDARIES);
+        assert.deepStrictEqual(Object.keys(result.edits), ['backend-boundary-1', 'web']);
+        assert.deepStrictEqual(result.labels, ['Shop']);
+    });
+
+    it('drops a typed boundary resize as well as a move', () => {
+        const result = dropUnmovableBoundaryEdits(
+            { 'shop-boundary-0': { boundaryId: 'shop-boundary-0', x: 1, y: 2, w: 3, h: 4 } }, BOUNDARIES);
+        assert.deepStrictEqual(result.edits, {});
+        assert.deepStrictEqual(result.labels, ['Shop']);
+    });
+
+    it('changes nothing when every boundary can be moved, or a host sent no flag', () => {
+        const edits = { 'backend-boundary-1': { boundaryId: 'backend-boundary-1', x: 1, y: 2 }, web: { x: 1, y: 2 } };
+        const result = dropUnmovableBoundaryEdits(edits, [{ id: 'backend-boundary-1', label: 'Backend' }]);
+        assert.deepStrictEqual(result.edits, edits);
+        assert.deepStrictEqual(result.labels, []);
+    });
+
+    it('names a single boundary and says why', () => {
+        const notice = formatUnmovableBoundaryNotice(['Shop']);
+        assert.ok(notice.startsWith('1 staged boundary change could not be restored: "Shop" cannot be moved or resized'), notice);
+        assert.ok(notice.includes('System_Boundary'), notice);
+    });
+
+    it('cuts a long label instead of dropping the notice', () => {
+        const notice = formatUnmovableBoundaryNotice(['L'.repeat(1000)]);
+        assert.ok(notice.includes('"' + 'L'.repeat(40) + '\u2026"'), notice);
+        assert.ok(notice.length < 400, `${notice.length} characters`);
+    });
+
+    it('summarises more than three boundaries as "and N more" rather than hiding them', () => {
+        const notice = formatUnmovableBoundaryNotice(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']);
+        assert.ok(notice.startsWith('10 staged boundary changes could not be restored: "A", "B", "C" and 7 more cannot be moved'), notice);
+    });
+
+    it('is embedded in the webview script', () => {
+        assert.ok(PREVIEW_CLIENT_SCRIPT.includes('function dropUnmovableBoundaryEdits('));
+        assert.ok(PREVIEW_CLIENT_SCRIPT.includes('function formatUnmovableBoundaryNotice('));
     });
 });

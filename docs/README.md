@@ -1,14 +1,15 @@
 # C4X Documentation Index
 
-The 1.7.0 candidate adds Gemini model discovery/healing and visual-editor reliability improvements. Its automated release checks and clean installed-package render smoke are green; the broader installed walkthrough and publication decision remain. See the [changelog](../CHANGELOG.md) and [README](../README.md) for current capabilities and known limitations.
+Version 1.7.0 is released, adding Gemini model discovery and healing alongside visual-editor reliability improvements. See the [changelog](../CHANGELOG.md) and [README](../README.md) for current capabilities and known limitations.
 
 ## Start here
 
 1. [Quick Start](QUICK-START.md)
 2. [User Guide](USER-GUIDE.md)
 3. [C4X syntax reference](c4x-syntax.md)
-4. [Examples](EXAMPLES.md)
-5. [FAQ](FAQ.md) and [Troubleshooting](TROUBLESHOOTING.md)
+4. [C4X lint rules](C4X-LINT-RULES.md) — what the Problems panel checks, and how to tune it; [outside VS Code](C4X-LINT-CLI.md), the same rules in a hook, CI or an agent
+5. [Examples](EXAMPLES.md)
+6. [FAQ](FAQ.md) and [Troubleshooting](TROUBLESHOOTING.md)
 
 ## Guides and examples
 

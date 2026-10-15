@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 import { SPRITES } from '../assets/icons';
+import { attributeNameContext, codeValueContext, isInsideC4xFence, isOfferedEntry } from './codeAttribute';
+
+/** Path completion never lists more entries than this from one directory. */
+const MAX_PATH_ITEMS = 200;
 
 export class C4XCompletionItemProvider implements vscode.CompletionItemProvider {
 
@@ -64,6 +68,32 @@ export class C4XCompletionItemProvider implements vscode.CompletionItemProvider 
 
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
 
+        // In Markdown, $code help belongs inside c4x fences only, never in prose.
+        const codeAllowed = document.languageId !== 'markdown' ||
+            isInsideC4xFence(line => document.lineAt(line).text, position.line);
+        const codeContext = codeAllowed ? codeValueContext(linePrefix) : undefined;
+        if (codeContext) {
+            return this.codePathItems(document, position, codeContext.directory, codeContext.fragment);
+        }
+
+        const attributeContext = codeAllowed ? attributeNameContext(linePrefix) : undefined;
+        if (attributeContext) {
+            const item = new vscode.CompletionItem('$code', vscode.CompletionItemKind.Property);
+            item.detail = 'Map this Container or Component to source code';
+            item.documentation = new vscode.MarkdownString(
+                'Comma-separated, workspace-relative globs naming the code this element owns, e.g. ' +
+                '`$code="src/parser/**, src/extension.ts"`. Used by **C4X: Export Architecture Conformance**.'
+            );
+            item.insertText = new vscode.SnippetString('\\$code="${1:src/}$0"');
+            item.range = new vscode.Range(
+                position.line, position.character - attributeContext.typed.length,
+                position.line, position.character,
+            );
+            item.filterText = '$code';
+            item.command = { title: 'Suggest paths', command: 'editor.action.triggerSuggest' };
+            return [item];
+        }
+
         // Regex to detect context
         // 1. sprite="<cursor>  -> Suggest 'c4xicons'
         // 2. sprite="c4xicons.<cursor> -> Suggest vendors
@@ -99,5 +129,51 @@ export class C4XCompletionItemProvider implements vscode.CompletionItemProvider 
         }
 
         return [];
+    }
+
+    /**
+     * List the entries of one workspace directory as `$code` path candidates:
+     * folders become `name/**`, files stay exact. Reads one directory only.
+     */
+    private async codePathItems(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        directory: string,
+        fragment: string,
+    ): Promise<vscode.CompletionItem[]> {
+        const folder = vscode.workspace.getWorkspaceFolder(document.uri) ?? vscode.workspace.workspaceFolders?.[0];
+        if (!folder) {
+            return [];
+        }
+        let entries: [string, vscode.FileType][];
+        try {
+            const target = directory ? vscode.Uri.joinPath(folder.uri, directory) : folder.uri;
+            entries = await vscode.workspace.fs.readDirectory(target);
+        } catch {
+            return [];
+        }
+        const range = new vscode.Range(position.line, position.character - fragment.length, position.line, position.character);
+        return entries
+            .filter(([name]) => isOfferedEntry(name))
+            .slice(0, MAX_PATH_ITEMS)
+            .map(([name, type]) => {
+                const isDirectory = (type & vscode.FileType.Directory) !== 0;
+                const item = new vscode.CompletionItem(
+                    isDirectory ? `${name}/` : name,
+                    isDirectory ? vscode.CompletionItemKind.Folder : vscode.CompletionItemKind.File,
+                );
+                item.range = range;
+                item.filterText = name;
+                if (isDirectory) {
+                    item.insertText = `${name}/**`;
+                    item.detail = `${directory}${name}/** (all files below)`;
+                    item.sortText = `0${name}`;
+                } else {
+                    item.insertText = name;
+                    item.detail = `${directory}${name}`;
+                    item.sortText = `1${name}`;
+                }
+                return item;
+            });
     }
 }

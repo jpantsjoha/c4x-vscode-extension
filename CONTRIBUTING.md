@@ -1,137 +1,138 @@
 # Contributing to C4X
 
-First off, thank you for considering contributing to C4X! We welcome any contributions that help us make C4 diagramming in VS Code better for everyone.
-
-This document provides guidelines for contributing to the project.
+Thank you for considering a contribution. This page covers how to get the project running,
+how to prove a change, and what a good pull request looks like.
 
 ---
 
 ## Code of Conduct
 
-By participating in this project, you are expected to treat others with respect and professionalism. Please report unacceptable behavior by opening a GitHub issue.
+Treat others with respect and professionalism. Report unacceptable behaviour by opening a
+GitHub issue.
 
 ---
 
-## How Can I Contribute?
+## How can I contribute?
 
-There are many ways to contribute, from writing documentation to submitting bug reports and feature requests. If you want to contribute code, here’s how to get started.
+### Reporting bugs
 
-### Reporting Bugs
+- Search the [issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) first.
+- If nothing matches, [open a new one](https://github.com/jpantsjoha/c4x-vscode-extension/issues/new)
+  with a clear title, the version of C4X and VS Code you are on, and the smallest C4X source
+  that reproduces the problem. A failing example is worth more than a description of one.
 
-- **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues).
-- If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/jpantsjoha/c4x-vscode-extension/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+### Suggesting enhancements
 
-### Suggesting Enhancements
-
-- Open a new issue and provide a clear description of the enhancement you would like to see, why it would be useful, and any implementation ideas you have.
-
----
-
-## Development Setup
-
-To get the project running locally, follow these steps:
-
-1. **Fork and Clone**: Fork the repository on GitHub and clone your fork locally.
-
-    ```bash
-    git clone https://github.com/<your-username>/c4x-vscode-extension.git
-    cd c4x-vscode-extension
-    ```
-
-2. **Install Dependencies**: We use `pnpm` for package management.
-
-    ```bash
-    pnpm install
-    ```
-
-3. **Build the Extension**: This will compile the TypeScript code and bundle it.
-
-    ```bash
-    pnpm run build
-    ```
-
-4. **Run in VS Code**: Open the project in VS Code and press `F5` to launch the Extension Development Host. This will open a new VS Code window with your extension loaded.
+Open an issue describing the outcome you want and why the current behaviour falls short.
+Implementation ideas are welcome but optional.
 
 ---
 
-## Running Tests
-
-We use Mocha for testing. To run the tests, use the following command:
+## Development setup
 
 ```bash
-npm test
+git clone https://github.com/<your-username>/c4x-vscode-extension.git
+cd c4x-vscode-extension
+
+nvm use                                    # Node 20.20.2
+corepack enable
+corepack prepare pnpm@10.18.3 --activate
+
+make setup                                 # install, build, compile tests
 ```
 
-This will run all unit and integration tests. Please ensure all tests pass before submitting a pull request.
+### Running the extension
 
-### Writing Tests
-
-- For any new feature, please add corresponding tests.
-- For any bug fix, please add a test that reproduces the bug and verifies that your fix works.
-- Tests are located in the `test/suite` directory.
-
-### Visual Validation
-
-For changes involving the layout engine or SVG rendering, you **must** run the visual validation suite:
+Start the watcher, then press `F5` to launch the Extension Development Host:
 
 ```bash
-npx ts-node scripts/validate-gallery.ts
+pnpm run watch
 ```
 
-This script:
-
-1. Generates SVGs for 7 different C4 scenarios.
-2. Checks that arrows are straight and aligned correctly (geometric analysis).
-3. Produces a report at `docs/validation/report.html`.
-
-Open the report in your browser to visually verify your changes look correct.
+`.vscode/launch.json` is gitignored, so create one the first time with a single
+`extensionHost` configuration passing
+`--extensionDevelopmentPath=${workspaceFolder}`. Open a diagram from `samples/` or
+`examples/` in the new window and run **C4X: Open Preview**.
 
 ---
 
-## Submitting a Pull Request
+## Running the checks
 
-1. **Create a Branch**: Create a new branch for your changes.
+Run the gate that matches the size of your change; each one includes the ones above it.
 
-    ```bash
-    git checkout -b feat/my-new-feature
-    ```
+```bash
+make quick-check     # typecheck, lint, unit tests, MCP and toolchain checks — the fast loop
+make check           # quick-check + documentation + build — what a pull request must pass
+```
 
-2. **Make Your Changes**: Make your changes to the code and add tests.
+Individual tiers, when you want to iterate on one:
 
-3. **Ensure Tests Pass**: Run `npm test` to make sure all tests still pass.
+```bash
+make test-unit          # unit tests, no VS Code
+make test               # Extension Host suite in a real VS Code instance
+make test-e2e           # Playwright browser suite against the real preview client
+make test-perf          # performance budgets
+make test-vsix-smoke    # package the VSIX, install it into a clean profile, activate it
+make verify-docs        # Markdown lint plus every c4x example in the docs
+```
 
-4. **Commit Your Changes**: Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+Each tier proves something the others cannot. A green unit suite says nothing about whether
+the packaged extension activates; a green development-host session says nothing about the
+VSIX. Run the tier that matches your claim.
 
-    ```bash
-    git commit -m "feat: Add new feature"
-    ```
+### Changes to layout, geometry or rendering
 
-5. **Push to Your Fork**: Push your changes to your forked repository.
+Rendering changes need visual evidence, not just passing assertions:
 
-    ```bash
-    git push origin feat/my-new-feature
-    ```
+```bash
+make test-e2e                       # browser interaction and visual baselines
+pnpm run test:snapshot              # renderer snapshot and geometric checks
+pnpm run test:snapshot:update       # only after reviewing why a baseline moved
+```
 
-6. **Open a Pull Request**: Open a pull request from your fork to the main C4X repository. Provide a clear description of your changes.
+Never refresh a snapshot to make a suite green. Explain in the pull request what changed in
+the geometry and why the new baseline is correct.
+
+### Writing tests
+
+- Every new feature gets tests.
+- Every bug fix gets a test that fails before the fix and passes after it.
+- Unit suites live under `src/__tests__/`, Extension Host suites under `test/suite/`, and
+  browser specs under `test/playwright/`.
 
 ---
 
-## Style Guide
+## Submitting a pull request
 
-We use ESLint and Prettier to enforce a consistent coding style. Before committing, you can run the linter to check your code:
+1. Branch from `main`: `git checkout -b feat/short-description`.
+2. Make the change, with tests.
+3. Run `make check` and paste the result into the pull request.
+4. Commit using [Conventional Commits](https://www.conventionalcommits.org/):
+   `git commit -m "feat(parser): support X"`.
+5. Push and open a pull request describing what changed, what proves it, and any deliberate
+   limitation you are leaving behind.
+
+Keep pull requests small and reviewable. A change that touches the parser, the renderer and
+the documentation at once is three pull requests.
+
+---
+
+## Style
+
+ESLint enforces the code style:
 
 ```bash
-npm run lint
+pnpm run lint
 ```
 
-And you can run Prettier to format your code:
+Beyond the linter: descriptive names, no regular-expression rewriting of source where a
+parser range will do, and comments that explain why rather than what.
 
-```bash
-npm run format
-```
+Markdown is linted too, by `make verify-docs`. Every `c4x` example in the documentation is
+parsed, so a broken example fails the build.
 
 ---
 
 ## Questions?
 
-If you have any questions, feel free to open an issue and we'll be happy to help you out.
+Open an issue and we will help.

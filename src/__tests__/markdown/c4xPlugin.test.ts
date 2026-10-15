@@ -184,3 +184,29 @@ describe('C4X Markdown Plugin — previewScale manifest drift pin (#128)', () =>
         assert.strictEqual(setting.maximum, PREVIEW_SCALE_MAX);
     });
 });
+
+
+describe('Markdown preview edit links', () => {
+    const fence = `\`\`\`c4x\n${DSL}\`\`\`\n`;
+    const env = { currentDocument: { scheme: 'file', toString: () => 'file:///tmp/gallery%20%26%20notes.md' } };
+    function links(html: string): URL[] {
+        return [...html.matchAll(/href="([^" ]*:\/\/jpantsjoha\.c4x\/edit[^" ]*)"/g)]
+            .map(match => new URL(match[1].replace(/&amp;/g, '&')));
+    }
+    it('binds each link to its source file and fence line across repeated renders', () => {
+        const md = new MarkdownIt().use(c4xPlugin, { editLinkScheme: 'antigravity-ide' });
+        const input = fence + '\nprose\n\n' + fence;
+        for (let i = 0; i < 3; i++) {
+            const result = links(md.render(input, env));
+            assert.strictEqual(result.length, 2);
+            assert.strictEqual(result[0].protocol, 'antigravity-ide:');
+            assert.strictEqual(result[0].searchParams.get('document'), env.currentDocument.toString());
+            assert.strictEqual(result[0].searchParams.get('line'), '0');
+            assert.strictEqual(Number(result[1].searchParams.get('line')), fence.split('\n').length + 2);
+        }
+    });
+    it('does not emit editor links in exported HTML or without a source document', () => {
+        assert.deepStrictEqual(links(new MarkdownIt().use(c4xPlugin).render(fence, env)), []);
+        assert.deepStrictEqual(links(new MarkdownIt().use(c4xPlugin, { editLinkScheme: 'vscode' }).render(fence)), []);
+    });
+});

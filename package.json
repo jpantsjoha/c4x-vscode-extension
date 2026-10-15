@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "packageManager": "pnpm@10.18.3",
   "c4xToolchain": {
     "node": [
@@ -15,18 +15,7 @@
       "26.5.0"
     ],
     "pnpm": "10.18.3",
-    "vscode": "1.128.0",
-    "runners": [
-      "ubuntu-24.04",
-      "macos-15",
-      "windows-2025"
-    ],
-    "actions": {
-      "actions/checkout": "34e114876b0b11c390a56381ad16ebd13914f8d5",
-      "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
-      "pnpm/action-setup": "0ebf47130e4866e96fce0953f49152a61190b271",
-      "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02"
-    }
+    "vscode": "1.128.0"
   },
   "publisher": "jpantsjoha",
   "author": {
@@ -42,7 +31,7 @@
     "url": "https://github.com/jpantsjoha/c4x-vscode-extension/issues"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Programming Languages",
@@ -68,7 +57,9 @@
     "plantuml",
     "structurizr"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onUri"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "markdown.markdownItPlugins": true,
@@ -164,6 +155,16 @@
         "command": "c4x.editMarkdownBlock",
         "title": "C4X: Edit C4 diagram in visual editor",
         "category": "C4X"
+      },
+      {
+        "command": "c4x.exportConformance",
+        "title": "C4X: Export Architecture Conformance",
+        "category": "C4X"
+      },
+      {
+        "command": "c4x.conformFromDependencyCruiser",
+        "title": "C4X: Check Architecture Conformance from dependency-cruiser Result",
+        "category": "C4X"
       }
     ],
     "menus": {
@@ -192,6 +193,11 @@
         },
         {
           "command": "c4x.copySvg",
+          "group": "c4x_export",
+          "when": "resourceLangId == c4x"
+        },
+        {
+          "command": "c4x.exportConformance",
           "group": "c4x_export",
           "when": "resourceLangId == c4x"
         },
@@ -393,6 +399,255 @@
             "Automatically use the newest generally available model in the tier, so a new Gemini release is picked up without updating the extension. Preview and experimental models are never selected."
           ],
           "description": "How C4X chooses a generation model.\\n\\nEither way, a model your key cannot reach is replaced rather than left to fail, and you are told when that happens. Run 'C4X: Select Gemini Model' to see what your key can use."
+        },
+        "c4x.lint.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Check C4X diagrams against the C4 notation rules and list what is missing in the Problems panel: descriptions, technologies, relationship labels, external marking, elements at the wrong C4 level, and views that do not hang together (scope, duplicate names, relationships that reach into another container). Findings are advice only and never block the preview. See the [rule catalogue](https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/C4X-LINT-RULES.md)."
+        },
+        "c4x.lint.rules": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "additionalProperties": false,
+          "markdownDescription": "Severity per lint rule, keyed by rule id. `off` (or `ignore`) turns a rule off; `info`, `warning` and `error` set how its findings are reported. A rule left out runs at its default, which is `info` for every rule. Example: `{ \"C4X-L003\": \"warning\", \"C4X-L008\": \"off\" }`. See the [rule catalogue](https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/C4X-LINT-RULES.md).",
+          "properties": {
+            "C4X-L001": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Container and component have a description. Default: info."
+            },
+            "C4X-L002": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Container and component declare a technology. Default: info."
+            },
+            "C4X-L003": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Relationship has a label. Default: info."
+            },
+            "C4X-L004": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Relationship across a process boundary declares a technology. Default: info."
+            },
+            "C4X-L005": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Software system outside the scope is marked external. Default: info."
+            },
+            "C4X-L006": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Element and relationship are legal at the view level. Default: info."
+            },
+            "C4X-L008": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Relationship label says more than one word. Default: info."
+            },
+            "C4X-L101": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Component view decomposes exactly one container. Default: info."
+            },
+            "C4X-L102": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Element is connected to the rest of the view. Default: info."
+            },
+            "C4X-L103": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Relationship does not reach into another container. Default: info."
+            },
+            "C4X-L104": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Element names are unique within a boundary. Default: info."
+            },
+            "C4X-L105": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Declared view level matches the elements drawn. Default: info."
+            },
+            "C4X-L106": {
+              "type": "string",
+              "enum": [
+                "off",
+                "ignore",
+                "info",
+                "warning",
+                "error"
+              ],
+              "enumDescriptions": [
+                "Do not run this rule.",
+                "Do not run this rule (Structurizr's name for off).",
+                "Report findings as information.",
+                "Report findings as warnings.",
+                "Report findings as errors."
+              ],
+              "description": "Relationship does not join a part to its whole. Default: info."
+            }
+          }
         }
       }
     }
@@ -416,9 +671,14 @@
     "pretest:integration": "pnpm run test:compile && pnpm run build",
     "test:integration": "node ./out/test/runTest.js test/suite/extension-loading.test.js",
     "test:mcp": "node test/functional-mcp-server.js",
+    "test:cli": "node test/functional-lint-cli.js",
+    "lint:c4x": "node cli/c4x-lint.cjs",
     "pretest:vsix-smoke": "pnpm run test:compile && pnpm run build && pnpm run package",
     "test:vsix-smoke": "node scripts/test-vsix-smoke.js",
-    "coverage": "c8 --all --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --exclude=\"src/commands/**\" --exclude=\"src/webview/**\" --exclude=\"src/export/**\" --exclude=\"src/diagnostics/**\" --exclude=\"src/extension.ts\" --exclude=\"src/ai/AuthService.ts\" --exclude=\"src/ai/CodeContextExtractor.ts\" --exclude=\"src/ai/GeminiService.ts\" --exclude=\"src/completion/**\" --exclude=\"src/markdown/**\" --exclude=\"src/parser/plantuml/index.ts\" --exclude=\"src/parser/plantuml/macros.ts\" --exclude=\"src/themes/Theme.ts\" --exclude=\"src/model/C4Model.ts\" --check-coverage --lines 80 --statements 80 --functions 80 --branches 85 --reporter=text --reporter=lcov --src=src mocha --config .mocharc.unit.yml",
+    "pretest:vsix-uat": "pnpm run build && pnpm run package",
+    "test:vsix-uat": "node scripts/test-vsix-installed-uat.js",
+    "coverage": "c8 --all --exclude=\"src/__tests__/**\" --exclude=\"test/**\" --exclude=\"scripts/**\" --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --exclude=\"src/commands/**\" --exclude=\"src/webview/**\" --exclude=\"src/export/**\" --exclude=\"src/diagnostics/**\" --exclude=\"src/extension.ts\" --exclude=\"src/ai/AuthService.ts\" --exclude=\"src/ai/CodeContextExtractor.ts\" --exclude=\"src/ai/GeminiService.ts\" --exclude=\"src/completion/**\" --exclude=\"src/markdown/**\" --exclude=\"src/parser/plantuml/index.ts\" --exclude=\"src/parser/plantuml/macros.ts\" --exclude=\"src/themes/Theme.ts\" --exclude=\"src/model/C4Model.ts\" --check-coverage --lines 80 --statements 80 --functions 80 --branches 85 --reporter=text --reporter=lcov --src=src mocha --config .mocharc.unit.yml",
+    "coverage:all": "c8 --temp-directory .coverage/tmp --clean=true --reporter=none mocha --config .mocharc.unit.yml && c8 --temp-directory .coverage/tmp --clean=false --reporter=none pnpm test && c8 report --temp-directory .coverage/tmp --all --src=src --include=\"src/**\" --exclude=\"node_modules/**\" --exclude=\"out/**\" --exclude=\"test/**\" --exclude=\"src/__tests__/**\" --exclude=\"scripts/**\" --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --reporter=text-summary --reporter=lcov --reports-dir=.coverage/all --check-coverage --lines 80 --statements 80 --branches 80 --functions 80",
     "coverage:integration": "c8 --all --reporter=text --reporter=lcov --report-dir=.coverage/integration --src=src pnpm test",
     "bench": "node -r ts-node/register test/benchmarks/performance.bench.ts",
     "verify:mcp": "node esbuild.config.js --check-mcp",
@@ -430,7 +690,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "@playwright/test": "^1.57.0",
     "@types/dagre": "^0.7.53",
     "@types/glob": "^9.0.0",
@@ -459,20 +719,31 @@
     "overrides": {
       "@hono/node-server": "1.19.15",
       "express-rate-limit": "8.5.2",
-      "fast-uri": "3.1.6",
-      "hono": "4.12.34",
-      "ip-address": "10.3.1",
+      "fast-uri": "3.1.8",
+      "hono": "4.13.8",
+      "ip-address": "10.7.2",
       "path-to-regexp": "8.4.2",
       "qs": "6.16.0",
       "yargs": "17.7.3",
       "linkify-it": "5.0.2",
       "serialize-javascript": "7.0.5",
       "minimatch@>=10.0.0 <10.2.3": "10.2.3",
-      "js-yaml@>=4.0.0 <4.3.1": "4.3.1"
+      "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
+      "smol-toml@<1.7.1": "1.7.2",
+      "markdownlint-cli>markdown-it@<14.3.1": "14.3.1",
+      "brace-expansion@>=1.0.0 <1.1.21": "1.1.21",
+      "brace-expansion@>=2.0.0 <2.1.7": "2.1.7",
+      "brace-expansion@>=5.0.0 <5.0.12": "5.0.12",
+      "proxy-addr@<2.0.8": "2.0.8"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ]
     }
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^2.24.0",
     "dagre": "^0.8.5",
     "markdown-it": "^14.2.0"
   }

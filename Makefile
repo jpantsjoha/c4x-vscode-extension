@@ -1,5 +1,6 @@
-.PHONY: setup install build test lint lint-file clean package vsix typecheck quick-check check check-full verify-mcp validate-toolchain
-.PHONY: test-unit test-integration test-e2e test-mcp test-perf test-vsix-smoke test-all coverage cve-scan
+.PHONY: setup install build test lint lint-file lint-c4x clean package vsix typecheck quick-check check check-full verify-mcp validate-toolchain
+.PHONY: test-unit test-integration test-e2e test-mcp test-cli test-perf test-vsix-smoke test-vsix-uat test-all coverage coverage-all cve-scan
+.PHONY: test-live verify-docs pre-commit help
 
 # Complete setup (first time)
 setup:
@@ -27,7 +28,6 @@ typecheck:
 	@echo "🔎 Type-checking source and tests..."
 	pnpm run test:compile
 
-# Validate skills, workflows, adapters, hooks, and canonical command references
 
 # Validate pinned toolchain consistency
 validate-toolchain:
@@ -43,8 +43,24 @@ test-mcp:
 	@echo "🔌 Running C4X MCP protocol tests..."
 	pnpm run test:mcp
 
+# Functional test of the tracked c4x-lint bundle, run alone from a scratch directory
+test-cli:
+	@echo "📐 Running c4x-lint bundle tests..."
+	pnpm run test:cli
+
+# C4 notation lint over the diagrams this repository publishes (#216). Runs the
+# tracked bundle, so verify-mcp must pass first for the result to mean anything.
+# At the default --max-severity error, only syntax and model errors fail: every
+# notation rule defaults to info. Override either variable to widen the gate,
+# e.g. make lint-c4x C4X_LINT_MAX_SEVERITY=warning
+C4X_LINT_PATHS ?= samples '*.md' 'docs/*.md' docs/marketplace
+C4X_LINT_MAX_SEVERITY ?= error
+lint-c4x:
+	@echo "📐 Linting C4X diagrams (c4x-lint, --max-severity $(C4X_LINT_MAX_SEVERITY))..."
+	node cli/c4x-lint.cjs $(C4X_LINT_PATHS) --max-severity $(C4X_LINT_MAX_SEVERITY) --quiet
+
 # Fast local development gate
-quick-check: typecheck lint test-unit verify-mcp test-mcp validate-toolchain
+quick-check: typecheck lint test-unit verify-mcp test-mcp test-cli lint-c4x validate-toolchain
 	@echo "✅ Quick checks passed!"
 
 # Standard pull-request gate
@@ -58,16 +74,36 @@ test-live:
 	@echo "🌐 Live generation gate (real Gemini API calls)..."
 	pnpm run test:live
 
-check-full: check test coverage test-e2e test-perf test-vsix-smoke test-live package cve-scan
+check-full: check test coverage coverage-all test-e2e test-perf test-vsix-smoke test-live package cve-scan
 	@echo "✅ Full checks passed!"
 
 # A release-level invocation cannot claim success by skipping the live check.
 check-full: export C4X_REQUIRE_LIVE=1
 
 # Audit the complete lockfile, including build dependencies bundled into MCP.
+#
+# Accepted advisory exceptions (package.json "pnpm.auditConfig.ignoreGhsas").
+# Each GHSA listed there is ignored individually; any other HIGH/CRITICAL
+# advisory still fails this target. Never add an id without a dated entry here.
+#
+#   GHSA-vfj7-8cjw-p6xm  braces 3.0.3, high (stack-exhaustion DoS on deeply
+#     nested patterns). Accepted 2026-10-08 by the maintainer;
+#     REVIEW BY 2026-11-07, then renew with a new date or remove.
+#     The date is machine-enforced: scripts/audit-exceptions.json carries it,
+#     and cve-scan fails once it has passed (scripts/check-audit-exceptions.js).
+#     Reason: dev/publish tooling only, reached through
+#     ovsx > @vscode/vsce 3.x > secretlint 10 > globby > fast-glob > micromatch;
+#     never bundled or shipped (pnpm audit --prod is clean) and fed only this
+#     repository's own file globs. No patched braces exists (latest 3.0.3,
+#     checked 2026-10-09). Revisit when braces publishes a fix, or ovsx moves
+#     to @vscode/vsce 4 (which drops the secretlint > globby chain; ovsx 1.2.0
+#     still requires ^3.7.1), or secretlint 10.x drops globby. Then delete the
+#     id from package.json and this entry.
 cve-scan:
 	@echo "🔒 Auditing dependencies (HIGH/CRITICAL block release)..."
+	node scripts/check-audit-exceptions.js
 	pnpm audit --audit-level=high
+
 
 # Run tests
 test:
@@ -98,6 +134,16 @@ test-vsix-smoke:
 	@echo "📦 Running clean packaged-VSIX smoke test..."
 	pnpm run test:vsix-smoke
 
+# Installed-VSIX acceptance journey (#79): drives the packaged VSIX in an
+# isolated profile through Playwright's Electron driver -- edit, save, undo,
+# discard, conflict, restart, Markdown CodeLens, exports, keyboard. Writes a
+# receipt and screenshots to .tmp/installed-uat/<timestamp> (or
+# C4X_UAT_OUTPUT_DIR). Not in any composite gate. Linux needs a display:
+#   xvfb-run -a -s "-screen 0 1920x1080x24" make test-vsix-uat
+test-vsix-uat:
+	@echo "🧭 Running the installed-VSIX acceptance journey..."
+	pnpm run test:vsix-uat
+
 test-all:
 	@echo "🧪 Running all test phases (unit, MCP, integration, e2e, perf, vsix-smoke)..."
 	$(MAKE) test-unit
@@ -110,6 +156,12 @@ test-all:
 coverage:
 	@echo "📈 Generating test coverage report..."
 	pnpm run coverage
+
+# Merged whole-extension coverage: unit tier + extension-host tier, one c8
+# temp directory, reported over src/** only.
+coverage-all:
+	@echo "📈 Generating merged whole-extension coverage report..."
+	pnpm run coverage:all
 
 # Run linter
 lint:
@@ -139,7 +191,6 @@ package: build
 	pnpm run package
 	@echo "✅ VSIX file created! Check the root directory for c4x-*.vsix"
 
-# Validate the shipping artifact against the private/public metadata boundary.
 .PHONY:
 
 # Alias for package (create VSIX)
@@ -165,7 +216,7 @@ help:
 	@echo "Development:"
 	@echo "  make build      - Build extension (compiles TypeScript + PEG.js parser)"
 	@echo "  make typecheck  - Compile source and tests without executing them"
-	@echo "  make quick-check - Typecheck + lint + unit/MCP tests"
+	@echo "  make quick-check - Typecheck + lint + unit/MCP/CLI tests + C4X lint"
 	@echo "  make check      - Quick checks + documentation + build"
 	@echo "  make check-full - Standard checks + host/browser/performance/coverage + clean VSIX + live + audit"
 	@echo "  make verify-mcp - Verify the tracked MCP bundle is current"
@@ -174,11 +225,15 @@ help:
 	@echo "  make test-integration - Run integration tests"
 	@echo "  make test-e2e   - Run end-to-end tests"
 	@echo "  make test-mcp   - Run MCP handshake, tool, and resource tests"
+	@echo "  make test-cli   - Run the c4x-lint bundle functional tests"
+	@echo "  make lint-c4x   - Lint the repository's C4X diagrams (notation rules, headless)"
 	@echo "  make test-perf  - Run performance benchmarks"
 	@echo "  make test-live       - Live Gemini generation gate (needs GEMINI_API_KEY)"
 	@echo "  make test-vsix-smoke - Package, install, activate, and smoke-test a clean VSIX"
+	@echo "  make test-vsix-uat   - Drive the installed VSIX through the #79 acceptance journey"
 	@echo "  make test-all   - Run unit + MCP + integration + e2e + perf + vsix-smoke"
-	@echo "  make coverage   - Generate coverage report"
+	@echo "  make coverage   - Generate coverage report (unit tier)"
+	@echo "  make coverage-all - Merged unit + extension-host coverage over src/**"
 	@echo "  make lint       - Run ESLint"
 	@echo "  make verify-docs - Verify documentation (markdown lint + C4X syntax)"
 	@echo "  make cve-scan   - Audit dependencies; HIGH/CRITICAL findings fail"

@@ -1,20 +1,28 @@
 /**
  * Integration Test: Gemini Image Model for Visual C4 Diagrams
  * 
- * Tests the gemini-3-pro-image-preview model's capability to generate
- * C4 diagrams as PNG images from architectural descriptions.
+ * Tests the shipped Pro image model's capability to generate C4 diagrams as
+ * PNG images from architectural descriptions, and the default image model
+ * through GeminiService.generateVisualDiagram, the path the command runs.
+ * Model ids come from src/ai/models.ts: this file named a retired preview id
+ * literally, so an opted-in run could only fail.
  */
 
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as vscode from 'vscode';
+import type { GoogleGenAI } from '@google/genai';
+import { createGeminiClient, imagePartBytes, responseText } from '../../src/ai/geminiClient';
+import { GeminiService } from '../../src/ai/GeminiService';
+import { PRO_IMAGE_MODEL } from '../../src/ai/models';
 
 describe('Gemini Image Model Integration Test', function () {
     this.timeout(120000); // 2 minutes for image generation
 
-    const MODEL_NAME = 'gemini-3-pro-image-preview';
-    let genAI: GoogleGenerativeAI | null = null;
+    const MODEL_NAME = PRO_IMAGE_MODEL;
+    let genAI: GoogleGenAI | null = null;
+    let liveKey: string | undefined;
     let skipTests = false;
 
     before(async function () {
@@ -36,25 +44,24 @@ describe('Gemini Image Model Integration Test', function () {
         }
 
         try {
-            genAI = new GoogleGenerativeAI(apiKey);
+            genAI = await createGeminiClient(apiKey);
+            liveKey = apiKey;
         } catch (error) {
-            // @skip-reason: Integration test requires working GoogleGenerativeAI initialization
-            console.warn('⚠️ Skipping Gemini Image tests: Failed to initialize GoogleGenerativeAI', error);
+            // @skip-reason: Integration test requires working Gemini client initialization
+            console.warn('⚠️ Skipping Gemini Image tests: Failed to initialize the Gemini client', error);
             skipTests = true;
             this.skip();
         }
     });
 
-    it('Should verify gemini-3-pro-image-preview model is available', async function () {
+    it('Should verify the Pro image model is available', async function () {
         if (skipTests || !genAI) {
             this.skip();
         }
 
-        const model = genAI!.getGenerativeModel({ model: MODEL_NAME });
-        const result = await model.generateContent('Say "ready" if you can generate images.');
-        const response = await result.response;
+        const response = await genAI!.models.generateContent({ model: MODEL_NAME, contents: 'Say "ready" if you can generate images.' });
         const candidates = response.candidates;
-        const text = response.text();
+        const text = responseText(response);
 
         assert.ok(candidates && candidates.length > 0, 'Model should return candidates');
         console.log(`   ✅ Model ${MODEL_NAME} is available (Response received)`);
@@ -79,9 +86,7 @@ Generate a C4 System Context diagram as a professional-looking image.
 Create this as a clear, presentation-ready diagram image.
 `;
 
-        const model = genAI!.getGenerativeModel({ model: MODEL_NAME });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const response = await genAI!.models.generateContent({ model: MODEL_NAME, contents: prompt });
         const candidates = response.candidates;
 
         assert.ok(candidates && candidates.length > 0, 'Should have response candidates');
@@ -90,13 +95,15 @@ Create this as a clear, presentation-ready diagram image.
         let imageFound = false;
 
         for (const part of parts) {
-            if (part.inlineData && part.inlineData.mimeType?.startsWith('image/')) {
+            if (part.inlineData?.mimeType?.startsWith('image/')) {
+                // A part without image data is not an image; it must not pass as one.
+                const buffer = imagePartBytes(part);
+                assert.ok(buffer, `the ${part.inlineData.mimeType} part carries image data`);
                 imageFound = true;
                 console.log(`   ✅ Image generated (${part.inlineData.mimeType})`);
 
                 // Optionally save for inspection
                 const testOutputPath = path.resolve(__dirname, '../../test-output-c1.png');
-                const buffer = Buffer.from(part.inlineData.data, 'base64');
                 fs.writeFileSync(testOutputPath, buffer);
                 console.log(`   📁 Saved to: ${testOutputPath} (${(buffer.length / 1024).toFixed(1)} KB)`);
             }
@@ -129,9 +136,7 @@ Generate a C4 Container diagram as a professional-looking image.
 Create this as a high-quality diagram image.
 `;
 
-        const model = genAI!.getGenerativeModel({ model: MODEL_NAME });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const response = await genAI!.models.generateContent({ model: MODEL_NAME, contents: prompt });
         const candidates = response.candidates;
 
         assert.ok(candidates && candidates.length > 0, 'Should have response candidates');
@@ -140,14 +145,44 @@ Create this as a high-quality diagram image.
         let hasImage = false;
 
         for (const part of parts) {
-            if (part.inlineData && part.inlineData.mimeType?.startsWith('image/')) {
+            if (part.inlineData?.mimeType?.startsWith('image/')) {
+                const buffer = imagePartBytes(part);
+                assert.ok(buffer, `the ${part.inlineData.mimeType} part carries image data`);
                 hasImage = true;
-                const buffer = Buffer.from(part.inlineData.data, 'base64');
                 console.log(`   ✅ C2 Container diagram generated (${(buffer.length / 1024).toFixed(1)} KB)`);
             }
         }
 
         assert.ok(hasImage, 'Should generate container diagram image');
+    });
+
+    it('Should generate an image through GeminiService.generateVisualDiagram, as the command does', async function () {
+        if (skipTests || !liveKey) {
+            this.skip();
+        }
+
+        // The service as the command builds it: a stored key, the extension's own
+        // reference images, the image model from settings (DEFAULT_IMAGE_MODEL unless
+        // c4x.ai.imageModel says otherwise), resolution, heal and retry included.
+        const extension = vscode.extensions.getExtension('jpantsjoha.c4x');
+        assert.ok(extension, 'the extension under test is installed');
+        const context = {
+            secrets: { get: async () => liveKey, store: async () => undefined },
+            extensionUri: extension!.extensionUri,
+        } as unknown as vscode.ExtensionContext;
+        const service = new GeminiService(context);
+        await service.initialize();
+
+        const image = await service.generateVisualDiagram(
+            'A Customer uses the Online Banking System, which sends e-mail through an external E-mail System.',
+            'C1',
+            'TB',
+            { framework: 'C4', confidence: 1, reasoning: 'live integration test' },
+        );
+
+        assert.ok(image, 'generateVisualDiagram returned no image');
+        const bytes = Buffer.from(image!, 'base64');
+        assert.ok(bytes.length > 1000, `an image, not a fragment (${bytes.length} bytes)`);
     });
 
     // DELETED: 'Should auto-detect C4 level from context' -- empty stub, never implemented.

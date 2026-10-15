@@ -179,6 +179,9 @@ Subgraph
   = "subgraph" _ label:Identifier _ kv:KVArgs? _ "{" _ elements:SubgraphElementList _ "}" _ {
       const dirStmt = elements.find(function(el) { return el.type === 'style'; });
       const kvMap = kv || {};
+      if (kvMap.code !== undefined) {
+        error('$code is only valid on Container and Component elements, not on a subgraph');
+      }
       const knownKeys = ['tags', 'sprite'];
       const metadata = {};
       Object.keys(kvMap).forEach(function(key) {
@@ -238,6 +241,7 @@ DeploymentNode
         description: props.description,
         tags: props.tags,
         sprite: props.sprite,
+        code: props.code,
         metadata: props.metadata,
         children: childrenElements,
         internalRelationships: internalRels,
@@ -254,6 +258,7 @@ NodeProps
         description: args.description, 
         tags: args.tags, 
         sprite: args.sprite,
+        code: args.code,
         metadata: args.metadata
       };
     }
@@ -262,7 +267,7 @@ NodeProps
       const kvMap = kv || {};
       const tags = kvMap.tags ? kvMap.tags.split(',').map(t => t.trim()) : [];
       // Extract known keys
-      const knownKeys = ['tags', 'sprite'];
+      const knownKeys = ['tags', 'sprite', 'code'];
       const metadata = {};
       Object.keys(kvMap).forEach(key => {
         if (!knownKeys.includes(key)) metadata[key] = kvMap[key];
@@ -274,6 +279,7 @@ NodeProps
         technology: technology || undefined, 
         tags: tags, 
         sprite: kvMap.sprite,
+        code: kvMap.code,
         metadata: metadata
       };
     }
@@ -289,6 +295,7 @@ ElementCall
         description: args.description,
         tags: args.tags,
         sprite: args.sprite,
+        code: args.code,
         metadata: args.metadata,
         children: args.children, // If any? (DeploymentNode logic is separate)
         loc: location()
@@ -302,7 +309,8 @@ ElementCallArgs
       const kvMap = kv ? kv[3] : {};
       const tags = kvMap.tags ? kvMap.tags.split(',').map(t => t.trim()) : [];
       
-      const knownKeys = ['tags', 'sprite'];
+      // $code is kept raw here; C4ModelBuilder splits and validates it.
+      const knownKeys = ['tags', 'sprite', 'code'];
       const metadata = {};
       Object.keys(kvMap).forEach(key => {
         if (!knownKeys.includes(key)) metadata[key] = kvMap[key];
@@ -313,6 +321,7 @@ ElementCallArgs
           description: desc,
           tags: tags,
           sprite: kvMap.sprite,
+          code: kvMap.code,
           metadata: metadata
       };
   }
@@ -323,6 +332,9 @@ KVArgs
       result[head.key] = head.value;
       for (let i = 0; i < tail.length; i++) {
         const p = tail[i][3];
+        if (p.key === 'code' && result.code !== undefined) {
+          error('Duplicate $code attribute: list every glob in one value, e.g. $code="src/a/**, src/b.ts"');
+        }
         result[p.key] = p.value;
       }
       return result;
@@ -366,7 +378,7 @@ Element
       const tags = body.slice(2).map(function(l) { return l.trim(); }).filter(Boolean);
 
       const kvMap = kv || {};
-      const knownKeys = ['tags', 'sprite'];
+      const knownKeys = ['tags', 'sprite', 'code'];
       const metadata = {};
       Object.keys(kvMap).forEach(key => {
         if (!knownKeys.includes(key)) metadata[key] = kvMap[key];
@@ -379,6 +391,7 @@ Element
         elementType: type,
         tags: tags,
         sprite: kvMap.sprite,
+        code: kvMap.code,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         loc: location()
       };

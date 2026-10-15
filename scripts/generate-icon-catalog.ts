@@ -1,74 +1,68 @@
-
+/**
+ * Generates docs/ICONS.md from the sprite map the extension actually ships.
+ *
+ * The catalogue is derived from `SPRITES` at runtime, not from a regex over the
+ * vendor source files: the regex silently dropped every Azure key containing a
+ * parenthesis or a plus sign, and the committed catalogue had drifted to 1,100
+ * rows for 1,098 vendor sprites. A unit test regenerates this document in memory
+ * and fails when the committed file differs, so it cannot drift again.
+ *
+ *   pnpm exec ts-node --transpile-only scripts/generate-icon-catalog.ts
+ */
 import * as fs from 'fs';
 import * as path from 'path';
+import { SPRITES } from '../src/assets/icons';
 
-// Paths to icon files
-const ASSETS_DIR = path.join(__dirname, '../src/assets');
-const OUT_FILE = path.join(__dirname, '../docs/ICONS.md');
+export const OUT_FILE = path.join(__dirname, '../docs/ICONS.md');
 
-const VENDORS = [
-    { name: 'AWS', file: 'aws-icons.ts', prefix: 'aws-' },
-    { name: 'Google Cloud', file: 'gcp-icons.ts', prefix: 'gcp-' },
-    { name: 'Azure', file: 'azure-icons.ts', prefix: 'azure-' }
+const VENDORS: ReadonlyArray<{ name: string; prefix: string }> = [
+    { name: 'AWS', prefix: 'aws' },
+    { name: 'Google Cloud', prefix: 'gcp' },
+    { name: 'Azure', prefix: 'azure' },
 ];
 
-function extractKeys(filePath: string): string[] {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const regex = /'([a-zA-Z0-9-]+)':/g;
-    const keys: string[] = [];
-    let match;
-    while ((match = regex.exec(content)) !== null) {
-        keys.push(match[1]);
-    }
-    return keys.sort();
+function vendorOf(key: string): string | undefined {
+    return VENDORS.find(vendor => key.startsWith(`${vendor.prefix}-`))?.prefix;
 }
 
-const generateMarkdownTable = (baseKey: string, sprites: Record<string, any>) => {
-    let md = `**Namespace**: \`${baseKey}\`\n\n`;
-    md += `| Icon Name | Usage Key |\n`;
-    md += `| :--- | :--- |\n`;
+/** Renders the whole catalogue for the given sprite keys, deterministically. */
+export function renderCatalog(keys: ReadonlyArray<string>): string {
+    const sorted = [...keys].sort();
+    const lines: string[] = [
+        '# C4X Icon Catalog',
+        '',
+        '> **Usage**: Use `$sprite="c4xicons.<vendor>.<icon-name>"`',
+        '> **Example**: `$sprite="c4xicons.aws.s3-bucket"`',
+        '',
+        'Icon artwork is the property of AWS, Microsoft and Google and is not covered by the MIT licence — see [NOTICE.md](../NOTICE.md) for sources and terms.',
+        '',
+        'Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.',
+        '',
+        `This file is generated from \`src/assets/icons.ts\` by \`scripts/generate-icon-catalog.ts\` and checked by a unit test; ${sorted.length} sprites ship. Edit the sprite map, not this file.`,
+        '',
+    ];
 
-    const sortedKeys = Object.keys(sprites).sort();
-    const uniqueShortKeys = new Set<string>();
-
-    for (const key of sortedKeys) {
-        // key is something like 'aws-s3-bucket'
-        const suffix = key.split('-').slice(1).join('-');
-
-        // Show all available keys as valid options, unless exact duplicate
-        if (!uniqueShortKeys.has(key)) {
-            uniqueShortKeys.add(key);
-            md += `| ${suffix} | \`${baseKey}.${suffix}\` |\n`;
+    for (const vendor of VENDORS) {
+        const vendorKeys = sorted.filter(key => vendorOf(key) === vendor.prefix);
+        lines.push(`## ${vendor.name}`, '', `**Namespace**: \`c4xicons.${vendor.prefix}\` — ${vendorKeys.length} icons`, '', '| Icon Name | Usage Key |', '| :--- | :--- |');
+        for (const key of vendorKeys) {
+            const suffix = key.slice(vendor.prefix.length + 1);
+            lines.push(`| ${suffix} | \`c4xicons.${vendor.prefix}.${suffix}\` |`);
         }
+        lines.push('');
     }
-    return md;
-};
 
-function generateMarkdown() {
-    let md = '# C4X Icon Catalog\n\n';
-    md += '> **Usage**: Use `$sprite="c4xicons.<vendor>.<icon-name>"`\n';
-    md += '> **Example**: `$sprite="c4xicons.aws.s3-bucket"`\n\n';
-    md += 'Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.\n\n';
-
-    VENDORS.forEach(vendor => {
-        md += `## ${vendor.name}\n\n`;
-
-        try {
-            const keys = extractKeys(path.join(ASSETS_DIR, vendor.file));
-            const sprites: Record<string, any> = {};
-            keys.forEach(key => {
-                sprites[key] = true; // Value doesn't matter, just need the key
-            });
-            md += generateMarkdownTable(`c4xicons.${vendor.prefix.replace('-', '')}`, sprites);
-            md += '\n';
-            console.log(`Processed ${vendor.name}: ${keys.length} icons`);
-        } catch (e) {
-            console.error(`Error processing ${vendor.name}:`, e);
-        }
-    });
-
-    fs.writeFileSync(OUT_FILE, md);
-    console.log(`Generated ${OUT_FILE}`);
+    const generic = sorted.filter(key => vendorOf(key) === undefined);
+    lines.push('## Generic', '', `Built-in C4 shapes with no vendor namespace — ${generic.length} sprites. Use the bare name.`, '', '| Icon Name | Usage Key |', '| :--- | :--- |');
+    for (const key of generic) {
+        lines.push(`| ${key} | \`${key}\` |`);
+    }
+    lines.push('');
+    return lines.join('\n');
 }
 
-generateMarkdown();
+if (require.main === module) {
+    const markdown = renderCatalog(Object.keys(SPRITES));
+    fs.writeFileSync(OUT_FILE, markdown);
+    console.log(`Generated ${OUT_FILE}: ${Object.keys(SPRITES).length} sprites`);
+}

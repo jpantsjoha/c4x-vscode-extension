@@ -24,6 +24,8 @@ export interface RawElement {
     elementType: string;
     tags: string[];
     sprite?: string;
+    /** Raw `$code` attribute value, unsplit. C4ModelBuilder turns it into `codePaths`. */
+    code?: string;
     children?: RawElement[];
     technology?: string;
     description?: string;

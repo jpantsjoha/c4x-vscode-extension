@@ -15,6 +15,14 @@ describe('Automated Extension Loading Tests', () => {
 
   const EXTENSION_ID = 'jpantsjoha.c4x';
 
+  // The activation budget below is judged on the measurement test/suite/index.ts
+  // takes before any suite runs. Measuring inside a test always found the extension
+  // already active — the first suite mocha loads activates it — which is how the
+  // budget test passed for years without measuring anything (#201).
+  const activation = (globalThis as Record<string, unknown>).__c4xActivation as
+    | { missing: boolean; wasActive: boolean; ms: number }
+    | undefined;
+
   describe('Extension Presence', () => {
     it('should find the extension in VS Code', () => {
       const extension = vscode.extensions.getExtension(EXTENSION_ID);
@@ -36,20 +44,19 @@ describe('Automated Extension Loading Tests', () => {
   });
 
   describe('Extension Activation', () => {
-    it('should activate successfully within 5 seconds', async function() {
+    it('is active after the runner\'s cold activation, which the runner recorded', async function() {
       this.timeout(5000);
 
       const extension = vscode.extensions.getExtension(EXTENSION_ID);
       assert.ok(extension, 'Extension not found');
 
-      const startTime = Date.now();
+      // The runner activated the extension before any suite ran and recorded the
+      // cost; timing activate() here again would measure an already-active
+      // extension (~0 ms) and prove nothing. The 200 ms budget below judges the
+      // runner's number; this test judges the state.
       await extension.activate();
-      const activationTime = Date.now() - startTime;
-
       assert.strictEqual(extension.isActive, true, 'Extension failed to activate');
-      assert.ok(activationTime < 5000, `Activation took too long: ${activationTime}ms`);
-
-      console.log(`✅ Extension activated in ${activationTime}ms`);
+      assert.ok(activation && !activation.missing, 'the runner recorded no activation for this extension');
     });
 
     it('should return extendMarkdownIt API for markdown integration', async function() {
@@ -75,7 +82,9 @@ describe('Automated Extension Loading Tests', () => {
       'c4x.exportPng',
       'c4x.exportSvg',
       'c4x.copySvg',
-      'c4x.changeTheme'
+      'c4x.changeTheme',
+      'c4x.exportConformance',
+      'c4x.conformFromDependencyCruiser'
     ];
 
     it('should register all expected commands', async function() {
@@ -165,30 +174,24 @@ describe('Automated Extension Loading Tests', () => {
   });
 
   describe('Performance', () => {
-    it('should activate within performance target (< 200ms)', async function() {
-      this.timeout(5000);
-
-      const extension = vscode.extensions.getExtension(EXTENSION_ID);
-      assert.ok(extension, 'Extension not found');
-
-      // Deactivate if already active (for accurate measurement)
-      if (extension.isActive) {
-        console.log('Extension already active, using cached activation time');
-        assert.ok(true);
-        return;
-      }
-
-      const startTime = Date.now();
-      await extension.activate();
-      const activationTime = Date.now() - startTime;
-
-      // Target: < 200ms (actual is typically ~0.15ms)
+    it('should activate within performance target (< 200ms)', function() {
+      // Until #201 this test returned green whenever the extension was already active —
+      // which it always was, because the activation test above runs first. It now
+      // judges the measurement test/suite/index.ts takes before any suite runs, and
+      // fails when there was none.
+      assert.ok(activation, 'test/suite/index.ts took no activation measurement in this run');
+      assert.strictEqual(activation.missing, false, 'the runner did not find jpantsjoha.c4x, so nothing was measured');
+      assert.strictEqual(
+        activation.wasActive,
+        false,
+        'the host had activated the extension before the runner was entered, so no activation was measured and the 200ms budget is unproven'
+      );
       assert.ok(
-        activationTime < 200,
-        `Activation time ${activationTime}ms exceeds 200ms target`
+        activation.ms < 200,
+        `Activation time ${activation.ms}ms exceeds 200ms target`
       );
 
-      console.log(`✅ Activation time: ${activationTime}ms (target: <200ms)`);
+      console.log(`✅ Activation time: ${activation.ms}ms (target: <200ms)`);
     });
   });
 });

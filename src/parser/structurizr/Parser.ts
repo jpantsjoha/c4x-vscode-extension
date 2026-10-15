@@ -244,6 +244,13 @@ export class StructurizrParser {
                         url = this.advance().value;
                     }
                 }
+                // properties { "key" "value" ... } — must be consumed as a block,
+                // or its strings are misread as description and technology.
+                else if (token.type === TokenType.IDENTIFIER && token.value === 'properties' &&
+                    this.peekAhead(1)?.type === TokenType.BRACE_OPEN) {
+                    this.advance(); // 'properties'
+                    properties = { ...(properties ?? {}), ...this.parsePropertiesBlock() };
+                }
                 // Relationships inside elements
                 else if (token.type === TokenType.IDENTIFIER &&
                     this.peekAhead(1)?.type === TokenType.ARROW) {
@@ -271,6 +278,29 @@ export class StructurizrParser {
             children,
             location: { line: typeToken.line, column: typeToken.column },
         };
+    }
+
+    /**
+     * Parse a `properties { name value ... }` block. Names and values are
+     * strings or bare words, one pair per line; newlines are not tokens here,
+     * so pairs are read two tokens at a time until the closing brace.
+     */
+    private parsePropertiesBlock(): Record<string, string> {
+        const properties: Record<string, string> = {};
+        this.expect(TokenType.BRACE_OPEN);
+        while (!this.check(TokenType.BRACE_CLOSE) && !this.isAtEnd()) {
+            const key = this.advance();
+            if (this.check(TokenType.BRACE_CLOSE) || this.isAtEnd()) {
+                throw new StructurizrParserError(
+                    `Property "${key.value}" has no value`,
+                    { line: key.line, column: key.column }
+                );
+            }
+            const value = this.advance();
+            properties[key.value] = value.value;
+        }
+        this.expect(TokenType.BRACE_CLOSE);
+        return properties;
     }
 
     /**

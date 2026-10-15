@@ -1,0 +1,11 @@
+%%{ c4: component }%%
+graph TB
+    %% Overlapping globs (review of #241): pricing.js is under orders/**, but
+    %% the more specific pricing glob owns it. The code goes api -> pricing ->
+    %% store, and the view declares neither edge, so both must fail.
+    Component(api, "API", $code="src/api/**")
+    Component(orders, "Orders", $code="src/orders/**")
+    Component(pricing, "Pricing", $code="src/orders/pricing.js")
+    Component(store, "Store", $code="src/store/**")
+    api --> orders
+    orders --> store

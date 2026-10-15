@@ -5,6 +5,7 @@
  * statement — set, replace, or clear — with bounded validation.
  */
 import * as assert from 'assert';
+import MarkdownIt from 'markdown-it';
 import {
     planRelationshipLabelUpdate,
     planRelationshipTechnologyUpdate,
@@ -358,43 +359,55 @@ describe('planRelationshipAdd', () => {
         };
     }
 
-    it('inserts a relationship statement after the source element', () => {
+    it('appends a relationship statement after the last top-level statement', () => {
         const source = 'graph TB\nPerson(a, "A")\nSystem(b, "B")\n';
         const edits = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', null, 'uses');
         assert.strictEqual(edits.length, 1);
-        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\na -->|Uses| b\nSystem(b, "B")\n');
+        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -->|Uses| b\n');
     });
 
     it('includes technology when provided', () => {
         const source = 'graph TB\nPerson(a, "A")\nSystem(b, "B")\n';
         const edits = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', 'HTTP', 'uses');
-        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\na -->|Uses| "HTTP" b\nSystem(b, "B")\n');
+        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -->|Uses| "HTTP" b\n');
     });
 
     it('omits technology when null or empty', () => {
         const source = 'graph TB\nPerson(a, "A")\nSystem(b, "B")\n';
         const editsNull = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', null, 'uses');
         const editsEmpty = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', '', 'uses');
-        assert.strictEqual(applyEdits(source, editsNull), 'graph TB\nPerson(a, "A")\na -->|Uses| b\nSystem(b, "B")\n');
-        assert.strictEqual(applyEdits(source, editsEmpty), 'graph TB\nPerson(a, "A")\na -->|Uses| b\nSystem(b, "B")\n');
+        assert.strictEqual(applyEdits(source, editsNull), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -->|Uses| b\n');
+        assert.strictEqual(applyEdits(source, editsEmpty), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -->|Uses| b\n');
     });
 
     it('maps relationship types to the correct arrow', () => {
         const source = 'graph TB\nPerson(a, "A")\nSystem(b, "B")\n';
-        assert.strictEqual(applyEdits(source, planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'event', null, 'async')), 'graph TB\nPerson(a, "A")\na -.->|event| b\nSystem(b, "B")\n');
-        assert.strictEqual(applyEdits(source, planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'rpc', null, 'sync')), 'graph TB\nPerson(a, "A")\na ==>|rpc| b\nSystem(b, "B")\n');
+        assert.strictEqual(applyEdits(source, planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'event', null, 'async')), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -.->|event| b\n');
+        assert.strictEqual(applyEdits(source, planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'rpc', null, 'sync')), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na ==>|rpc| b\n');
     });
 
-    it('preserves indentation of the source element line', () => {
+    it('writes a top-level statement, unindented, even for a source inside a boundary', () => {
         const source = 'graph TB\nsubgraph boundary\n  Person(a, "A")\n  System(b, "B")\nend\n';
         const edits = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', null, 'uses');
-        assert.strictEqual(applyEdits(source, edits), 'graph TB\nsubgraph boundary\n  Person(a, "A")\n  a -->|Uses| b\n  System(b, "B")\nend\n');
+        assert.strictEqual(applyEdits(source, edits), 'graph TB\nsubgraph boundary\n  Person(a, "A")\n  System(b, "B")\nend\na -->|Uses| b\n');
+    });
+
+    it('takes the insertion point from the last token, not from trailing whitespace', () => {
+        const source = 'graph TB\nPerson(a, "A")\nSystem(b, "B")\n\n\n';
+        const edits = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', null, 'uses');
+        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -->|Uses| b\n\n\n');
+    });
+
+    it('keeps CRLF line endings', () => {
+        const source = 'graph TB\r\nPerson(a, "A")\r\nSystem(b, "B")\r\n';
+        const edits = planRelationshipAdd(source, elementRef(source, 'a'), 'b', 'Uses', null, 'uses');
+        assert.strictEqual(applyEdits(source, edits), 'graph TB\r\nPerson(a, "A")\r\nSystem(b, "B")\r\na -->|Uses| b\r\n');
     });
 
     it('trims label whitespace', () => {
         const source = 'graph TB\nPerson(a, "A")\nSystem(b, "B")\n';
         const edits = planRelationshipAdd(source, elementRef(source, 'a'), 'b', '  Uses  ', null, 'uses');
-        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\na -->|Uses| b\nSystem(b, "B")\n');
+        assert.strictEqual(applyEdits(source, edits), 'graph TB\nPerson(a, "A")\nSystem(b, "B")\na -->|Uses| b\n');
     });
 
     it('rejects empty, over-length, and malformed labels', () => {
@@ -493,6 +506,102 @@ describe('relationship add through executeWritebackTransaction', () => {
             executeWritebackTransaction(document, addMessage('a', 'n', 'Uses', 'uses'), undefined, boundary),
             /Deployment Nodes cannot be connected directly to logical-view elements/,
         );
+    });
+
+    // #259: a new relationship takes a rel-N id by parser processing order, so it
+    // must be written as the LAST top-level statement or every later id shifts
+    // and the structural-equivalence check rolls the save back.
+    describe('append-at-tail (#259)', () => {
+        const HEADER = '%%{ c4: system-context }%%\ngraph TB\n';
+
+        it('adds a relationship when another is declared below the source element', async () => {
+            const original = HEADER + 'Person(a, "A")\nSystem(b, "B")\nSystem(c, "C")\nb -->|Calls| c\n';
+            const { document, boundary, state } = createInMemoryDocument(original);
+            const applied = await executeWritebackTransaction(document, addMessage('a', 'b', 'Uses', 'uses'), undefined, boundary);
+            assert.strictEqual(applied, true);
+            assert.strictEqual(state(), original + 'a -->|Uses| b\n');
+        });
+
+        it('adds a relationship from a source inside a nested boundary', async () => {
+            const original = HEADER
+                + 'System_Boundary(outer, "Outer") {\n'
+                + '  System_Boundary(inner, "Inner") {\n'
+                + '    System(a, "A")\n'
+                + '    System(b, "B")\n'
+                + '    a -->|Calls| b\n'
+                + '  }\n'
+                + '  System(c, "C")\n'
+                + '  c -->|Reads| a\n'
+                + '}\n'
+                + 'System(d, "D")\n'
+                + 'd -->|Notifies| c\n';
+            const { document, boundary, state } = createInMemoryDocument(original);
+            const applied = await executeWritebackTransaction(document, addMessage('a', 'd', 'Uses', 'uses'), undefined, boundary);
+            assert.strictEqual(applied, true);
+            assert.strictEqual(state(), original + 'a -->|Uses| d\n');
+        });
+
+        it('adds a relationship whose endpoint pair duplicates an existing one', async () => {
+            const original = HEADER + 'Person(a, "A")\nSystem(b, "B")\na -->|Uses| b\nSystem(c, "C")\nb -->|Calls| c\n';
+            const { document, boundary, state } = createInMemoryDocument(original);
+            const applied = await executeWritebackTransaction(document, addMessage('a', 'b', 'Uses', 'uses'), undefined, boundary);
+            assert.strictEqual(applied, true);
+            assert.strictEqual(state(), original + 'a -->|Uses| b\n');
+        });
+
+        it('leaves no blank line after a bracket element that ends the block', async () => {
+            const original = HEADER + 'a[A<br/>Person]\nb[B<br/>Software System]\n';
+            const { document, boundary, state } = createInMemoryDocument(original);
+            const applied = await executeWritebackTransaction(document, addMessage('a', 'b', 'Uses', 'uses'), undefined, boundary);
+            assert.strictEqual(applied, true);
+            assert.strictEqual(state(), original + 'a -->|Uses| b\n');
+            assert.ok(!/\n\n/.test(state()), 'no blank line introduced');
+        });
+
+        it('keeps an indented Markdown fence in a list item one block holding the new relationship', async () => {
+            // A fence in a list step is indented; a line at column 0 would end
+            // the list item and, with it, the fence.
+            const before = '1. Draw the diagram:\n\n';
+            const body = '   graph TB\n   Person(a, "A")\n   System(b, "B")\n   b -->|Calls| a\n';
+            const after = '   ```\n\n2. Done.\n';
+            const { document, boundary, state } = createInMemoryDocument(body);
+            const applied = await executeWritebackTransaction(document, addMessage('a', 'b', 'Uses', 'uses'), undefined, boundary);
+            assert.strictEqual(applied, true);
+            assert.strictEqual(state(), body.replace(/\n$/, '') + '\n   a -->|Uses| b\n');
+
+            const tokens = new MarkdownIt().parse(before + '   ```c4x\n' + state() + after, {});
+            const fences = tokens.filter(token => token.type === 'fence');
+            assert.strictEqual(fences.length, 1, 'exactly one fence block');
+            assert.ok(fences[0].content.includes('a -->|Uses| b'), 'the new relationship is inside the fence');
+            assert.ok(fences[0].content.trim().startsWith('graph TB'), 'the fence still holds the whole diagram');
+        });
+
+        it('keeps a source without a trailing newline well formed', async () => {
+            const original = HEADER + 'Person(a, "A")\nSystem(b, "B")';
+            const { document, boundary, state } = createInMemoryDocument(original);
+            await executeWritebackTransaction(document, addMessage('a', 'b', 'Uses', 'uses'), undefined, boundary);
+            assert.strictEqual(state(), original + '\na -->|Uses| b');
+        });
+
+        it('appends several staged adds in order after the last statement', async () => {
+            const original = HEADER + 'Person(a, "A")\nSystem(b, "B")\nSystem(c, "C")\nb -->|Calls| c\n';
+            const { document, boundary, state } = createInMemoryDocument(original);
+            const message = {
+                type: 'visualLayout.applySemanticEdits',
+                protocolVersion: 1,
+                revision: '1',
+                edits: [{
+                    id: 'a',
+                    addRelationship: [
+                        { targetId: 'b', label: 'Uses', relType: 'uses' },
+                        { targetId: 'c', label: 'Reads', relType: 'uses' },
+                    ],
+                }],
+            };
+            const applied = await executeWritebackTransaction(document, message as never, undefined, boundary);
+            assert.strictEqual(applied, true);
+            assert.strictEqual(state(), original + 'a -->|Uses| b\na -->|Reads| c\n');
+        });
     });
 
     it('rejects a relationship add with a missing endpoint', async () => {

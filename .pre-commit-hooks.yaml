@@ -1,0 +1,9 @@
+# pre-commit framework hook (https://pre-commit.com). Runs the self-contained
+# c4x-lint bundle with Node.js; see docs/C4X-LINT-CLI.md.
+- id: c4x-lint
+  name: C4X notation lint
+  description: Check .c4x files and c4x fences in Markdown against the C4X notation rules.
+  entry: cli/c4x-lint.cjs
+  language: script
+  files: '\.(c4x|md|markdown)$'
+  types: [file]

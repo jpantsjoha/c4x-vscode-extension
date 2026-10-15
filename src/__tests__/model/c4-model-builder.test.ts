@@ -592,6 +592,25 @@ describe('C4ModelBuilder', () => {
             const model = builder.build(result, 'Test');
             assert.strictEqual(model.views[0].boundaries, undefined);
         });
+
+        it('keeps the keyword a boundary was declared with, and adds none for an untyped subgraph (#214)', () => {
+            const typed: RawBoundary = { type: 'boundary', id: 'bank', label: 'Bank', boundaryType: 'System_Boundary', elements: [], relationships: [] };
+            const untyped: RawBoundary = { type: 'boundary', label: 'Group', elements: [], relationships: [] };
+            const model = builder.build(makeParseResult({ boundaries: [typed, untyped] }), 'Test');
+
+            assert.strictEqual(model.views[0].boundaries![0].boundaryType, 'System_Boundary');
+            assert.ok(!('boundaryType' in model.views[0].boundaries![1]));
+        });
+
+        it('keeps the alias a typed boundary was declared with, and invents none for an untyped subgraph (#215)', () => {
+            const typed: RawBoundary = { type: 'boundary', id: 'bank', label: 'Bank', boundaryType: 'System_Boundary', elements: [], relationships: [] };
+            const untyped: RawBoundary = { type: 'boundary', id: 'Group', label: 'Group', elements: [], relationships: [] };
+            const model = builder.build(makeParseResult({ boundaries: [typed, untyped] }), 'Test');
+
+            assert.strictEqual(model.views[0].boundaries![0].alias, 'bank');
+            assert.strictEqual(model.views[0].boundaries![0].id, 'bank-boundary-0', 'the id stays label-derived');
+            assert.ok(!('alias' in model.views[0].boundaries![1]));
+        });
     });
 
     // =========================================================================

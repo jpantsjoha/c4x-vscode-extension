@@ -13,9 +13,11 @@ Module._resolveFilename = function (request: string, ...args: unknown[]) {
 
 import { cleanResponse, executeWithRetry } from '../../ai/SyntaxValidator';
 import { C4XParser } from '../../parser/C4XParser';
+import { fakeGenAI, textResponse } from '../__mocks__/genai';
 
 // ---------------------------------------------------------------------------
-// Helpers to build mock GenerativeModel instances
+// Helpers to build mock `@google/genai` clients. executeWithRetry calls
+// `client.models.generateContent({ model, contents })`.
 // ---------------------------------------------------------------------------
 
 interface MockResponseConfig {
@@ -25,27 +27,17 @@ interface MockResponseConfig {
 
 function createMockModel(config: MockResponseConfig) {
     let callIndex = 0;
-    return {
-        generateContent: async (_prompt: string) => {
-            const idx = callIndex++;
-            const text = config.responses[idx] ?? config.responses[config.responses.length - 1];
-            return {
-                response: {
-                    text: () => text,
-                },
-            };
-        },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    return fakeGenAI(async () => {
+        const idx = callIndex++;
+        const text = config.responses[idx] ?? config.responses[config.responses.length - 1];
+        return textResponse(text);
+    });
 }
 
 function createFailingModel(error: Error) {
-    return {
-        generateContent: async () => {
-            throw error;
-        },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    return fakeGenAI(async () => {
+        throw error;
+    });
 }
 
 function createMockProgress(): { progress: { report: (v: { message?: string }) => void }; messages: string[] } {
@@ -324,15 +316,14 @@ describe('executeWithRetry', () => {
         let callIndex = 0;
 
         // Custom mock that captures prompts
-        const model = {
-            generateContent: async (prompt: string) => {
-                prompts.push(prompt);
-                const idx = callIndex++;
-                const text = idx === 0 ? invalidC4X : `\`\`\`c4x\n${validC4X}\n\`\`\``;
-                return { response: { text: () => text } };
-            },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        const model = fakeGenAI(async ({ contents }) => {
+            // Production sends the prompt as a plain string.
+            assert.strictEqual(typeof contents, 'string');
+            prompts.push(contents as string);
+            const idx = callIndex++;
+            const text = idx === 0 ? invalidC4X : `\`\`\`c4x\n${validC4X}\n\`\`\``;
+            return textResponse(text);
+        });
 
         const parser = new C4XParser();
         const { progress } = createMockProgress();

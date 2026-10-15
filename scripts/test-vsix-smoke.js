@@ -18,6 +18,9 @@ const vsce = require('@vscode/vsce');
 const projectRoot = path.resolve(__dirname, '..');
 const packageJson = require(path.join(projectRoot, 'package.json'));
 const expectedVsix = path.join(projectRoot, `${packageJson.name}-${packageJson.version}.vsix`);
+const { VSIX_BUDGET_BYTES, vsixFindings } = require('./vsix-budget');
+const { bundleRuntimeFindings, installedBundlePath } = require('./bundle-runtime');
+const { NOTICES_FILE, bundledPackageDirectories, listedPackages } = require('./third-party-notices');
 const vscodeVersion = process.env.C4X_VSCODE_VERSION || packageJson.c4xToolchain.vscode;
 
 // The VSIX allowlist gate (#162). `vsce package` writes two entries at the
@@ -37,10 +40,12 @@ const EXPECTED_PACKAGED_FILES = [
   'dist/extension.js',
   'language-configuration.json',
   'LICENSE',
+  'NOTICE.md',
   'package.json',
   'README.md',
   'snippets/c4x.json',
   'syntaxes/c4x.tmLanguage.json',
+  'THIRD_PARTY_NOTICES.txt',
 ];
 
 // Cross-platform on ubuntu/macos/windows-2025 and adds no dependency: rather
@@ -87,6 +92,59 @@ async function assertVsixAllowlist() {
   );
 }
 
+// The notices file is generated from the build's metafile; this checks
+// it against different evidence, the shipped bundle itself. esbuild writes a
+// `// node_modules/<path>` comment above every module in the unminified bundle
+// or a preserved c4x-module comment in whitespace-compacted output, so every
+// package the VSIX redistributes must appear as a `Package:` entry, at the
+// version installed, with licence text.
+//
+// Both files are read from the extension as VS Code installed it from the VSIX
+// (installedDir), never from the working tree, so the check proves what ships.
+// Only the package versions come from the working tree's node_modules, because
+// the VSIX carries no node_modules; they are the versions the bundle was built from.
+function installedExtensionDir(extensionsDir) {
+  const prefix = `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`.toLowerCase();
+  const matches = fs.readdirSync(extensionsDir).filter((entry) => entry.toLowerCase().startsWith(prefix));
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one installed ${prefix}* directory under ${extensionsDir}, found ${matches.length}.`);
+  }
+  return path.join(extensionsDir, matches[0]);
+}
+
+function assertThirdPartyNotices(installedDir) {
+  const noticesPath = path.join(installedDir, NOTICES_FILE);
+  if (!fs.existsSync(noticesPath)) {
+    throw new Error(`${NOTICES_FILE} is missing from the installed extension; the VSIX ships without third-party licence notices.`);
+  }
+  const notices = fs.readFileSync(noticesPath, 'utf8');
+  const listed = new Set(listedPackages(notices));
+  const bundle = fs.readFileSync(path.join(installedDir, 'dist', 'extension.js'), 'utf8');
+  const bundled = bundledPackageDirectories(bundle).map((directory) => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, directory, 'package.json'), 'utf8'));
+    return `${manifest.name}@${manifest.version}`;
+  });
+  if (bundled.length === 0) {
+    throw new Error('Found no dependency module provenance in dist/extension.js; the notices cannot be checked against it.');
+  }
+  const unlisted = [...new Set(bundled)].filter((id) => !listed.has(id)).sort();
+  if (unlisted.length > 0) {
+    throw new Error(`${NOTICES_FILE} does not cover every bundled package; missing: ${unlisted.join(', ')}.`);
+  }
+  // One-way: a listed package the bundle no longer contains over-attributes
+  // (tree-shaken inputs still appear in the esbuild metafile), which is
+  // harmless, so it warns instead of failing.
+  const bundledSet = new Set(bundled);
+  const extra = [...listed].filter((id) => !bundledSet.has(id)).sort();
+  if (extra.length > 0) {
+    console.warn(`Warning: ${NOTICES_FILE} lists packages not found in dist/extension.js (over-attribution, not a failure): ${extra.join(', ')}.`);
+  }
+  console.log(
+    `Third-party notices check passed: ${NOTICES_FILE} covers all ${new Set(bundled).size} packages in dist/extension.js ` +
+      `(${listed.size} listed).`,
+  );
+}
+
 async function runCli(args) {
   const result = await runVSCodeCommand(args, {
     version: vscodeVersion,
@@ -110,6 +168,13 @@ async function main() {
   if (!fs.existsSync(expectedVsix)) {
     throw new Error(`Expected packaged extension was not found: ${expectedVsix}`);
   }
+
+  // The package ceiling is 2.5 MB; the figure was declared and never asserted (#203).
+  const overBudget = vsixFindings(expectedVsix);
+  if (overBudget.length > 0) {
+    throw new Error(`VSIX budget check failed (${overBudget.join(', ')}); the package ceiling is ${VSIX_BUDGET_BYTES} bytes.`);
+  }
+  console.log(`VSIX size ${fs.statSync(expectedVsix).size} bytes, within the ${VSIX_BUDGET_BYTES}-byte package ceiling.`);
 
   console.log('Checking packaged VSIX contents against the allowlist...');
   await assertVsixAllowlist();
@@ -152,6 +217,19 @@ async function main() {
     if (!installed.split(/\r?\n/).includes(expectedIdentifier)) {
       throw new Error(`Installed extension list did not contain ${expectedIdentifier}`);
     }
+
+    // What activation below cannot show: a module the bundle requires but the
+    // VSIX does not ship fails only on first AI use, and so does an SDK that is
+    // evaluated at activation instead of on first use (#181). Checked on the
+    // bundle VS Code just installed from the VSIX, not on dist/ in this tree,
+    // which may have been rebuilt since the VSIX was packaged.
+    const installedBundle = installedBundlePath(extensionsDir, packageJson);
+    const bundleFindings = bundleRuntimeFindings(installedBundle);
+    if (bundleFindings.length > 0) {
+      throw new Error(`Bundle runtime check failed on the installed bundle ${installedBundle}: ${bundleFindings.join(', ')}.`);
+    }
+    console.log(`Bundle runtime check passed on the installed bundle (${path.relative(extensionsDir, installedBundle)}): every required module ships or is provided, and the Gemini SDK is not loaded at activation.`);
+    assertThirdPartyNotices(installedExtensionDir(extensionsDir));
 
     await runTests({
       vscodeExecutablePath,
