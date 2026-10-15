@@ -12,6 +12,9 @@
     document.addEventListener('click', (event) => {
         const target = event.target;
 
+        // Toolbar links navigate to the editor; they must not toggle the lightbox.
+        if (!(target instanceof Element) || target.closest('a, button, .c4x-edit-toolbar')) return;
+
         // Check if we clicked inside a zoomable C4X diagram
         const diagram = target.closest('.c4x-diagram.zoomable');
         if (!diagram) return;

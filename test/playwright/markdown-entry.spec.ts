@@ -51,9 +51,9 @@ test('B18-1. c4xPlugin source emits the "Edit C4 diagram" HTML template for c4x 
 
     // The plugin source must include the edit toolbar template.
     expect(pluginSource).toContain('c4x-edit-toolbar');
-    expect(pluginSource).toContain('c4x.editMarkdownBlock');
+    expect(pluginSource).toContain('jpantsjoha.c4x/edit');
     expect(pluginSource).toContain('Edit C4 diagram');
-    expect(pluginSource).toContain('command:c4x.editMarkdownBlock');
+    expect(pluginSource).toContain('currentDocument');
 
     // Verify the CSS provides the toolbar affordance.
     const cssSource = fs.readFileSync(

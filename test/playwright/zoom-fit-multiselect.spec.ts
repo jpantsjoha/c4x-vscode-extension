@@ -254,6 +254,80 @@ test('[#88] Save after group arrow-move sends both nodes in edits payload', asyn
     }
 });
 
+// ── Multi-select — pointer group drag (#252) ─────────────────────────────────
+
+async function dragNodeBy(page: Page, id: string, dx: number, dy: number): Promise<void> {
+    const box = await page.locator(`g.node[data-id="${id}"]`).boundingBox();
+    if (!box) {
+        throw new Error(`Could not get the ${id} node bounding box.`);
+    }
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y + dy, { steps: 5 });
+    await page.mouse.up();
+}
+
+async function position(page: Page, id: string): Promise<{ x: number; y: number }> {
+    return { x: await nodeCoordinate(page, id, 'x'), y: await nodeCoordinate(page, id, 'y') };
+}
+
+for (const dragged of ['customer', 'payments'] as const) {
+    const order = dragged === 'customer' ? 'first' : 'last';
+    test(`[#252] dragging the ${order}-selected node moves the whole selection`, async ({ page }) => {
+        await loadHarness(page);
+        await enterEditMode(page);
+
+        const customer = page.locator('g.node[data-id="customer"]');
+        const payments = page.locator('g.node[data-id="payments"]');
+        await customer.click();
+        await payments.click({ modifiers: ['Shift'] });
+
+        const customerBefore = await position(page, 'customer');
+        const paymentsBefore = await position(page, 'payments');
+
+        await dragNodeBy(page, dragged, 60, 40);
+
+        const customerAfter = await position(page, 'customer');
+        const paymentsAfter = await position(page, 'payments');
+        const customerDelta = { x: customerAfter.x - customerBefore.x, y: customerAfter.y - customerBefore.y };
+        const paymentsDelta = { x: paymentsAfter.x - paymentsBefore.x, y: paymentsAfter.y - paymentsBefore.y };
+        expect(customerDelta.x).toBeGreaterThan(0);
+        expect(customerDelta.y).toBeGreaterThan(0);
+        expect(paymentsDelta).toEqual(customerDelta);
+
+        // The selection survives the drag.
+        await expect(customer).toHaveAttribute('aria-selected', 'true');
+        await expect(payments).toHaveAttribute('aria-selected', 'true');
+
+        await page.locator('#save-staged-changes').click();
+        const msgs = await getMessages(page);
+        const saveMsg = msgs.find(m => m.type === 'visualLayout.applySemanticEdits');
+        const byId = new Map((saveMsg?.edits ?? []).map(e => [e.id, e]));
+        expect(byId.get('customer')).toMatchObject(customerAfter);
+        expect(byId.get('payments')).toMatchObject(paymentsAfter);
+    });
+}
+
+test('[#252] a plain click on a member of a multi-selection selects only that node and stages nothing', async ({ page }) => {
+    await loadHarness(page);
+    await enterEditMode(page);
+
+    const customer = page.locator('g.node[data-id="customer"]');
+    const payments = page.locator('g.node[data-id="payments"]');
+    await customer.click();
+    await payments.click({ modifiers: ['Shift'] });
+    await expect(payments).toHaveAttribute('aria-selected', 'true');
+
+    await customer.click();
+
+    await expect(customer).toHaveAttribute('aria-selected', 'true');
+    await expect(payments).toHaveAttribute('aria-selected', 'false');
+    await expect(page.locator('#inspector-id')).toHaveValue('customer');
+    await expect(page.locator('#staged-changes-list')).toHaveText('No changes staged');
+});
+
 // ── Esc clears multi-select ────────────────────────────────────────────────────
 
 test('[#88] Escape clears the entire multi-select set', async ({ page }) => {

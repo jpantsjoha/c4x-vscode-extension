@@ -399,10 +399,11 @@ function keysReadBySource(): Set<string> {
     for (const file of sourceFiles(path.join(ROOT, 'src'))) {
         const text = fs.readFileSync(file, 'utf8');
 
-        // getConfiguration('c4x'), getConfiguration?.('c4x.ai'), getConfiguration()
+        // getConfiguration('c4x'), getConfiguration?.('c4x.ai'), getConfiguration(),
+        // and a resource-scoped read, getConfiguration('c4x', document.uri)
         const sections = new Set<string>();
         let bareSection = false;
-        for (const match of text.matchAll(/getConfiguration\s*(?:\?\.)?\s*\(\s*(?:'([^']*)'|"([^"]*)")?\s*\)/g)) {
+        for (const match of text.matchAll(/getConfiguration\s*(?:\?\.)?\s*\(\s*(?:'([^']*)'|"([^"]*)")?\s*(?:,[^)]*)?\)/g)) {
             const section = match[1] ?? match[2];
             if (section === undefined) {
                 bareSection = true;

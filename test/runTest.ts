@@ -6,7 +6,11 @@ import { runTests, downloadAndUnzipVSCode } from '@vscode/test-electron';
 import packageJson from '../package.json';
 
 async function main() {
-  let tempDir: string | null = null;
+  // VS Code's control socket lives under the user-data directory, and a unix
+  // socket path is capped at 104 bytes. A deep checkout path (a worktree, a
+  // sandbox) blows that cap and the host never starts, so user data and
+  // extensions always go to a short temp directory.
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-test-'));
   const receiptDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-host-receipt-'));
   const receiptPath = path.join(receiptDir, 'result.json');
   const receiptToken = randomUUID();
@@ -30,7 +34,6 @@ async function main() {
 
     if (extensionDevelopmentPath.includes(' ')) {
       console.log('⚠️  Path contains spaces, creating temp environment...');
-      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-test-'));
 
       // Create symlink for extension development path
       const extLink = path.join(tempDir, 'extension');
@@ -63,15 +66,14 @@ async function main() {
       '--no-sandbox',         // Reduce process overhead
     ];
 
-    // If we're using temp dir, also use temp paths for extensions and user data
-    if (tempDir) {
-      const tempExtensionsDir = path.join(tempDir, 'extensions');
-      const tempUserDataDir = path.join(tempDir, 'user-data');
-      fs.mkdirSync(tempExtensionsDir, { recursive: true });
-      fs.mkdirSync(tempUserDataDir, { recursive: true });
-      launchArgs.push(`--extensions-dir=${tempExtensionsDir}`);
-      launchArgs.push(`--user-data-dir=${tempUserDataDir}`);
-    }
+    // Keep extensions, user data and therefore the control socket on a short
+    // path, whatever the checkout path looks like.
+    const tempExtensionsDir = path.join(tempDir, 'extensions');
+    const tempUserDataDir = path.join(tempDir, 'user-data');
+    fs.mkdirSync(tempExtensionsDir, { recursive: true });
+    fs.mkdirSync(tempUserDataDir, { recursive: true });
+    launchArgs.push(`--extensions-dir=${tempExtensionsDir}`);
+    launchArgs.push(`--user-data-dir=${tempUserDataDir}`);
 
     // Capture CLI arguments (specific test files)
     const testArgs = process.argv.slice(2);
@@ -104,14 +106,33 @@ async function main() {
     console.log(`✅ Extension-host receipt: ${receipt.passes} passed, ${receipt.pending} pending.`);
   } catch (err) {
     console.error('❌ Failed to run tests:', err);
-    process.exit(1);
+    // Not process.exit: that terminates synchronously and the finally below
+    // never runs, so a FAILING run — the one you repeat — leaked every time.
+    process.exitCode = 1;
   } finally {
-    fs.rmSync(receiptDir, { recursive: true, force: true });
-    // Cleanup temp directory (but not immediately - VS Code may still be running)
-    // Note: The temp directory will be cleaned up by the OS eventually
-    if (tempDir) {
-      console.log(`   Temp directory (will be cleaned by OS): ${tempDir}`);
+    // The host has exited by the time this runs. The receipt is spent either way;
+    // the profile goes only when the run passed — on failure its logs are the
+    // diagnostic, so it stays and its path is printed. Cleanup must never turn a
+    // green run red, so a removal failure is reported rather than thrown.
+    removeQuietly(receiptDir);
+    if (process.exitCode) {
+      console.log(`   Profile kept for diagnosis (delete when done): ${tempDir}`);
+    } else {
+      removeQuietly(tempDir);
     }
+  }
+}
+
+/**
+ * Removes a directory this process created. Retries because on Windows a helper
+ * of the just-closed extension host can still hold a file for a moment, and a
+ * cleanup failure must not fail an otherwise green run.
+ */
+function removeQuietly(dir: string) {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  } catch (err) {
+    console.warn(`⚠️  Could not remove ${dir}: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

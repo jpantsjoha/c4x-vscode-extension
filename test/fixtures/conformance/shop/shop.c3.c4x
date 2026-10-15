@@ -1,0 +1,19 @@
+%%{ c4: component }%%
+graph TB
+    %% #219 end-to-end fixture. Globs are relative to this folder, the root
+    %% dependency-cruiser runs from. "A --> B" means code in A may import B.
+    Person(customer, "Customer", "Buys things")
+
+    Container_Boundary(shop, "Shop API") {
+        Component(api, "HTTP API", "Node.js", "Routes requests", $code="src/api/**")
+        Component(orders, "Orders", "Node.js", "Order rules and pricing", $code="src/orders/**")
+        Component(store, "Store", "Node.js", "Persistence", $code="src/store/**")
+        Component(notify, "Notifications", "Node.js", "Sends email", $code="src/notifications/**, src/mailer.js")
+        Component(audit, "Audit log", "Node.js", "Planned; no code yet")
+    }
+
+    customer -->|calls| api
+    api -->|places orders through| orders
+    orders -->|persists with| store
+    orders -->|notifies via| notify
+    api -->|records to| audit

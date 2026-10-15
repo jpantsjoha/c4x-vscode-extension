@@ -3,11 +3,15 @@
 > **Usage**: Use `$sprite="c4xicons.<vendor>.<icon-name>"`
 > **Example**: `$sprite="c4xicons.aws.s3-bucket"`
 
+Icon artwork is the property of AWS, Microsoft and Google and is not covered by the MIT licence — see [NOTICE.md](../NOTICE.md) for sources and terms.
+
 Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
+
+This file is generated from `src/assets/icons.ts` by `scripts/generate-icon-catalog.ts` and checked by a unit test; 1109 sprites ship. Edit the sprite map, not this file.
 
 ## AWS
 
-**Namespace**: `c4xicons.aws`
+**Namespace**: `c4xicons.aws` — 430 icons
 
 | Icon Name | Usage Key |
 | :--- | :--- |
@@ -129,6 +133,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | ec2-instance | `c4xicons.aws.ec2-instance` |
 | ec2-instance-with-cloudwatch | `c4xicons.aws.ec2-instance-with-cloudwatch` |
 | ec2-instances | `c4xicons.aws.ec2-instances` |
+| ec2-microservice-extractor-for-.net | `c4xicons.aws.ec2-microservice-extractor-for-.net` |
 | ec2-rescue | `c4xicons.aws.ec2-rescue` |
 | ec2-spot-instance | `c4xicons.aws.ec2-spot-instance` |
 | elastic-beanstalk-application | `c4xicons.aws.elastic-beanstalk-application` |
@@ -323,6 +328,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | redshift-dense-compute-node | `c4xicons.aws.redshift-dense-compute-node` |
 | redshift-dense-storage-node | `c4xicons.aws.redshift-dense-storage-node` |
 | redshift-ml | `c4xicons.aws.redshift-ml` |
+| redshift-query-editor-v2.0 | `c4xicons.aws.redshift-query-editor-v2.0` |
 | redshift-ra3 | `c4xicons.aws.redshift-ra3` |
 | redshift-streaming-ingestion | `c4xicons.aws.redshift-streaming-ingestion` |
 | rekognition-image | `c4xicons.aws.rekognition-image` |
@@ -442,51 +448,36 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 
 ## Google Cloud
 
-**Namespace**: `c4xicons.gcp`
+**Namespace**: `c4xicons.gcp` — 44 icons
 
 | Icon Name | Usage Key |
 | :--- | :--- |
 | agents | `c4xicons.gcp.agents` |
 | aihypercomputer | `c4xicons.gcp.aihypercomputer` |
-| aihypercomputer | `c4xicons.gcp.aihypercomputer` |
 | aimachinelearning | `c4xicons.gcp.aimachinelearning` |
 | alloydb | `c4xicons.gcp.alloydb` |
-| alloydb | `c4xicons.gcp.alloydb` |
-| anthos | `c4xicons.gcp.anthos` |
 | anthos | `c4xicons.gcp.anthos` |
 | apigee | `c4xicons.gcp.apigee` |
-| apigee | `c4xicons.gcp.apigee` |
-| bigquery | `c4xicons.gcp.bigquery` |
 | bigquery | `c4xicons.gcp.bigquery` |
 | businessintelligence | `c4xicons.gcp.businessintelligence` |
 | cloud-storage | `c4xicons.gcp.cloud-storage` |
-| cloud-storage | `c4xicons.gcp.cloud-storage` |
-| cloudrun | `c4xicons.gcp.cloudrun` |
 | cloudrun | `c4xicons.gcp.cloudrun` |
 | cloudspanner | `c4xicons.gcp.cloudspanner` |
-| cloudspanner | `c4xicons.gcp.cloudspanner` |
-| cloudsql | `c4xicons.gcp.cloudsql` |
 | cloudsql | `c4xicons.gcp.cloudsql` |
 | collaboration | `c4xicons.gcp.collaboration` |
 | compute | `c4xicons.gcp.compute` |
-| computeengine | `c4xicons.gcp.computeengine` |
 | computeengine | `c4xicons.gcp.computeengine` |
 | containers | `c4xicons.gcp.containers` |
 | dataanalytics | `c4xicons.gcp.dataanalytics` |
 | databases | `c4xicons.gcp.databases` |
 | developer-tools | `c4xicons.gcp.developer-tools` |
 | distributedcloud | `c4xicons.gcp.distributedcloud` |
-| distributedcloud | `c4xicons.gcp.distributedcloud` |
-| gke | `c4xicons.gcp.gke` |
 | gke | `c4xicons.gcp.gke` |
 | hybridmulticloud | `c4xicons.gcp.hybridmulticloud` |
 | hyperdisk | `c4xicons.gcp.hyperdisk` |
-| hyperdisk | `c4xicons.gcp.hyperdisk` |
 | integrationservices | `c4xicons.gcp.integrationservices` |
 | looker | `c4xicons.gcp.looker` |
-| looker | `c4xicons.gcp.looker` |
 | managementtools | `c4xicons.gcp.managementtools` |
-| mandiant | `c4xicons.gcp.mandiant` |
 | mandiant | `c4xicons.gcp.mandiant` |
 | mapsgeospatial | `c4xicons.gcp.mapsgeospatial` |
 | marketplace | `c4xicons.gcp.marketplace` |
@@ -497,22 +488,18 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | observability | `c4xicons.gcp.observability` |
 | operations | `c4xicons.gcp.operations` |
 | secops | `c4xicons.gcp.secops` |
-| secops | `c4xicons.gcp.secops` |
-| securitycommandcenter | `c4xicons.gcp.securitycommandcenter` |
 | securitycommandcenter | `c4xicons.gcp.securitycommandcenter` |
 | securityidentity | `c4xicons.gcp.securityidentity` |
 | serverlesscomputing | `c4xicons.gcp.serverlesscomputing` |
 | storage | `c4xicons.gcp.storage` |
 | threatintelligence | `c4xicons.gcp.threatintelligence` |
-| threatintelligence | `c4xicons.gcp.threatintelligence` |
-| vertexai | `c4xicons.gcp.vertexai` |
 | vertexai | `c4xicons.gcp.vertexai` |
 | web3 | `c4xicons.gcp.web3` |
 | webmobile | `c4xicons.gcp.webmobile` |
 
 ## Azure
 
-**Namespace**: `c4xicons.azure`
+**Namespace**: `c4xicons.azure` — 624 icons
 
 | Icon Name | Usage Key |
 | :--- | :--- |
@@ -604,6 +591,8 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | change-analysis | `c4xicons.azure.change-analysis` |
 | chaos-studio | `c4xicons.azure.chaos-studio` |
 | client-apps | `c4xicons.azure.client-apps` |
+| cloud-services-(classic) | `c4xicons.azure.cloud-services-(classic)` |
+| cloud-services-(extended-support) | `c4xicons.azure.cloud-services-(extended-support)` |
 | cloud-shell | `c4xicons.azure.cloud-shell` |
 | cloudtest | `c4xicons.azure.cloudtest` |
 | code | `c4xicons.azure.code` |
@@ -631,6 +620,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | container-apps-environments | `c4xicons.azure.container-apps-environments` |
 | container-instances | `c4xicons.azure.container-instances` |
 | container-registries | `c4xicons.azure.container-registries` |
+| container-services-(deprecated) | `c4xicons.azure.container-services-(deprecated)` |
 | container-storage | `c4xicons.azure.container-storage` |
 | content-moderators | `c4xicons.azure.content-moderators` |
 | content-safety | `c4xicons.azure.content-safety` |
@@ -720,6 +710,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | disk-encryption-sets | `c4xicons.azure.disk-encryption-sets` |
 | disk-pool | `c4xicons.azure.disk-pool` |
 | disks | `c4xicons.azure.disks` |
+| disks-(classic) | `c4xicons.azure.disks-(classic)` |
 | disks-snapshots | `c4xicons.azure.disks-snapshots` |
 | dns-multistack | `c4xicons.azure.dns-multistack` |
 | dns-private-resolver | `c4xicons.azure.dns-private-resolver` |
@@ -866,6 +857,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | logic-apps-custom-connector | `c4xicons.azure.logic-apps-custom-connector` |
 | logic-apps-template | `c4xicons.azure.logic-apps-template` |
 | machine-learning | `c4xicons.azure.machine-learning` |
+| machine-learning-studio-(classic)-web-services | `c4xicons.azure.machine-learning-studio-(classic)-web-services` |
 | machine-learning-studio-web-service-plans | `c4xicons.azure.machine-learning-studio-web-service-plans` |
 | machine-learning-studio-workspaces | `c4xicons.azure.machine-learning-studio-workspaces` |
 | machinesazurearc | `c4xicons.azure.machinesazurearc` |
@@ -929,12 +921,14 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | open-supply-chain-platform | `c4xicons.azure.open-supply-chain-platform` |
 | openai | `c4xicons.azure.openai` |
 | operation-center | `c4xicons.azure.operation-center` |
+| operation-log-(classic) | `c4xicons.azure.operation-log-(classic)` |
 | operator-5g-core | `c4xicons.azure.operator-5g-core` |
 | operator-insights | `c4xicons.azure.operator-insights` |
 | operator-nexus | `c4xicons.azure.operator-nexus` |
 | operator-service-manager | `c4xicons.azure.operator-service-manager` |
 | oracle-database | `c4xicons.azure.oracle-database` |
 | orbital | `c4xicons.azure.orbital` |
+| os-images-(classic) | `c4xicons.azure.os-images-(classic)` |
 | osconfig | `c4xicons.azure.osconfig` |
 | outbound-connection | `c4xicons.azure.outbound-connection` |
 | partner-namespace | `c4xicons.azure.partner-namespace` |
@@ -962,6 +956,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | promethus | `c4xicons.azure.promethus` |
 | proximity-placement-groups | `c4xicons.azure.proximity-placement-groups` |
 | public-ip-addresses | `c4xicons.azure.public-ip-addresses` |
+| public-ip-addresses-(classic) | `c4xicons.azure.public-ip-addresses-(classic)` |
 | public-ip-prefixes | `c4xicons.azure.public-ip-prefixes` |
 | pubsub | `c4xicons.azure.pubsub` |
 | qna-makers | `c4xicons.azure.qna-makers` |
@@ -975,6 +970,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | remote-rendering | `c4xicons.azure.remote-rendering` |
 | reservations | `c4xicons.azure.reservations` |
 | reserved-capacity | `c4xicons.azure.reserved-capacity` |
+| reserved-ip-addresses-(classic) | `c4xicons.azure.reserved-ip-addresses-(classic)` |
 | resource-explorer | `c4xicons.azure.resource-explorer` |
 | resource-graph-explorer | `c4xicons.azure.resource-graph-explorer` |
 | resource-group-list | `c4xicons.azure.resource-group-list` |
@@ -1042,6 +1038,7 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | stage-maps | `c4xicons.azure.stage-maps` |
 | static-apps | `c4xicons.azure.static-apps` |
 | storage-accounts | `c4xicons.azure.storage-accounts` |
+| storage-accounts-(classic) | `c4xicons.azure.storage-accounts-(classic)` |
 | storage-actions | `c4xicons.azure.storage-actions` |
 | storage-azure-files | `c4xicons.azure.storage-azure-files` |
 | storage-container | `c4xicons.azure.storage-container` |
@@ -1097,8 +1094,10 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | virtual-enclaves | `c4xicons.azure.virtual-enclaves` |
 | virtual-instance-for-sap | `c4xicons.azure.virtual-instance-for-sap` |
 | virtual-machine | `c4xicons.azure.virtual-machine` |
+| virtual-machines-(classic) | `c4xicons.azure.virtual-machines-(classic)` |
 | virtual-network-gateways | `c4xicons.azure.virtual-network-gateways` |
 | virtual-networks | `c4xicons.azure.virtual-networks` |
+| virtual-networks-(classic) | `c4xicons.azure.virtual-networks-(classic)` |
 | virtual-router | `c4xicons.azure.virtual-router` |
 | virtual-visits-builder | `c4xicons.azure.virtual-visits-builder` |
 | virtual-wan-hub | `c4xicons.azure.virtual-wan-hub` |
@@ -1106,12 +1105,15 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | vm-app-definitions | `c4xicons.azure.vm-app-definitions` |
 | vm-app-versions | `c4xicons.azure.vm-app-versions` |
 | vm-image-version | `c4xicons.azure.vm-image-version` |
+| vm-images-(classic) | `c4xicons.azure.vm-images-(classic)` |
 | vm-scale-sets | `c4xicons.azure.vm-scale-sets` |
 | vmware-solution | `c4xicons.azure.vmware-solution` |
 | vnet-appliance | `c4xicons.azure.vnet-appliance` |
 | vpnclientwindows | `c4xicons.azure.vpnclientwindows` |
 | wac | `c4xicons.azure.wac` |
 | wac-installer | `c4xicons.azure.wac-installer` |
+| web-app-+-database | `c4xicons.azure.web-app-+-database` |
+| web-application-firewall-policies(waf) | `c4xicons.azure.web-application-firewall-policies(waf)` |
 | web-jobs | `c4xicons.azure.web-jobs` |
 | web-slots | `c4xicons.azure.web-slots` |
 | web-test | `c4xicons.azure.web-test` |
@@ -1125,3 +1127,21 @@ Use `Ctrl+Space` (or `Cmd+Space`) in the editor to search these interactively.
 | workload-orchestration | `c4xicons.azure.workload-orchestration` |
 | workspace-gateway | `c4xicons.azure.workspace-gateway` |
 | workspaces | `c4xicons.azure.workspaces` |
+
+## Generic
+
+Built-in C4 shapes with no vendor namespace — 11 sprites. Use the bare name.
+
+| Icon Name | Usage Key |
+| :--- | :--- |
+| cloud | `cloud` |
+| component | `component` |
+| container | `container` |
+| database | `database` |
+| db | `db` |
+| docker | `docker` |
+| node | `node` |
+| person | `person` |
+| react | `react` |
+| server | `server` |
+| user | `user` |

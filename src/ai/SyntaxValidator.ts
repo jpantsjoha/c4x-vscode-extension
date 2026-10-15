@@ -3,9 +3,9 @@
 // Independently testable — the core functions are pure (no VS Code state),
 // except for progress reporting passed through as an optional callback.
 
-import { GenerativeModel } from '@google/generative-ai';
 import * as vscode from 'vscode';
 import { C4XParser } from '../parser/C4XParser';
+import { type GenerateContentClient, responseText } from './geminiClient';
 import { buildFixPrompt } from './PromptBuilder';
 
 /**
@@ -43,9 +43,12 @@ export function cleanResponse(text: string): string {
  * Execute a single generation attempt against a model, then validate the
  * output with the C4X parser.  On syntax errors, re-prompt with a fix
  * prompt up to `maxRetries` times (self-correction loop).
+ *
+ * `modelName` is both the id called and the id reported: the client has no
+ * per-model handle that could disagree with it.
  */
 export async function executeWithRetry(
-    modelInstance: GenerativeModel,
+    client: GenerateContentClient,
     modelName: string,
     currentPrompt: string,
     attempt: number,
@@ -61,9 +64,10 @@ export async function executeWithRetry(
     progress?.report({ message: statusMsg });
     console.log(`[SyntaxValidator] ${statusMsg}`);
 
-    const result = await modelInstance.generateContent(currentPrompt);
-    const response = await result.response;
-    const rawText = response.text();
+    const response = await client.models.generateContent({ model: modelName, contents: currentPrompt });
+    // Throws for a blocked answer, like the call itself failing; '' for an
+    // empty one, which the validation below turns into a self-correction pass.
+    const rawText = responseText(response);
 
     // Log raw response for debugging
     console.log(`[SyntaxValidator] Raw Response (${rawText.length} chars)`);
@@ -88,7 +92,7 @@ export async function executeWithRetry(
             console.log(`Re-prompting ${modelName} for fix...`);
 
             const fixPrompt = buildFixPrompt(rawText, validationError.message);
-            return executeWithRetry(modelInstance, modelName, fixPrompt, attempt + 1, maxRetries, parser, progress);
+            return executeWithRetry(client, modelName, fixPrompt, attempt + 1, maxRetries, parser, progress);
         }
 
         // If retries exhausted, throw validation error to trigger fallback mechanism

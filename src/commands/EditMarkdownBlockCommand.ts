@@ -6,7 +6,7 @@
  *   - The C4XCodeLensProvider (above each fence in a Markdown editor)
  *   - The editor/context menu for Markdown files when the cursor is inside a
  *     c4x fence
- *   - The Markdown preview "Edit C4 diagram" link (via c4x://edit URI)
+ *   - The Markdown preview "Edit C4 diagram" link (via the host URI handler)
  *
  * Arguments: [uri: vscode.Uri, blockOrdinal: number]
  */
@@ -21,16 +21,19 @@ export function registerEditMarkdownBlockCommand(context: vscode.ExtensionContex
             let targetUri: vscode.Uri | undefined = uriOrArg;
             let blockOrdinal: number = blockOrdinalArg ?? 0;
 
-            // If called from the command palette without arguments, use the
-            // active editor and find the first c4x fence (or the fence the
-            // cursor is positioned inside).
+            // The editor context menu supplies a URI but no ordinal. Resolve
+            // its cursor exactly as for the command palette; defaulting that
+            // URI-only call to zero silently opened the first diagram.
+            const editor = vscode.window.activeTextEditor;
             if (!targetUri) {
-                const editor = vscode.window.activeTextEditor;
                 if (!editor || editor.document.languageId !== 'markdown') {
                     void vscode.window.showWarningMessage('C4X: Place the cursor inside a c4x fenced block in a Markdown file.');
                     return;
                 }
                 targetUri = editor.document.uri;
+            }
+            if (blockOrdinalArg === undefined && editor?.document.languageId === 'markdown' &&
+                editor.document.uri.toString() === targetUri.toString()) {
                 // Find the fence the cursor sits in.
                 const cursorOffset = editor.document.offsetAt(editor.selection.active);
                 const blocks = findC4xFencedBlocks(editor.document);

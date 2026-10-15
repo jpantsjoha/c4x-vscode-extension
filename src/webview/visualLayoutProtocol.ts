@@ -37,6 +37,25 @@ export interface VisualLayoutBoundarySnapshot {
     manualY?: boolean;
     manualWidth?: number;
     manualHeight?: number;
+    /**
+     * `false` when the source cannot hold this boundary's position or size, so
+     * edit mode must not offer to move or resize it (#271). Only a `subgraph`
+     * boundary has metadata slots; `System_Boundary(...)`, `Container_Boundary(...)`
+     * and `Enterprise_Boundary(...)` do not. Absent or `true` means editable,
+     * so a host that does not send it stays compatible.
+     */
+    movable?: boolean;
+}
+
+/**
+ * Whether the source can hold a position or size for this boundary. True for a
+ * `subgraph`; false for the typed C4 forms, whose grammar has no metadata slot
+ * (#271). The host's snapshot (`movable`) and the writeback planner's refusal
+ * both follow from the same fact, so edit mode never offers a change that Save
+ * would have to refuse.
+ */
+export function isBoundaryGeometryEditable(boundary: { readonly boundaryType?: string }): boolean {
+    return boundary.boundaryType === undefined;
 }
 
 export interface VisualLayoutEdgeSnapshot {
@@ -388,6 +407,12 @@ const MAX_EDITOR_FIELD_LENGTH = 120;
 const MAX_EDITOR_TAGS = 20;
 const MAX_EDITOR_TAG_LENGTH = 40;
 const EDITOR_ID_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/**
+ * The identifiers the C4X grammar accepts (`c4x.pegjs`, `Identifier`): hyphens
+ * are allowed after the first character. Used for the endpoints of a new
+ * relationship; `newId` keeps the stricter EDITOR_ID_RE.
+ */
+const GRAMMAR_ID_RE = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const EDITOR_TAG_RE = /^[A-Za-z0-9_-]+$/;
 
 const SEMANTIC_ELEMENT_TYPES: readonly SemanticElementType[] = [
@@ -469,9 +494,9 @@ export function isAddRelationshipMessage(value: unknown): value is AddRelationsh
         isBoundedString(value.revision, MAX_REVISION_LENGTH) &&
         hasOnlyKeys(value, ['type', 'protocolVersion', 'revision', 'sourceId', 'targetId', 'label', 'technology', 'relType']) &&
         isBoundedString(value.sourceId, MAX_ID_LENGTH) &&
-        EDITOR_ID_RE.test(value.sourceId as string) &&
+        GRAMMAR_ID_RE.test(value.sourceId as string) &&
         isBoundedString(value.targetId, MAX_ID_LENGTH) &&
-        EDITOR_ID_RE.test(value.targetId as string) &&
+        GRAMMAR_ID_RE.test(value.targetId as string) &&
         isBoundedString(value.label, MAX_TEXT_LENGTH) &&
         !String(value.label).includes('|') &&
         (value.technology === undefined || isBoundedString(value.technology, MAX_TEXT_LENGTH)) &&
@@ -569,7 +594,7 @@ function isStagedEdit(value: unknown): value is StagedEdit {
             if (!hasOnlyKeys(add, ['targetId', 'label', 'relType', 'technology'])) {
                 return false;
             }
-            if (!isBoundedString(add.targetId, MAX_ID_LENGTH) || !EDITOR_ID_RE.test(add.targetId)) {
+            if (!isBoundedString(add.targetId, MAX_ID_LENGTH) || !GRAMMAR_ID_RE.test(add.targetId)) {
                 return false;
             }
             if (!isBoundedString(add.label, MAX_TEXT_LENGTH) || String(add.label).includes('|')) {

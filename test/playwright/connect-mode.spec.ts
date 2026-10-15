@@ -348,3 +348,104 @@ test('54. [#160] stats dock above the Properties Inspector in edit mode', async 
     const inspectorBox = await page.locator('#element-inspector').boundingBox();
     expect(statsBox!.y).toBeLessThan(inspectorBox!.y);
 });
+
+test('55. [#260] a staged relationship survives a webview reload and still saves', async ({ page }) => {
+    await loadHarness(page);
+    await enterEditMode(page);
+    await startConnect(page);
+    await page.locator('g.node[data-id="web"]').click();
+    await page.locator('g.node[data-id="api"]').click();
+    await page.locator('#connect-label').fill('Calls');
+    await page.locator('#connect-technology').fill('HTTPS');
+    await page.locator('#connect-reltype').selectOption('async');
+    await page.locator('#connect-confirm').click();
+    await expect(page.locator('#staged-changes-list')).toContainText('Added relationship web → api: Calls');
+
+    // The draft the panel serializer would hand back after a reload.
+    const saved = await page.evaluate(() => {
+        const host = window as Window & { __visualLayoutSavedState?: unknown };
+        return JSON.parse(JSON.stringify(host.__visualLayoutSavedState ?? null)) as unknown;
+    });
+    expect(saved).toMatchObject({
+        schemaVersion: 1,
+        stagedEdits: [{
+            id: 'web',
+            addRelationship: [{ targetId: 'api', label: 'Calls', relType: 'async', technology: 'HTTPS' }],
+        }],
+    });
+
+    await page.addInitScript((state: unknown) => {
+        (window as Window & { __visualLayoutSavedState?: unknown }).__visualLayoutSavedState = state;
+    }, saved);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#content svg') !== null, undefined, { timeout: 5_000 });
+
+    await expect(page.locator('#layout-status')).toHaveAttribute('data-state', 'dirty');
+    await expect(page.locator('#staged-changes-list')).toContainText('Added relationship web → api: Calls');
+    await expect(page.locator('#save-staged-changes')).toBeEnabled();
+
+    await page.locator('#save-staged-changes').click();
+    const save = (await messages(page)).find(m => m.type === 'visualLayout.applySemanticEdits');
+    expect(save?.edits).toEqual([{
+        id: 'web',
+        addRelationship: [{ targetId: 'api', label: 'Calls', relType: 'async', technology: 'HTTPS' }],
+    }]);
+});
+
+test('56. [#260] a duplicate relationship is refused in the dialog and not staged twice', async ({ page }) => {
+    await loadHarness(page);
+    await enterEditMode(page);
+    for (const attempt of [1, 2]) {
+        await startConnect(page);
+        await page.locator('g.node[data-id="web"]').click();
+        await page.locator('g.node[data-id="api"]').click();
+        await page.locator('#connect-label').fill('Calls');
+        if (attempt === 1) {
+            await expect(page.locator('#connect-confirm')).toBeEnabled();
+            await page.locator('#connect-confirm').click();
+        }
+    }
+    await expect(page.locator('#connect-dialog')).toBeVisible();
+    await expect(page.locator('#connect-validation')).toContainText('already staged');
+    await expect(page.locator('#connect-confirm')).toBeDisabled();
+    await page.locator('#connect-label').fill('Reads');
+    await expect(page.locator('#connect-confirm')).toBeEnabled();
+    await page.keyboard.press('Escape');
+
+    await page.locator('#save-staged-changes').click();
+    const save = (await messages(page)).find(m => m.type === 'visualLayout.applySemanticEdits');
+    expect(save?.edits).toEqual([{ id: 'web', addRelationship: [{ targetId: 'api', label: 'Calls', relType: 'uses' }] }]);
+});
+
+test('57. [#260] one corrupted staged relationship drops only that add, with a notice', async ({ page }) => {
+    await page.addInitScript(() => {
+        (window as Window & { __visualLayoutSavedState?: unknown }).__visualLayoutSavedState = {
+            schemaVersion: 1,
+            editMode: true,
+            selectedNodeId: null,
+            stagedEdits: [
+                {
+                    id: 'web',
+                    x: 120,
+                    y: 80,
+                    addRelationship: [
+                        { targetId: 'api', label: 'Calls', relType: 'uses' },
+                        { targetId: 'api', label: 'Calls', relType: 'uses' },
+                    ],
+                },
+                { id: 'api', label: 'API gateway' },
+            ],
+        };
+    });
+    await loadHarness(page);
+    await expect(page.locator('#layout-status')).toContainText('1 staged relationship was invalid and could not be restored');
+    await expect(page.locator('#staged-changes-list')).toContainText('Added relationship web → api: Calls');
+    await expect(page.locator('#staged-changes-list')).toContainText('Label updated');
+    await expect(page.locator('#save-staged-changes')).toBeEnabled();
+
+    await page.locator('#save-staged-changes').click();
+    const save = (await messages(page)).find(m => m.type === 'visualLayout.applySemanticEdits');
+    const web = save?.edits?.find(e => e.id === 'web');
+    expect(web?.addRelationship).toEqual([{ targetId: 'api', label: 'Calls', relType: 'uses' }]);
+    expect(save?.edits?.some(e => e.id === 'api')).toBe(true);
+});

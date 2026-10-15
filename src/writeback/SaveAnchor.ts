@@ -57,7 +57,15 @@ interface Fence {
  * fence as interchangeable. The ordinal is among editable C4X fences only.
  */
 export function findC4xFencedBlocks(document: vscode.TextDocument): SaveAnchorBlock[] {
-    const source = document.getText();
+    return findC4xFencedBlocksInSource(document.getText());
+}
+
+/**
+ * The same scan over plain Markdown text, for callers with no `TextDocument`:
+ * the headless lint CLI and the MCP server. It shares every rule, including the
+ * fail-closed stop at an unterminated fence and the #209 list-item limitation.
+ */
+export function findC4xFencedBlocksInSource(source: string): SaveAnchorBlock[] {
     const lines = splitLines(source);
     const blocks: SaveAnchorBlock[] = [];
 
@@ -69,7 +77,15 @@ export function findC4xFencedBlocks(document: vscode.TextDocument): SaveAnchorBl
 
         const closingIndex = findClosingFence(lines, index + 1, openingFence);
         if (closingIndex === -1) {
-            continue;
+            // CommonMark: an unterminated fence runs to the end of the document, so
+            // everything after it is that fence's body. A c4x fence found in there was
+            // never marked as a diagram by the author, and offering it as a writeback
+            // target would write into code. Stop, rather than resume inside the fence.
+            // Fail-closed by decision (2026-09-09): a false-positive unterminated fence
+            // disables writeback for the rest of the document (the visual editor and the
+            // command report it; the CodeLens simply does not appear) instead of
+            // corrupting it silently.
+            break;
         }
 
         if (openingFence.language === 'c4x') {
@@ -207,6 +223,13 @@ function parseOpeningFence(line: string): Fence | undefined {
     }
 
     const info = line.slice(index + length).trim();
+    // CommonMark: a backtick fence's info string may not contain a backtick. Without
+    // this, a prose line quoting a fence (````  ```c4x ````) read as an open fence, and
+    // once the scanner stopped at unterminated fences that line silenced every
+    // diagram after it.
+    if (marker === '`' && info.includes('`')) {
+        return undefined;
+    }
     const language = firstInfoWord(info).toLowerCase();
     return { marker, length, language };
 }

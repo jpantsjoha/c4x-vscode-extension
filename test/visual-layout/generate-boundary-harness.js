@@ -36,6 +36,16 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role=
             fill="none" stroke="#707070" stroke-width="2" stroke-dasharray="8,4" opacity="0.7" />
       <text x="70" y="250" fill="#111111" font-size="14" font-family="sans-serif" font-weight="bold">Pinned</text>
     </g>
+    <g class="boundary" data-id="shop-boundary" style="pointer-events: all;">
+      <rect x="590" y="40" width="180" height="110" rx="8" ry="8"
+            fill="none" stroke="#707070" stroke-width="2" stroke-dasharray="8,4" opacity="0.7" />
+      <text x="600" y="60" fill="#111111" font-size="14" font-family="sans-serif" font-weight="bold">Shop</text>
+    </g>
+    <g class="boundary" data-id="platform-boundary" style="pointer-events: all;">
+      <rect x="590" y="170" width="180" height="90" rx="8" ry="8"
+            fill="none" stroke="#707070" stroke-width="2" stroke-dasharray="8,4" opacity="0.7" />
+      <text x="600" y="190" fill="#111111" font-size="14" font-family="sans-serif" font-weight="bold">Platform</text>
+    </g>
     <g class="nodes">
       <g class="node" data-id="customer">
         <rect x="100" y="50" width="200" height="100" fill="#08427b" stroke="#052f58" stroke-width="2" />
@@ -91,6 +101,31 @@ const payload = {
         childBoundaryIds: [],
         manualX: true,
         manualY: true,
+      },
+      // Declared System_Boundary(...) in source: the grammar has no slot for a
+      // position or size, so the host sends movable: false (#271).
+      {
+        id: 'shop-boundary',
+        label: 'Shop',
+        x: 590,
+        y: 40,
+        width: 180,
+        height: 110,
+        childNodeIds: [],
+        childBoundaryIds: [],
+        movable: false,
+      },
+      // Declared Enterprise_Boundary(...) in source: same rule (#271).
+      {
+        id: 'platform-boundary',
+        label: 'Platform',
+        x: 590,
+        y: 170,
+        width: 180,
+        height: 90,
+        childNodeIds: [],
+        childBoundaryIds: [],
+        movable: false,
       },
     ],
     edges: [

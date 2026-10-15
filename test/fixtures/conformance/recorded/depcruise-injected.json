@@ -1,0 +1,117 @@
+{
+  "modules": [
+    {
+      "source": "src/api/server.js",
+      "dependencies": [
+        {
+          "resolved": "src/orders/service.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        },
+        {
+          "resolved": "http",
+          "coreModule": true,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "core",
+            "require"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "http",
+      "dependencies": []
+    },
+    {
+      "source": "src/orders/service.js",
+      "dependencies": [
+        {
+          "resolved": "src/store/repository.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        },
+        {
+          "resolved": "src/orders/pricing.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "src/store/repository.js",
+      "dependencies": [
+        {
+          "resolved": "src/api/server.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        },
+        {
+          "resolved": "path",
+          "coreModule": true,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "core",
+            "require"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "path",
+      "dependencies": []
+    },
+    {
+      "source": "src/orders/pricing.js",
+      "dependencies": []
+    },
+    {
+      "source": "src/mailer.js",
+      "dependencies": []
+    },
+    {
+      "source": "src/notifications/email.js",
+      "dependencies": [
+        {
+          "resolved": "src/mailer.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "violations": [
+      {
+        "type": "dependency",
+        "from": "src/store/repository.js",
+        "to": "src/api/server.js",
+        "rule": {
+          "severity": "error",
+          "name": "not-in-allowed"
+        }
+      }
+    ],
+    "totalCruised": 8
+  }
+}

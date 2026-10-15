@@ -21,6 +21,8 @@ export interface C4xPluginOptions {
      * false so exported/printed diagrams keep their intrinsic size.
      */
     applyPreviewScale?: boolean;
+    /** Host protocol for document-bound edit links; omitted by exporters. */
+    editLinkScheme?: string;
 }
 
 /**
@@ -29,13 +31,11 @@ export interface C4xPluginOptions {
  */
 export function c4xPlugin(md: MarkdownIt, options: C4xPluginOptions = {}): MarkdownIt {
     const applyPreviewScale = options.applyPreviewScale ?? true;
+    const optionsForPlugin = options;
     // Store reference to default fence renderer
     const defaultFence = md.renderer.rules.fence || function (tokens, idx, options, env, self) {
         return self.renderToken(tokens, idx, options);
     };
-
-    // Track c4x block ordinal across all fence tokens in one document render.
-    let c4xBlockOrdinal = 0;
 
     // Override fence renderer to intercept c4x blocks
     md.renderer.rules.fence = (tokens, idx, options, env, self) => {
@@ -59,11 +59,18 @@ export function c4xPlugin(md: MarkdownIt, options: C4xPluginOptions = {}): Markd
             }
         }
 
-        // Assign block ordinal for c4x fences (plantuml are skipped by FindC4xFencedBlocks).
-        const blockOrdinal = lang === 'c4x' ? c4xBlockOrdinal++ : -1;
+        // Source positions are stable across repeated renders, unlike a counter
+        // captured by this long-lived plugin instance. Bind to the preview's
+        // document, never whichever text editor happens to have focus.
+        const documentUri = env?.currentDocument;
+        const editHref = lang === 'c4x' && optionsForPlugin.editLinkScheme &&
+            documentUri?.scheme === 'file' && token.map
+            ? `${optionsForPlugin.editLinkScheme}://jpantsjoha.c4x/edit?${new URLSearchParams({
+                document: documentUri.toString(), line: String(token.map[0]),
+            }).toString()}` : undefined;
 
         // Render C4X diagram
-        return renderC4XBlock(token.content, lang, attributes, blockOrdinal, applyPreviewScale);
+        return renderC4XBlock(token.content, lang, attributes, editHref, applyPreviewScale);
     };
 
     return md;
@@ -108,11 +115,11 @@ export function readMarkdownPreviewScale(): number {
  * @param source C4X-DSL source code
  * @param lang Language identifier (c4x or plantuml)
  * @param attributes Optional rendering attributes (width, height, scale, zoom)
- * @param blockOrdinal The zero-based ordinal of this c4x block in the document (-1 for plantuml)
+ * @param editHref Document-bound host URI; absent in exported HTML
  * @param applyPreviewScale Whether to apply the c4x.markdown.previewScale factor to the width cap
  * @returns HTML string with inline SVG or error message
  */
-function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}, blockOrdinal = -1, applyPreviewScale = true): string {
+function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}, editHref: string | undefined = undefined, applyPreviewScale = true): string {
     try {
         let model;
 
@@ -165,11 +172,12 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
         const zoomClass = attributes['zoom'] === 'false' ? '' : 'zoomable';
 
         // Build "Edit C4 diagram" affordance for c4x blocks.
-        // The command: URI scheme is supported by VS Code Markdown Preview.
+        // Markdown Preview does not enable arbitrary command: links. Route
+        // through the host URI handler with an explicit document and fence line.
         // The toolbar appears on hover via CSS defined in c4x.css.
-        const editAffordance = lang === 'c4x' && blockOrdinal >= 0
+        const editAffordance = editHref !== undefined
             ? `<div class="c4x-edit-toolbar" role="toolbar" aria-label="C4 diagram actions">` +
-              `<a href="command:c4x.editMarkdownBlock?${encodeURIComponent(JSON.stringify([blockOrdinal]))}" ` +
+              `<a href="${editHref.replace(/&/g, '&amp;')}" ` +
               `class="c4x-edit-button" title="Edit C4 diagram in visual editor" ` +
               `aria-label="Edit C4 diagram in visual editor (opens visual editor panel)">` +
               `✏ Edit C4 diagram` +

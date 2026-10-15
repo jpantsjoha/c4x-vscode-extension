@@ -1,7 +1,7 @@
 import { VISUAL_LAYOUT_PROTOCOL_VERSION } from './visualLayoutProtocol';
 import { emitLiveRegion } from './webviewA11y';
 import { LEGEND_CATALOG, type LegendItem } from './legendCatalog';
-import { type PersistedDraftState, type PersistedStagedEdit } from './draftState';
+import { dropInvalidPersistedAdds, dropUnmovableBoundaryEdits, formatUnmovableBoundaryNotice, isPersistedAddRelationshipList, type PersistedDraftState, type PersistedStagedEdit } from './draftState';
 import {
     INSPECTOR_LABEL_MAX,
     INSPECTOR_TECH_MAX,
@@ -45,6 +45,103 @@ export function formatMoveAnnouncement(
  */
 export function formatMultiSelectAnnouncement(count: number): string {
     return `${count} element${count === 1 ? '' : 's'} selected`;
+}
+
+/**
+ * How far, in screen pixels, the pointer must travel from pointer-down before
+ * a press on a node or boundary becomes a drag (#251). Below it the gesture is
+ * a click: it selects and never stages a move. Screen pixels, not SVG units, so
+ * the tolerance for hand jitter does not change with zoom.
+ */
+export const DRAG_THRESHOLD_PX = 4;
+
+/** The larger threshold for touch and pen, whose contact point jitters more than a mouse (#254). */
+export const COARSE_DRAG_THRESHOLD_PX = 10;
+
+/** The drag threshold for a pointer type: `coarsePx` for touch and pen, `mousePx` otherwise. */
+export function dragThresholdFor(pointerType: string | undefined, mousePx: number, coarsePx: number): number {
+    return pointerType === 'touch' || pointerType === 'pen' ? coarsePx : mousePx;
+}
+
+/**
+ * The one delta a group drag applies to every member (#252, #254). The raw
+ * pointer delta is rounded once, and clamped so that no member's rounded start
+ * plus the delta falls below 0, so the group stops at the canvas edge as a unit
+ * instead of squashing against it. Members are placed at round(start) + delta,
+ * so each moves by the identical whole-unit delta.
+ */
+export function sharedDragDelta(
+    starts: ReadonlyArray<{ x: number; y: number }>,
+    dx: number,
+    dy: number
+): { dx: number; dy: number } {
+    let minX = Infinity;
+    let minY = Infinity;
+    for (const start of starts) {
+        minX = Math.min(minX, Math.round(start.x));
+        minY = Math.min(minY, Math.round(start.y));
+    }
+    const floorX = Number.isFinite(minX) ? -minX : -Infinity;
+    const floorY = Number.isFinite(minY) ? -minY : -Infinity;
+    const rx = Number.isFinite(dx) ? Math.round(dx) : 0;
+    const ry = Number.isFinite(dy) ? Math.round(dy) : 0;
+    return { dx: Math.max(rx, floorX) + 0, dy: Math.max(ry, floorY) + 0 };
+}
+
+/** True once the pointer has moved at least `threshold` screen pixels from where it went down. */
+export function hasPassedDragThreshold(
+    startClientX: number,
+    startClientY: number,
+    clientX: number,
+    clientY: number,
+    threshold: number
+): boolean {
+    const dx = clientX - startClientX;
+    const dy = clientY - startClientY;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+        return false;
+    }
+    return dx * dx + dy * dy >= threshold * threshold;
+}
+
+/**
+ * True when a pointer gesture ends where it started, at the whole-unit
+ * precision the canvas writes. Such a move must never be staged or written
+ * back (#251): an unrounded auto-layout start such as 609.0119565375295 and
+ * its rounded canvas position 609 are the same place.
+ */
+export function isZeroDeltaMove(
+    start: { x: number; y: number },
+    end: { x: number; y: number }
+): boolean {
+    return Math.round(start.x) === Math.round(end.x) && Math.round(start.y) === Math.round(end.y);
+}
+
+/**
+ * Where a finished pointer drag leaves an element, and whether to stage it.
+ * The canvas rounds every drag frame, so a drag that comes back home ends at
+ * the rounded start (609), not the auto-layout start (609.0119565375295). A
+ * zero-delta drag therefore returns the exact start to restore, and stages
+ * nothing; a real move keeps its rounded end position and is staged (#251).
+ */
+export function settlePointerMove(
+    start: { x: number; y: number },
+    end: { x: number; y: number }
+): { stage: boolean; x: number; y: number } {
+    if (isZeroDeltaMove(start, end)) {
+        return { stage: false, x: start.x, y: start.y };
+    }
+    return { stage: true, x: end.x, y: end.y };
+}
+
+/**
+ * Whether pressing a node keeps the current selection rather than replacing
+ * it (#252). Pressing any member of a multi-selection must keep the set so
+ * the drag that follows moves the group; a click without a drag then narrows
+ * the selection to that node on release.
+ */
+export function pointerDownKeepsSelection(selectedIds: readonly string[], pressedId: string): boolean {
+    return selectedIds.length > 1 && selectedIds.indexOf(pressedId) !== -1;
 }
 
 export interface EdgeEndpoint {
@@ -635,9 +732,71 @@ export function computeStageAddRelationship(
     return updated;
 }
 
+/**
+ * Why a relationship cannot be staged, or null when it can. The limits are the
+ * ones a Save and a restored draft enforce, so refusing here keeps an add that
+ * could never be saved out of the draft, where it would otherwise get in the
+ * way of every other change. Pure and self-contained (embedded verbatim);
+ * exported for unit tests.
+ */
+export function checkStageAddRelationship(
+    sourceId: string,
+    targetId: string,
+    label: string,
+    stagedEdits: Record<string, Record<string, unknown>>,
+): string | null {
+    if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(targetId) || targetId.length > 256) {
+        return 'The target id "' + targetId + '" cannot be used in a relationship.';
+    }
+    const staged = stagedEdits[sourceId];
+    const existing: Array<Record<string, unknown>> = staged && Array.isArray(staged['addRelationship'])
+        ? staged['addRelationship'] as Array<Record<string, unknown>>
+        : [];
+    if (existing.length >= 64) {
+        return 'At most 64 relationships can be staged from one element. Save them first.';
+    }
+    if (existing.some(add => add['targetId'] === targetId && add['label'] === label)) {
+        return 'This relationship is already staged.';
+    }
+    return null;
+}
+
 /** Staged-changes list text for a pending relationship add. Pure. */
 export function formatAddRelationshipSummary(sourceId: string, targetId: string, label: string): string {
     return 'Added relationship ' + sourceId + ' → ' + targetId + ': ' + label;
+}
+
+/**
+ * The one allowlist of staged-edit fields that are persisted via
+ * vscode.setState() and restored from it. Serialising and restoring both go
+ * through it, in the host-side helpers below and in the webview, which embeds
+ * this function's source, so a field cannot be saved but not restored, or
+ * missing from one of two copies (#260). Returns a new object holding only the
+ * allowlisted fields; `addRelationship` entries are rebuilt from their four
+ * known keys. Pure and self-contained (it is embedded verbatim).
+ */
+export function pickPersistedEditFields(edit: Record<string, unknown>): Record<string, unknown> {
+    const keys = [
+        'edgeId', 'boundaryId', 'x', 'y', 'w', 'h', 'label', 'description', 'technology',
+        'tags', 'sprite', 'locked', 'newId', 'relType', 'from', 'to',
+    ];
+    const picked: Record<string, unknown> = {};
+    for (const key of keys) {
+        if (edit[key] !== undefined) { picked[key] = edit[key]; }
+    }
+    const adds = edit['addRelationship'];
+    if (Array.isArray(adds)) {
+        picked['addRelationship'] = adds.map((add: Record<string, unknown>) => {
+            const entry: Record<string, unknown> = {
+                targetId: add['targetId'],
+                label: add['label'],
+                relType: add['relType'],
+            };
+            if (add['technology'] !== undefined) { entry['technology'] = add['technology']; }
+            return entry;
+        });
+    }
+    return picked;
 }
 
 /**
@@ -650,28 +809,9 @@ export function serializeDraftState(
     editMode: boolean,
     camera?: { zoom?: number; panX?: number; panY?: number },
 ): PersistedDraftState {
-    const editsArray: PersistedStagedEdit[] = Object.keys(stagedEdits).map(id => {
-        const edit = stagedEdits[id];
-        const entry: PersistedStagedEdit = { id };
-        if (edit['edgeId'] !== undefined) { entry.edgeId = edit['edgeId'] as string; }
-        if (edit['x'] !== undefined) { entry.x = edit['x'] as number; }
-        if (edit['y'] !== undefined) { entry.y = edit['y'] as number; }
-        if (edit['label'] !== undefined) { entry.label = edit['label'] as string | null; }
-        if (edit['description'] !== undefined) { entry.description = edit['description'] as string | null; }
-        if (edit['technology'] !== undefined) { entry.technology = edit['technology'] as string | null; }
-        if (edit['tags'] !== undefined) { entry.tags = edit['tags'] as string[]; }
-        if (edit['sprite'] !== undefined) { entry.sprite = edit['sprite'] as string | null; }
-        if (edit['locked'] !== undefined) { entry.locked = edit['locked'] as boolean; }
-        if (edit['newId'] !== undefined) { entry.newId = edit['newId'] as string; }
-        if (edit['boundaryId'] !== undefined) { entry.boundaryId = edit['boundaryId'] as string; }
-        if (edit['w'] !== undefined) { entry.w = edit['w'] as number; }
-        if (edit['h'] !== undefined) { entry.h = edit['h'] as number; }
-        if (edit['edgeId'] !== undefined) { entry.edgeId = edit['edgeId'] as string; }
-        if (edit['relType'] !== undefined) { entry.relType = edit['relType'] as 'uses' | 'async' | 'sync'; }
-        if (edit['from'] !== undefined) { entry.from = edit['from'] as string; }
-        if (edit['to'] !== undefined) { entry.to = edit['to'] as string; }
-        return entry;
-    });
+    const editsArray = Object.keys(stagedEdits).map(
+        id => ({ id, ...pickPersistedEditFields(stagedEdits[id]) }) as PersistedStagedEdit,
+    );
     return {
         schemaVersion: 1,
         editMode,
@@ -692,24 +832,7 @@ export function deserializeDraftState(
 ): Record<string, Record<string, unknown>> {
     const result: Record<string, Record<string, unknown>> = {};
     for (const entry of state.stagedEdits) {
-        const edit: Record<string, unknown> = {};
-        if (entry.x !== undefined) { edit['x'] = entry.x; }
-        if (entry.y !== undefined) { edit['y'] = entry.y; }
-        if (entry.label !== undefined) { edit['label'] = entry.label; }
-        if (entry.description !== undefined) { edit['description'] = entry.description; }
-        if (entry.technology !== undefined) { edit['technology'] = entry.technology; }
-        if (entry.tags !== undefined) { edit['tags'] = entry.tags; }
-        if (entry.sprite !== undefined) { edit['sprite'] = entry.sprite; }
-        if (entry.locked !== undefined) { edit['locked'] = entry.locked; }
-        if (entry.newId !== undefined) { edit['newId'] = entry.newId; }
-        if (entry.boundaryId !== undefined) { edit['boundaryId'] = entry.boundaryId; }
-        if (entry.w !== undefined) { edit['w'] = entry.w; }
-        if (entry.h !== undefined) { edit['h'] = entry.h; }
-        if (entry.edgeId !== undefined) { edit['edgeId'] = entry.edgeId; }
-        if (entry.relType !== undefined) { edit['relType'] = entry.relType; }
-        if (entry.from !== undefined) { edit['from'] = entry.from; }
-        if (entry.to !== undefined) { edit['to'] = entry.to; }
-        result[entry.id] = edit;
+        result[entry.id] = pickPersistedEditFields(entry as unknown as Record<string, unknown>);
     }
     return result;
 }
@@ -923,6 +1046,8 @@ export function isValidLegendSwatchColors(value: unknown): boolean {
  */
 export const PREVIEW_CLIENT_SCRIPT = String.raw`
     const PROTOCOL_VERSION = ${VISUAL_LAYOUT_PROTOCOL_VERSION};
+    // Shown as the tooltip and spoken label of a boundary edit mode will not move (#271).
+    const BOUNDARY_FIXED_REASON = 'Cannot be moved or resized here: System_Boundary, Container_Boundary and Enterprise_Boundary have no place in the source for a position or size, so the frame follows its contents. A subgraph boundary can be positioned.';
     const REJECTION_CODES = new Set([
       'malformed_message',
       'layout_unavailable',
@@ -941,6 +1066,16 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     const INITIAL_ZOOM_MIN = ${INITIAL_ZOOM_MIN};
     const INITIAL_ZOOM_MAX = ${INITIAL_ZOOM_MAX};
 
+    // ── Click versus drag (#251, #252) ────────────────────────────────────────
+    const DRAG_THRESHOLD_PX = ${DRAG_THRESHOLD_PX};
+    const COARSE_DRAG_THRESHOLD_PX = ${COARSE_DRAG_THRESHOLD_PX};
+    ${embedForWebview(dragThresholdFor)}
+    ${embedForWebview(sharedDragDelta)}
+    ${embedForWebview(hasPassedDragThreshold)}
+    ${embedForWebview(isZeroDeltaMove)}
+    ${embedForWebview(pointerDownKeepsSelection)}
+    ${embedForWebview(settlePointerMove)}
+
     ${embedForWebview(validateLabel)}
     ${embedForWebview(validateTechnology)}
     ${embedForWebview(validateTagsString)}
@@ -953,6 +1088,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     ${embedForWebview(connectModePrompt)}
     ${embedForWebview(advanceConnectMode)}
     ${embedForWebview(computeStageAddRelationship)}
+    ${embedForWebview(checkStageAddRelationship)}
     ${embedForWebview(formatAddRelationshipSummary)}
 
     // ── Field-level inline validation state ───────────────────────────────────
@@ -1047,6 +1183,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     // ── Persisted draft state schema (inline — no module imports in webview) ──
+    ${embedForWebview(isPersistedAddRelationshipList)}
+    ${embedForWebview(dropInvalidPersistedAdds)}
+    ${embedForWebview(dropUnmovableBoundaryEdits)}
+    ${embedForWebview(formatUnmovableBoundaryNotice)}
+    ${embedForWebview(pickPersistedEditFields)}
     function isPersistedStagedEditEntry(v) {
       if (!isRecord(v) || !isBoundedText(v.id, 256)) return false;
       if (v.edgeId !== undefined && (typeof v.edgeId !== 'string' || v.edgeId.length > 256)) return false;
@@ -1066,6 +1207,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (v.relType !== undefined && !['uses', 'async', 'sync'].includes(v.relType)) return false;
       if (v.from !== undefined && (typeof v.from !== 'string' || v.from.length > 256)) return false;
       if (v.to !== undefined && (typeof v.to !== 'string' || v.to.length > 256)) return false;
+      if (v.addRelationship !== undefined && !isPersistedAddRelationshipList(v.addRelationship)) return false;
       return true;
     }
 
@@ -1221,7 +1363,9 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         (value.manualX === undefined || typeof value.manualX === 'boolean') &&
         (value.manualY === undefined || typeof value.manualY === 'boolean') &&
         (value.manualWidth === undefined || isCoordinate(value.manualWidth)) &&
-        (value.manualHeight === undefined || isCoordinate(value.manualHeight));
+        (value.manualHeight === undefined || isCoordinate(value.manualHeight)) &&
+        // movable (#271) is optional: absent means editable.
+        (value.movable === undefined || typeof value.movable === 'boolean');
     }
 
     function isVisualLayoutSnapshot(value) {
@@ -1362,29 +1506,13 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
     let stagedEdits = {};
     let pendingRestoreState = null;
+    /** Staged relationships dropped from the saved draft because they were invalid (#260). */
+    let restoreDroppedAdds = 0;
 
     function persistState() {
       try {
         const editsArray = Object.keys(stagedEdits).map(id => {
-          const edit = stagedEdits[id];
-          const entry = { id };
-          if (edit.x !== undefined) entry.x = edit.x;
-          if (edit.y !== undefined) entry.y = edit.y;
-          if (edit.w !== undefined) entry.w = edit.w;
-          if (edit.h !== undefined) entry.h = edit.h;
-          if (edit.label !== undefined) entry.label = edit.label;
-          if (edit.description !== undefined) entry.description = edit.description;
-          if (edit.technology !== undefined) entry.technology = edit.technology;
-          if (edit.tags !== undefined) entry.tags = edit.tags;
-          if (edit.sprite !== undefined) entry.sprite = edit.sprite;
-          if (edit.locked !== undefined) entry.locked = edit.locked;
-          if (edit.newId !== undefined) entry.newId = edit.newId;
-          if (edit.boundaryId !== undefined) entry.boundaryId = edit.boundaryId;
-          if (edit.edgeId !== undefined) entry.edgeId = edit.edgeId;
-          if (edit.relType !== undefined) entry.relType = edit.relType;
-          if (edit.from !== undefined) entry.from = edit.from;
-          if (edit.to !== undefined) entry.to = edit.to;
-          return entry;
+          return Object.assign({ id: id }, pickPersistedEditFields(stagedEdits[id]));
         });
         vscode.setState({
           schemaVersion: 1,
@@ -2387,6 +2515,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         ctmInverse: ctmInverse,
         pointerX: point.x,
         pointerY: point.y,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        threshold: dragThresholdFor(event.pointerType, DRAG_THRESHOLD_PX, COARSE_DRAG_THRESHOLD_PX),
+        // A click until the pointer passes the threshold (#251).
+        dragging: false,
         startX: Number(boundaryEl.dataset.currentX || boundaryEl.dataset.baseX),
         startY: Number(boundaryEl.dataset.currentY || boundaryEl.dataset.baseY),
         isBoundaryMove: true
@@ -2399,11 +2532,19 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (!dragState || dragState.nodeEl !== event.currentTarget || dragState.pointerId !== event.pointerId || !dragState.isBoundaryMove) {
         return;
       }
+      if (!dragState.dragging) {
+        if (!hasPassedDragThreshold(dragState.clientX, dragState.clientY, event.clientX, event.clientY, dragState.threshold)) {
+          event.preventDefault();
+          return;
+        }
+        dragState.dragging = true;
+      }
       const point = svgPoint(event, dragState.svg, dragState.ctmInverse);
       const dx = point.x - dragState.pointerX;
       const dy = point.y - dragState.pointerY;
       const boundaryId = dragState.nodeEl.dataset.id;
-      moveBoundary(boundaryId, dragState.startX + dx, dragState.startY + dy);
+      // Whole units, as moveNode does for nodes, so a written $x/$y is never a long float (#251).
+      moveBoundary(boundaryId, Math.round(dragState.startX + dx), Math.round(dragState.startY + dy));
       event.preventDefault();
     }
 
@@ -2418,9 +2559,19 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         boundaryEl.releasePointerCapture(event.pointerId);
       }
       const boundaryId = boundaryEl.dataset.id;
+      if (!state.dragging) {
+        // A click selects the boundary (done at pointer-down) and stages nothing (#251).
+        return;
+      }
       if (commit) {
         const x = Number(boundaryEl.dataset.currentX);
         const y = Number(boundaryEl.dataset.currentY);
+        const settled = settlePointerMove({ x: state.startX, y: state.startY }, { x: x, y: y });
+        if (!settled.stage) {
+          // Dragged back to where it started: restore the exact start, stage nothing.
+          moveBoundary(boundaryId, settled.x, settled.y);
+          return;
+        }
         postBoundaryMove(boundaryId, x, y, 'pointer');
       } else {
         moveBoundary(boundaryId, state.startX, state.startY);
@@ -2483,7 +2634,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         else if (event.key === 'ArrowDown') dy = step;
         const currentX = Number(boundaryEl.dataset.currentX || snapshot.x);
         const currentY = Number(boundaryEl.dataset.currentY || snapshot.y);
-        moveBoundary(boundaryId, Math.max(0, currentX + dx), Math.max(0, currentY + dy));
+        moveBoundary(boundaryId, Math.max(0, Math.round(currentX + dx)), Math.max(0, Math.round(currentY + dy)));
         postBoundaryMove(boundaryId, Number(boundaryEl.dataset.currentX), Number(boundaryEl.dataset.currentY), 'keyboard');
         event.preventDefault();
       }
@@ -2701,10 +2852,17 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function moveNode(nodeEl, x, y) {
+      return placeNode(nodeEl, Math.max(0, Math.round(x)), Math.max(0, Math.round(y)));
+    }
+
+    /**
+     * Put a node at exactly (x, y), without moveNode's rounding. Only for
+     * restoring a gesture-start position, which may be an unrounded
+     * auto-layout coordinate that must come back unchanged (#251).
+     */
+    function placeNode(nodeEl, nextX, nextY) {
       const baseX = Number(nodeEl.dataset.baseX);
       const baseY = Number(nodeEl.dataset.baseY);
-      const nextX = Math.max(0, Math.round(x));
-      const nextY = Math.max(0, Math.round(y));
       nodeEl.dataset.currentX = String(nextX);
       nodeEl.dataset.currentY = String(nextY);
       nodeEl.setAttribute('transform', 'translate(' + (nextX - baseX) + ' ' + (nextY - baseY) + ')');
@@ -2851,7 +3009,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         return;
       }
 
-      selectNode(nodeEl);
+      // Pressing a member of a multi-selection keeps the set, so the drag that
+      // follows moves the whole group (#252). Replacing the selection here, as
+      // a click would, dropped the group before its start positions were read.
+      // Any other press selects just this node, as before.
+      const keepSelection = pointerDownKeepsSelection(Array.from(selectionSet), nodeEl.dataset.id);
+      if (!keepSelection) {
+        selectNode(nodeEl);
+      }
       nodeEl.focus();
       const ctmInverse = captureDragFrame(svg);
       const point = svgPoint(event, svg, ctmInverse);
@@ -2863,6 +3028,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         ctmInverse: ctmInverse,
         pointerX: point.x,
         pointerY: point.y,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        threshold: dragThresholdFor(event.pointerType, DRAG_THRESHOLD_PX, COARSE_DRAG_THRESHOLD_PX),
+        lastDelta: { dx: 0, dy: 0 },
+        // A press is a click until the pointer passes the threshold (#251):
+        // nothing moves and nothing is staged before then.
+        dragging: false,
+        narrowSelectionOnClick: keepSelection,
         startX: Number(nodeEl.dataset.currentX),
         startY: Number(nodeEl.dataset.currentY),
         // Capture starting positions of ALL selected nodes for group move
@@ -2885,23 +3058,41 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (!dragState || dragState.nodeEl !== event.currentTarget || dragState.pointerId !== event.pointerId) {
         return;
       }
+      if (!dragState.dragging) {
+        if (!hasPassedDragThreshold(dragState.clientX, dragState.clientY, event.clientX, event.clientY, dragState.threshold)) {
+          event.preventDefault();
+          return;
+        }
+        dragState.dragging = true;
+      }
       const point = svgPoint(event, dragState.svg, dragState.ctmInverse);
       const dx = point.x - dragState.pointerX;
       const dy = point.y - dragState.pointerY;
-      // Move primary node
-      moveNode(dragState.nodeEl, dragState.startX + dx, dragState.startY + dy);
-      // Move all other selected nodes by the same delta
-      if (dragState.groupStartPositions) {
+      // One delta for the whole gesture, clamped so no member leaves the canvas;
+      // the group stops as a unit and every member moves by the same amount (#254).
+      const members = dragMembers(dragState);
+      const delta = sharedDragDelta(members.map(function(m) { return m.start; }), dx, dy);
+      dragState.lastDelta = delta;
+      for (const m of members) {
+        placeNode(m.el, Math.round(m.start.x) + delta.dx, Math.round(m.start.y) + delta.dy);
+      }
+      event.preventDefault();
+    }
+
+    /** The dragged node and every other selected node, each with its gesture-start position. */
+    function dragMembers(state) {
+      const members = [{ el: state.nodeEl, start: { x: state.startX, y: state.startY } }];
+      if (state.groupStartPositions) {
         for (const id of selectionSet) {
-          if (id === dragState.nodeEl.dataset.id) continue;
+          if (id === state.nodeEl.dataset.id) continue;
           const el = findByDataId('g.node', id);
-          const start = dragState.groupStartPositions[id];
+          const start = state.groupStartPositions[id];
           if (el && start) {
-            moveNode(el, start.x + dx, start.y + dy);
+            members.push({ el: el, start: start });
           }
         }
       }
-      event.preventDefault();
+      return members;
     }
 
     function finishDrag(event, commit) {
@@ -2914,30 +3105,32 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         state.nodeEl.releasePointerCapture(event.pointerId);
       }
       if (commit) {
-        // Stage moves for the primary node
-        postMove(state.nodeEl, 'pointer');
-        // Stage moves for all other nodes in the group
-        if (state.groupStartPositions) {
-          for (const id of selectionSet) {
-            if (id === state.nodeEl.dataset.id) continue;
-            const el = findByDataId('g.node', id);
-            if (el) {
-              postMove(el, 'pointer');
-            }
+        if (!state.dragging) {
+          // A click, not a drag (#251): it selects and stages nothing. A click
+          // on a member of a multi-selection narrows the selection to that
+          // node, which pointer-down deliberately deferred (#252).
+          if (state.narrowSelectionOnClick) {
+            clearSelection();
+            selectNode(state.nodeEl);
+          }
+          return;
+        }
+        // Decide once, from the gesture's shared delta, so the group never
+        // splits: either every member is restored to its exact start (a drag
+        // that came home, #251) or every member is staged (#254).
+        const members = dragMembers(state);
+        const moved = state.lastDelta.dx !== 0 || state.lastDelta.dy !== 0;
+        for (const m of members) {
+          if (moved) {
+            postMove(m.el, 'pointer');
+          } else {
+            placeNode(m.el, m.start.x, m.start.y);
           }
         }
-      } else {
-        // Revert all nodes in the group
-        moveNode(state.nodeEl, state.startX, state.startY);
-        if (state.groupStartPositions) {
-          for (const id of selectionSet) {
-            if (id === state.nodeEl.dataset.id) continue;
-            const el = findByDataId('g.node', id);
-            const start = state.groupStartPositions[id];
-            if (el && start) {
-              moveNode(el, start.x, start.y);
-            }
-          }
+      } else if (state.dragging) {
+        // Revert all nodes in the group to their exact, unrounded starts.
+        for (const m of dragMembers(state)) {
+          placeNode(m.el, m.start.x, m.start.y);
         }
         setLayoutStatus('Move cancelled.', 'info', dirty ? 'dirty' : 'clean');
       }
@@ -3101,7 +3294,8 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function onSvgPointerDown(event) {
-      if (event.button !== 0 || event.target.closest('g.node') || event.target.closest('g.boundary')) {
+      // A boundary that cannot be dragged does not take the pointer, so the canvas still pans from it (#271).
+      if (event.button !== 0 || event.target.closest('g.node') || event.target.closest('g.boundary:not(.boundary-fixed)')) {
         return;
       }
       const svgContainer = document.getElementById('svg-container') || contentEl;
@@ -3262,6 +3456,15 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         boundaryEl.dataset.currentY = String(boundarySnapshot.y);
         boundaryEl.dataset.currentWidth = String(boundarySnapshot.width);
         boundaryEl.dataset.currentHeight = String(boundarySnapshot.height);
+        if (boundarySnapshot.movable === false) {
+          // A typed boundary (System_Boundary(...) and kin) has no place in
+          // source for a position or size. Offering a drag that Save has to
+          // refuse is worse than not offering it (#271), so it gets no
+          // handlers. setEditMode adds the tooltip and spoken label that say
+          // why, and only while editing.
+          boundaryEl.classList.add('boundary-fixed');
+          continue;
+        }
         boundaryEl.setAttribute('role', 'option');
         boundaryEl.setAttribute('aria-label', boundarySnapshot.label + '. Boundary. Press Enter to select; use arrow keys to move, Shift+arrow keys to resize.');
         boundaryEl.setAttribute('aria-describedby', 'layout-status');
@@ -3579,7 +3782,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       const labelError = validateLabel(labelInput.value.trim());
       const pipeError = labelInput.value.includes('|') ? 'Label cannot contain the | character.' : null;
       const techError = techInput && techInput.value ? validateTechnology(techInput.value) : null;
-      const error = labelError || pipeError || techError;
+      const stagingError = pendingConnect
+        ? checkStageAddRelationship(pendingConnect.sourceId, pendingConnect.targetId, labelInput.value.trim(), stagedEdits)
+        : null;
+      const error = labelError || pipeError || techError || stagingError;
       if (validationEl) {
         validationEl.textContent = error || '';
       }
@@ -3629,6 +3835,12 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       const technology = techInput && techInput.value.trim() ? techInput.value.trim() : null;
       const relType = relTypeEl ? relTypeEl.value : 'uses';
       const { sourceId, targetId } = pendingConnect;
+      const stagingError = checkStageAddRelationship(sourceId, targetId, label, stagedEdits);
+      if (stagingError) {
+        const validationEl = document.getElementById('connect-validation');
+        if (validationEl) validationEl.textContent = stagingError;
+        return;
+      }
 
       stagedEdits = computeStageAddRelationship(sourceId, targetId, label, relType, technology, stagedEdits);
       pendingConnect = null;
@@ -3699,7 +3911,28 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         nodeEl.setAttribute('tabindex', editMode ? '0' : '-1');
       }
       for (const boundaryEl of contentEl.querySelectorAll('g.boundary')) {
-        boundaryEl.setAttribute('tabindex', editMode ? '0' : '-1');
+        // A boundary that cannot be moved has no handlers, so it stays out of the tab order (#271).
+        const fixed = boundaryEl.classList.contains('boundary-fixed');
+        boundaryEl.setAttribute('tabindex', editMode && !fixed ? '0' : '-1');
+        if (fixed) {
+          // The explanation belongs to edit mode: in the read-only preview the
+          // boundary is just a frame, and nothing there suggests it could move.
+          const existingTitle = boundaryEl.querySelector(':scope > title');
+          const fixedSnapshot = boundarySnapshot(boundaryEl.dataset.id);
+          if (editMode) {
+            boundaryEl.setAttribute('aria-label', (fixedSnapshot ? fixedSnapshot.label : 'Boundary') + '. Boundary. ' + BOUNDARY_FIXED_REASON);
+            if (!existingTitle) {
+              const tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+              tooltip.textContent = BOUNDARY_FIXED_REASON;
+              boundaryEl.insertBefore(tooltip, boundaryEl.firstChild);
+            }
+          } else {
+            boundaryEl.removeAttribute('aria-label');
+            if (existingTitle && existingTitle.textContent === BOUNDARY_FIXED_REASON) {
+              existingTitle.remove();
+            }
+          }
+        }
       }
       for (const edgeEl of contentEl.querySelectorAll('g.edge')) {
         edgeEl.setAttribute('tabindex', editMode ? '0' : '-1');
@@ -3857,27 +4090,15 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
             updateZoomDisplay();
           }
           if (restore.stagedEdits.length > 0) {
-            const restored = {};
+            const pickedEdits = {};
             for (const entry of restore.stagedEdits) {
-              const edit = {};
-              if (entry.x !== undefined) edit.x = entry.x;
-              if (entry.y !== undefined) edit.y = entry.y;
-              if (entry.w !== undefined) edit.w = entry.w;
-              if (entry.h !== undefined) edit.h = entry.h;
-              if (entry.label !== undefined) edit.label = entry.label;
-              if (entry.description !== undefined) edit.description = entry.description;
-              if (entry.technology !== undefined) edit.technology = entry.technology;
-              if (entry.tags !== undefined) edit.tags = entry.tags;
-              if (entry.sprite !== undefined) edit.sprite = entry.sprite;
-              if (entry.locked !== undefined) edit.locked = entry.locked;
-              if (entry.newId !== undefined) edit.newId = entry.newId;
-              if (entry.boundaryId !== undefined) edit.boundaryId = entry.boundaryId;
-              if (entry.edgeId !== undefined) edit.edgeId = entry.edgeId;
-              if (entry.relType !== undefined) edit.relType = entry.relType;
-              if (entry.from !== undefined) edit.from = entry.from;
-              if (entry.to !== undefined) edit.to = entry.to;
-              restored[entry.id] = edit;
+              const edit = pickPersistedEditFields(entry);
+              pickedEdits[entry.id] = edit;
             }
+            // A staged move of a boundary the source cannot position would fail
+            // the whole Save, so it is not restored (#271); the notice below says so.
+            const unmovable = dropUnmovableBoundaryEdits(pickedEdits, visualLayout.boundaries);
+            const restored = unmovable.edits;
             // Keep only edits that still correspond to nodes, boundaries, or edges in this layout.
             const activeNodeIds = new Set(visualLayout.nodes.map(function(n) { return n.id; }));
             const activeBoundaryIds = new Set(visualLayout.boundaries.map(function(b) { return b.id; }));
@@ -3890,6 +4111,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
               omittedDraftNotice = 'Draft restored: ' + validKeys.length + ' staged changes; ' +
                 omittedCount + ' could not be restored because ' +
                 (omittedCount === 1 ? 'its target is' : 'their targets are') + ' no longer present.';
+            }
+            if (unmovable.labels.length > 0) {
+              const unmovableNotice = formatUnmovableBoundaryNotice(unmovable.labels);
+              omittedDraftNotice = omittedDraftNotice ? omittedDraftNotice + ' ' + unmovableNotice : 'Draft restored; ' + unmovableNotice;
             }
             if (validKeys.length > 0) {
               for (const k of validKeys) {
@@ -3926,6 +4151,13 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         );
       }
       renderMetricsTable(metrics);
+      if (restoreDroppedAdds > 0) {
+        const droppedNotice = restoreDroppedAdds + (restoreDroppedAdds === 1
+          ? ' staged relationship was invalid and could not be restored.'
+          : ' staged relationships were invalid and could not be restored.');
+        omittedDraftNotice = omittedDraftNotice ? omittedDraftNotice + ' ' + droppedNotice : 'Draft restored; ' + droppedNotice;
+        restoreDroppedAdds = 0;
+      }
       // Opening-camera announcements use the same live region. Report lost
       // entries afterwards so even a completely unrestorable draft is visible.
       if (omittedDraftNotice) {
@@ -4071,7 +4303,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     // outside the SVG (which is wholesale replaced on every render). Its
     // position lives only in webview memory — like zoom/pan — so it survives
     // re-renders within the session but never touches source. A null position
-    // means the CSS default anchor (bottom: 20px; right: 20px).
+    // means the default anchor: in flow at the right-hand end of the canvas
+    // overlay dock's row, beside or above the toolbar but never over it
+    // (#250). An explicit position takes the legend out of that row
+    // (.legend-floating) and pins it by left/top within the canvas.
     const legendOverlayEl = document.getElementById('legend-overlay');
     const legendItemsEl = document.getElementById('legend-items');
     let legendPosition = null;
@@ -4079,6 +4314,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
     function applyLegendPosition() {
       if (!legendOverlayEl || !legendPosition) return;
+      legendOverlayEl.classList.add('legend-floating');
       legendOverlayEl.style.left = legendPosition.left + 'px';
       legendOverlayEl.style.top = legendPosition.top + 'px';
       legendOverlayEl.style.right = 'auto';
@@ -4086,8 +4322,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     /**
-     * Convert the CSS default anchor (bottom/right) into explicit left/top
-     * coordinates so arrow keys and drags have a numeric starting point.
+     * Convert the default in-flow anchor into explicit left/top coordinates
+     * so arrow keys and drags have a numeric starting point. The overlay dock
+     * covers the canvas exactly, so canvas-relative coordinates are also the
+     * floating legend's containing-block coordinates.
      */
     function ensureLegendExplicitPosition() {
       if (legendPosition || !legendOverlayEl) return;
@@ -4670,8 +4908,12 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     // ── On load: pick up any persisted draft from before reload ──────────────
     try {
       const saved = vscode.getState();
-      if (saved && isValidPersistedDraftState(saved)) {
-        pendingRestoreState = saved;
+      // One invalid staged relationship must not discard the rest of the draft:
+      // drop just that add, and say so once the draft is restored.
+      const repaired = dropInvalidPersistedAdds(saved, isPersistedAddRelationshipList);
+      if (repaired.state && isValidPersistedDraftState(repaired.state)) {
+        pendingRestoreState = repaired.state;
+        restoreDroppedAdds = repaired.dropped;
       }
     } catch (_e) {
       // getState() is best-effort

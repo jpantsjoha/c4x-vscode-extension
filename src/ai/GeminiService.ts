@@ -1,7 +1,8 @@
-import { GoogleGenerativeAI, GenerativeModel, Part, InlineDataPart } from '@google/generative-ai';
+import type { GoogleGenAI, Part } from '@google/genai';
 import * as vscode from 'vscode';
 import { FileContext } from './CodeContextExtractor';
 import { DEFAULT_MODEL, DEFAULT_IMAGE_MODEL, isKnownModel, getDaysUntilSunset, getSunsetDate } from './models';
+import { createGeminiClient, fetchModelList, type GenerateContentClient, responseText } from './geminiClient';
 import { type DiscoveredModel } from './modelDiscovery';
 import {
     announceModelChange,
@@ -13,55 +14,27 @@ import {
 import { buildGenerationPrompt, buildRecommendationPrompt, buildFrameworkDetectionPrompt, buildVisualDiagramPrompt, buildVisualFixPrompt } from './PromptBuilder';
 import { generateWithFallback, isModelUnavailableError } from './FallbackStrategy';
 
-/**
- * How long the model list may take before discovery gives up.
- *
- * Discovery sits on the generation hot path: every generation resolves its
- * model id first. An unreachable host fails in milliseconds, but a proxy or a
- * captive portal that accepts the connection and then never answers would hang
- * generation for as long as the user was willing to wait. Five seconds is
- * generous for a list of 54 models and short enough that the fallback — call
- * the configured id, as before discovery existed — is barely noticed.
- */
-export const DISCOVERY_TIMEOUT_MS = 5000;
+// Discovery's timeout and list call live beside the client they share, in a
+// module the live gate can import without VS Code. Re-exported so callers and
+// tests keep one import site for the service.
+export { DISCOVERY_TIMEOUT_MS, fetchModelList } from './geminiClient';
 
-/**
- * Fetch the model list for a key. Never throws and never blocks for longer than
- * `timeoutMs`; every failure, the timeout included, comes back as an empty list.
- *
- * A free function rather than a method so a test can drive it with a short
- * timeout and a stubbed `fetch`, without a VS Code extension context.
- */
-export async function fetchModelList(
-    apiKey: string,
-    timeoutMs: number = DISCOVERY_TIMEOUT_MS,
-): Promise<DiscoveredModel[]> {
-    try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=200`,
-            { signal: AbortSignal.timeout(timeoutMs) }
-        );
-        if (!response.ok) {
-            return [];
-        }
-        const json = await response.json() as { models?: Array<{ name?: string; displayName?: string; supportedGenerationMethods?: string[] }> };
-        return (json.models ?? [])
-            .filter(m => typeof m.name === 'string')
-            .map(m => ({
-                id: m.name!.replace(/^models\//, ''),
-                displayName: m.displayName,
-                supportedGenerationMethods: m.supportedGenerationMethods,
-            }));
-    } catch {
-        // Offline, proxied, rate-limited, or timed out — an AbortError from the
-        // signal lands here like any other. The pinned defaults still work.
-        return [];
-    }
-}
+const KEY_NOT_CONFIGURED = 'Gemini API Key not configured. Use the "Enter Key" prompt or set GEMINI_API_KEY env var.';
 
 export class GeminiService {
-    private genAI: GoogleGenerativeAI | undefined;
-    private model: GenerativeModel | undefined;
+    /**
+     * The client, built on the first call that needs one (see `client()`), never
+     * at construction: both commands construct a service at activation, and
+     * building a client loads the 1.8 MB SDK.
+     */
+    private genAI: GoogleGenAI | undefined;
+    /** The key `initialize()` found. Holding it is "ready"; the client comes later. */
+    private apiKey: string | undefined;
+    /**
+     * The model id bound when the client was built: what the recommendation and
+     * framework-detection calls use. Generation resolves its own id per request.
+     */
+    private modelName: string | undefined;
 
     private context: vscode.ExtensionContext;
 
@@ -71,8 +44,57 @@ export class GeminiService {
     /** Prevents showing the plaintext-key migration notice more than once per session. */
     private keyMigrated = false;
 
-    /** Discovered model list, refreshed at most daily. */
+    /** Discovered model list, refreshed at most daily, for the current key only. */
     private discoveryCache: { at: number; models: DiscoveredModel[] } | undefined;
+
+    /** Bumped by every credential change (refresh, and each applyCredentials), so work started under an older key can tell. */
+    private credentialGeneration = 0;
+
+    /** The credential refresh in progress, if any. A request waits for it rather than guess. */
+    private refreshing: Promise<void> | undefined;
+
+    /**
+     * How every API request leaves this service. It resolves the client for
+     * the key held at the moment the request is sent.
+     *
+     * The rule: nothing here keeps a client across an `await`. A generation
+     * spans discovery, a heal, self-correction passes, the failover and reading
+     * reference images, and the key can be replaced or cleared by Set/Clear
+     * Gemini API Key at any of those points. A captured client kept sending the
+     * old key, and kept sending after a clear. FallbackStrategy and
+     * SyntaxValidator only ever receive this.
+     */
+    private get requests(): GenerateContentClient {
+        return { models: { generateContent: params => this.sendGenerateContent(params) } };
+    }
+
+    /** One request, through the client for the key held now. See `requests`. */
+    private async sendGenerateContent(
+        params: Parameters<GenerateContentClient['models']['generateContent']>[0],
+    ): ReturnType<GenerateContentClient['models']['generateContent']> {
+        for (;;) {
+            // A Set/Clear in progress decides which key this request may use.
+            // If reading the new key fails, the refresh's caller hears about
+            // it; this request goes on with the credentials still held.
+            while (this.refreshing) {
+                await this.refreshing.catch(() => undefined);
+            }
+            // The one place a client is acquired, immediately before its request.
+            const generation = this.credentialGeneration;
+            const client = await this.client();
+            if (!client) {
+                throw new Error(KEY_NOT_CONFIGURED);
+            }
+            // `await` yields even for a cached client, and a credential change
+            // can land in that gap. Dispatch only if none did, with no await
+            // between the check and the call: the key is fixed in the client
+            // the moment generateContent is called. Otherwise acquire again:
+            // the new key's client, or "not configured".
+            if (generation === this.credentialGeneration && !this.refreshing) {
+                return client.models.generateContent(params);
+            }
+        }
+    }
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
@@ -80,9 +102,9 @@ export class GeminiService {
     }
 
     public async checkReady(): Promise<boolean> {
-        if (this.model) { return true; }
+        if (this.hasCredentials()) { return true; }
         await this.initialize();
-        return !!this.model;
+        return this.hasCredentials();
     }
 
     public async saveKey(key: string): Promise<void> {
@@ -93,7 +115,7 @@ export class GeminiService {
     /**
      * Drop the cached client and rebuild it from whatever key is stored now.
      *
-     * `checkReady()` short-circuits on a cached `model`, so a key changed
+     * `checkReady()` short-circuits on a cached client, so a key changed
      * underneath a live service was ignored until the window reloaded: setting
      * a new key appeared to succeed while generation kept using the old one,
      * and clearing a key left generation working. Any code path that changes
@@ -117,22 +139,50 @@ export class GeminiService {
             return this.discoveryCache.models;
         }
 
+        const generation = this.credentialGeneration;
         const apiKey = await this.context.secrets.get('c4x.ai.apiKey');
         if (!apiKey) {
             return [];
         }
 
-        const models = await fetchModelList(apiKey);
-        if (models.length > 0) {
+        const models = await fetchModelList(apiKey, undefined,
+            () => generation === this.credentialGeneration && !this.refreshing);
+        // A list fetched for a key that was replaced meanwhile still serves the
+        // model choice of the request that asked for it, but is not kept: the
+        // new key gets its own list.
+        if (models.length > 0 && generation === this.credentialGeneration) {
             this.discoveryCache = { at: Date.now(), models };
         }
         return models;
     }
 
+    /**
+     * Re-read the stored key after Set/Clear Gemini API Key.
+     *
+     * The new key is resolved first and swapped in with everything that
+     * depends on it in one synchronous step. Clearing the fields before the
+     * read left a window in which a generation was told "key not configured"
+     * although the user had just set one. Requests that start during the
+     * refresh wait for it (see sendGenerateContent).
+     */
     public async refreshCredentials(): Promise<void> {
-        this.genAI = undefined;
-        this.model = undefined;
-        await this.initialize();
+        const generation = ++this.credentialGeneration;
+        this.discoveryCache = undefined;
+        const refresh = (async () => {
+            const apiKey = await this.resolveCredentials();
+            // A later refresh owns the outcome.
+            if (generation === this.credentialGeneration) {
+                this.applyCredentials(apiKey);
+            }
+        })();
+        this.refreshing = refresh;
+        try {
+            await refresh;
+        } finally {
+            if (this.refreshing === refresh) {
+                this.refreshing = undefined;
+            }
+        }
     }
 
     /**
@@ -160,12 +210,73 @@ export class GeminiService {
         return healModelAfterFailure(failed, models, readModelStrategy());
     }
 
-    /** True when a usable client is cached. Does not prompt and does not initialise. */
+    /**
+     * The id the recommendation and framework-detection calls use: the model
+     * configured when the client was built. `initialize()` sets both together,
+     * so the default only covers a client injected without one.
+     */
+    private boundModelName(): string {
+        return this.modelName ?? DEFAULT_MODEL;
+    }
+
+    /** True when a key (or an injected client) is held. Does not prompt, initialise or load the SDK. */
     public hasCredentials(): boolean {
-        return !!this.model;
+        return !!this.genAI || !!this.apiKey;
+    }
+
+    /**
+     * The client for a call that is about to reach the API. Built from the held
+     * key on first use, which is the first time `@google/genai` is loaded.
+     */
+    private async client(): Promise<GoogleGenAI | undefined> {
+        while (!this.genAI && this.apiKey) {
+            // Building loads the SDK on first use, which takes real time, and the
+            // key can be replaced or cleared meanwhile (refreshCredentials). A
+            // client is cached only if the key it was built from is still the
+            // held one; otherwise build again for the current key, or return
+            // nothing if it was cleared. Caching unconditionally kept sending
+            // the old key, and made a cleared service report credentials.
+            const generation = this.credentialGeneration;
+            const built = await createGeminiClient(this.apiKey);
+            if (generation === this.credentialGeneration && !this.genAI) {
+                this.genAI = built;
+            }
+        }
+        return this.genAI;
     }
 
     public async initialize() {
+        const generation = this.credentialGeneration;
+        const apiKey = await this.resolveCredentials();
+        // A refresh that started meanwhile owns the outcome. Without a key, an
+        // initialize leaves the service as it was; only a refresh clears.
+        if (apiKey && generation === this.credentialGeneration) {
+            this.applyCredentials(apiKey);
+        }
+    }
+
+    /**
+     * Hold `apiKey` and drop the client built for any earlier key, together and
+     * without an await, so no request can see one without the other. The
+     * client, and with it the SDK, is built by client() on first use.
+     */
+    private applyCredentials(apiKey: string | undefined): void {
+        // Work started under the previous credentials (a client being built, a
+        // request about to be sent, a model list in flight) sees this and stops.
+        this.credentialGeneration++;
+        this.genAI = undefined;
+        this.apiKey = apiKey;
+        this.modelName = apiKey
+            ? vscode.workspace.getConfiguration('c4x.ai').get<string>('model') || DEFAULT_MODEL
+            : undefined;
+        if (this.modelName) {
+            // G3/G4: Validate model selection and check sunset dates
+            this.validateModelSelection(this.modelName);
+        }
+    }
+
+    /** The key to use: SecretStorage, then a migrated plaintext setting, then GEMINI_API_KEY. */
+    private async resolveCredentials(): Promise<string | undefined> {
         const config = vscode.workspace.getConfiguration('c4x.ai');
         let apiKey: string | undefined;
 
@@ -213,14 +324,7 @@ export class GeminiService {
             }
         }
 
-        if (apiKey) {
-            this.genAI = new GoogleGenerativeAI(apiKey);
-            const modelName = config.get<string>('model') || DEFAULT_MODEL;
-            this.model = this.genAI.getGenerativeModel({ model: modelName });
-
-            // G3/G4: Validate model selection and check sunset dates
-            this.validateModelSelection(modelName);
-        }
+        return apiKey || undefined;
     }
 
     /**
@@ -273,11 +377,11 @@ export class GeminiService {
     }
 
     public async generateDiagram(files: FileContext[], instruction: string, options?: { direction?: 'TB' | 'LR' }): Promise<string> {
-        if (!this.model) {
+        if (!this.hasCredentials()) {
             // Re-try initialization in case key was added late
             await this.initialize();
-            if (!this.model) {
-                throw new Error('Gemini API Key not configured. Use the "Enter Key" prompt or set GEMINI_API_KEY env var.');
+            if (!this.hasCredentials()) {
+                throw new Error(KEY_NOT_CONFIGURED);
             }
         }
 
@@ -298,14 +402,20 @@ export class GeminiService {
             // auto-ga picks up a newer GA model without an extension update.
             const configured = vscode.workspace.getConfiguration('c4x.ai').get<string>('model') || DEFAULT_MODEL;
             const resolution = await this.resolveModelId(configured);
-            const modelName = resolution.model;
             // Settings can change after initialization without rebuilding the
-            // cached readiness model. Bind this request to its resolved id.
-            const model = this.genAI!.getGenerativeModel({ model: modelName });
+            // cached client. Bind this request to its resolved id.
+            const modelName = resolution.model;
+
+            // The key can be cleared while this request is being prepared.
+            if (!this.hasCredentials()) {
+                throw new Error(KEY_NOT_CONFIGURED);
+            }
 
             try {
-                // Pass the progress object down to update status during validation/retry
-                const result = await generateWithFallback(this.genAI!, model, prompt, progress, {
+                // Pass the progress object down to update status during validation/retry.
+                // `this.requests`, not a client: every attempt, heal and failover
+                // request uses the key held when it is sent.
+                const result = await generateWithFallback(this.requests, prompt, progress, {
                     primaryModelName: modelName,
                     heal: failed => this.healModelId(failed),
                     onPrimaryModelServed: () => {
@@ -323,6 +433,10 @@ export class GeminiService {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (error: any) {
                 console.error('Gemini Generation Error:', error);
+                if (!this.hasCredentials()) {
+                    // Cleared mid-generation: that, not the attempts it cut short, is the cause.
+                    throw new Error(KEY_NOT_CONFIGURED);
+                }
                 throw new Error(`Failed to generate diagram: ${error.message}`);
             }
         });
@@ -330,12 +444,12 @@ export class GeminiService {
 
     public async recommendDiagramType(text: string): Promise<{ types: string[], direction: 'TB' | 'LR', confidence: number }> {
         const fallback = { types: ['C1', 'C2', 'C3'], direction: 'TB' as const, confidence: 0 };
-        if (!this.model) { return fallback; }
+        if (!this.hasCredentials()) { return fallback; }
 
         const prompt = buildRecommendationPrompt(text);
         try {
-            const result = await this.model.generateContent(prompt);
-            const response = result.response.text();
+            const result = await this.requests.models.generateContent({ model: this.boundModelName(), contents: prompt });
+            const response = responseText(result);
             const clean = response.replace(/```json/g, '').replace(/```/g, '').trim();
             const recommended = JSON.parse(clean);
 
@@ -366,7 +480,7 @@ export class GeminiService {
         reasoning: string;
     }> {
         const fallback = { framework: 'C4' as const, confidence: 0.5, reasoning: 'Default fallback' };
-        if (!this.model) { return fallback; }
+        if (!this.hasCredentials()) { return fallback; }
 
         // Check for explicit user hints first
         const explicitHint = text.match(/\[Framework:\s*(Sequence|Flowchart|C4|Data\s*Flow|State\s*Machine)/i);
@@ -384,8 +498,8 @@ export class GeminiService {
         const prompt = buildFrameworkDetectionPrompt(text);
 
         try {
-            const result = await this.model.generateContent(prompt);
-            const response = result.response.text();
+            const result = await this.requests.models.generateContent({ model: this.boundModelName(), contents: prompt });
+            const response = responseText(result);
             const clean = response.replace(/```json/g, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(clean);
 
@@ -414,7 +528,11 @@ export class GeminiService {
         direction: 'TB' | 'LR',
         frameworkOverride?: { framework: 'C4' | 'Sequence' | 'Flowchart'; confidence: number; reasoning: string }
     ): Promise<string | null> {
-        if (!this.genAI) { return null; }
+        // Without a key, say so. `null` means "no image came back", which the
+        // command reports as a model that cannot generate images.
+        if (!this.hasCredentials()) {
+            throw new Error(KEY_NOT_CONFIGURED);
+        }
 
         // Sanitize text: Remove existing image references to prevent the model from identifying
         // filenames (timestamps) in the selection and baking them into the new visual.
@@ -429,7 +547,6 @@ export class GeminiService {
         const configuredImageModel = config.get<string>('imageModel') || DEFAULT_IMAGE_MODEL;
         const imageResolution = await this.resolveModelId(configuredImageModel);
         let imageModelName = imageResolution.model;
-        let imageModel = this.genAI.getGenerativeModel({ model: imageModelName });
         let pendingImageNotice = imageResolution.notice;
 
         // Step 1: Detect the best diagram framework (or use override)
@@ -442,7 +559,7 @@ export class GeminiService {
         console.log(`[GeminiService] Using framework: ${framework} (confidence: ${confidence})`);
 
         // Step 2: Select reference images based on framework
-        const refParts: InlineDataPart[] = [];
+        const refParts: Part[] = [];
         const loadParamImage = async (filename: string): Promise<void> => {
             try {
                 const refUri = vscode.Uri.joinPath(this.context.extensionUri, 'examples', filename);
@@ -529,8 +646,9 @@ export class GeminiService {
                     : parts;
 
                 console.log(`[GeminiService] Visual generation attempt ${attempt}/${maxVisualRetries} on ${imageModelName}`);
-                const result = await imageModel.generateContent(currentParts);
-                const response = await result.response;
+                // Sent through `this.requests`: the key is the one held now, not
+                // the one held before discovery, framework detection or a heal.
+                const response = await this.requests.models.generateContent({ model: imageModelName, contents: currentParts });
                 const candidates = response.candidates;
 
                 if (!candidates || candidates.length === 0) {
@@ -555,7 +673,10 @@ export class GeminiService {
                             pendingImageNotice = undefined;
                         }
                         console.log(`[GeminiService] Visual generation succeeded on attempt ${attempt}.`);
-                        return part.inlineData.data;
+                        // `data` is optional in the SDK's types; the API always
+                        // sends it with an image part. null is the "no image" the
+                        // caller already handles.
+                        return part.inlineData.data ?? null;
                     }
                 }
 
@@ -571,6 +692,12 @@ export class GeminiService {
             } catch (error) {
                 console.error(`[GeminiService] Visual attempt ${attempt} failed:`, error);
 
+                // The key was cleared: no retry or heal can succeed, and none
+                // should be sent. Not `null`: see the check at the top.
+                if (!this.hasCredentials()) {
+                    throw new Error(KEY_NOT_CONFIGURED);
+                }
+
                 // The image model is gone rather than misbehaving: heal once to
                 // the newest GA image model and retry with the original prompt.
                 // The retry is free — this attempt never reached the model.
@@ -579,7 +706,6 @@ export class GeminiService {
                     if (healedResolution && healedResolution.model !== imageModelName) {
                         hasHealed = true;
                         imageModelName = healedResolution.model;
-                        imageModel = this.genAI.getGenerativeModel({ model: imageModelName });
                         pendingImageNotice = healedResolution.notice;
                         attempt--;
                         continue;

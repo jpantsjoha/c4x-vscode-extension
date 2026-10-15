@@ -123,6 +123,9 @@ const vscodeStub = `
     window.__visualLayoutMessages = [];
     window.__visualLayoutRejectNextMove = false;
     const vscode = {
+      // Mirrors VS Code's webview state API so a draft can be reloaded (#260).
+      getState() { return window.__visualLayoutSavedState; },
+      setState(state) { window.__visualLayoutSavedState = state; },
       postMessage(message) {
         window.__visualLayoutMessages.push(message);
         if (message.type === 'visualLayout.applySemanticEdits') {

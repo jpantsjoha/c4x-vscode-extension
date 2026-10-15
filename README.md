@@ -2,152 +2,111 @@
 
 C4 architecture diagrams as version-controlled text in your repository, edited visually by dragging.
 
+Build, run and test: see [run_instruction.md](./run_instruction.md).
+
 [![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/jpantsjoha.c4x?label=VS%20Code%20Marketplace&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/jpantsjoha/c4x?label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jpantsjoha/c4x)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/jpantsjoha.c4x?label=version)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)
-![CI](https://github.com/jpantsjoha/c4x-vscode-extension/workflows/CI/badge.svg)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 ![License](https://img.shields.io/github/license/jpantsjoha/c4x-vscode-extension)
-
-<img src="assets/marketplace/screenshots/visual-editor-markdown-split.png" width="900" alt="C4X source in a Markdown file on the left, the live editable diagram on the right" />
-
-## New in 1.7.0
-
-**More reliable visual editing, safer save recovery, and Gemini model selection that follows what your API key can access.**
-
-- **Arrange and save diagrams:** nested boundary frames resize consistently, manually positioned elements stay put, and discarding a move restores the enclosing frame. Coordinates remain reviewable in your source.
-- **Keep the preview working:** fixes cover editor startup and keeping the diagram visible when focus moves from the source editor to the preview.
-- **Choose your Gemini models:** text and image pickers list models available to your key. Settings changes apply to the next request; an unavailable model can be replaced once with a notice.
-- **Recover more clearly:** failed saves retry rollback, and restoring a draft warns when its original targets no longer exist.
-- **A cleaner package:** runtime dependency fixes and clean-install checks on Windows, macOS and Linux accompany this release.
-
-Try it: open a diagram or a fenced `c4x` block in Markdown, choose **Edit C4 Diagram**, move an element, review the staged source diff, then choose **Save Changes**. **Discard** abandons staged edits.
-
-See the [1.7.0 changelog](./CHANGELOG.md#170---2026-09-07) for details and [known limitations](#known-limitations) below.
-
-## Vision
-
-Software architecture diagrams rot because they are detached from the code they describe. When a system evolves, updating an external canvas or proprietary drawing tool imposes enough friction that engineers abandon the task. The diagram on the wiki quietly ceases to represent the running software. C4X makes architecture diagrams version-controlled text files that reside directly inside the repository alongside source code, review cleanly in pull requests, and survive team turnover.
-
-Pure text, however, introduces its own friction. While diagrams-as-code guarantees portability, managing spatial layout through raw code is clumsy and slow. C4X unites plain text with direct visual manipulation. Developers can draft an architecture model from an existing codebase using machine learning, refine element positions by dragging them across a visual canvas, and rely on guarded write-back to record every spatial change directly into the underlying text source.
-
-By integrating C4 modelling natively into the developer's primary workspace without Java, Graphviz or Docker for local rendering, C4X replaces expensive, fragmented drawing software with an efficient development utility. It converts architecture documentation from an irregular administrative burden into an automated, living artefact of everyday software engineering.
-
-## The Problem
-
-Engineering teams struggle with architecture documentation across three distinct roles:
-
-1. **Software architects (Alex):** Existing tools such as Structurizr or PlantUML require slow Java runtimes, Docker containers, or complex syntax. Switching contexts between the code editor and external diagramming applications disrupts flow, and pure text tools offer no visual spatial control.
-2. **Technical writers (Jordan):** Architecture diagrams cannot be embedded natively inside Markdown documentation like Mermaid diagrams. Writers must manually export images, re-upload assets, and watch documentation screenshots rot as soon as the code changes.
-3. **Engineering managers (Sam):** Teams employ inconsistent, fragmented drawing applications with no common standard. Because proprietary canvas files cannot be diffed in Git pull requests, architectural standards cannot be reviewed or enforced during normal delivery.
-
-C4X keeps diagrams alongside the code so teams can update and review architecture through their existing editor and Git workflow.
-
-## What C4X Does
-
-C4X provides six integrated developer journeys within the code editor.
-
-### 1. Write text and preview immediately
-Create `architecture.c4x`, define elements using a concise Mermaid-inspired syntax, and press `Cmd+K V` (or `Ctrl+K V`). The extension parses the source and renders an interactive diagram locally without a network connection.
-
-### 2. Generate models from an existing codebase
-Run `C4X: Generate Diagram Here (Gemini)`. Google Gemini inspects the surrounding files and drafts a complete C4 model directly at the cursor. The output is parsed locally before presentation, with up to three automatic self-correction passes if the syntax requires adjustment.
-
-### 3. Arrange visually by dragging
-Open the visual editor to position elements intuitively. While automated layout establishes structure, visual arrangement conveys narrative emphasis and grouping. Drag gestures stage coordinates for review. **Save Changes** writes `$x` and `$y` into native C4X source; imported formats use a layout sidecar.
-
-### 4. Edit the model directly on the canvas
-Select any element on the canvas to modify its label, technology stack, description, tags, or sprite icons. Renaming an element automatically updates every relationship referencing that identifier across the file. Draw new relationships or reassign existing connections directly between nodes.
-
-### 5. Review before saving
-Visual changes are staged in an inspector before touching disk. You inspect the unified diff against your source file, discard individual adjustments if desired, and commit the entire batch as a single atomic undo operation.
-
-### 6. Export and embed
-Export diagrams to vector SVG for tools such as Figma, render raster PNG files at 1x, 2x, or 4x resolution without headless browser overhead, or copy SVG directly to the system clipboard. Fenced `c4x` blocks embedded in Markdown files render live within the VS Code Markdown preview.
-
-## Why It Wins
-
-Five concrete attributes distinguish C4X from incumbent solutions:
-
-1. **No separate rendering runtime.** Packaged in a 1.25 MB VSIX, C4X runs locally without requiring Java, Graphviz, Docker, or an external rendering service.
-2. **Bidirectional text synchronisation.** Dragging canvas elements updates textual coordinates in the source file. Any visual change that cannot be safely translated into valid DSL code is aborted cleanly rather than corrupting repository text.
-3. **Budgeted local performance.** Candidate checks exercise declared parse, render and interaction budgets on repository fixtures. Results depend on diagram shape and the test environment, so release evidence records the fixture rather than treating one timing as universal.
-4. **Verified AI generation.** Code-to-diagram generation uses runtime model discovery across Google Gemini endpoints, combining LLM semantic extraction with local deterministic syntax validation and automatic self-correction.
-5. **Git co-location and review.** Architecture models reside as plain text within the repository, allowing teams to track architectural evolution through Git history, branch alongside features, and review diagram diffs in pull requests.
-
-## Traction
-
-Measured figures as of 2026-09-04 demonstrate sustained adoption and rigorous engineering standards:
-
-- **Distribution:** 1,577 installs on the VS Code Marketplace, and 538 downloads on Open VSX.
-- **Distribution snapshot:** Version 1.6.4 was available across both public registries on that date; the highlights above describe 1.7.0.
-- **Automated release verification:** Release checks cover unit tests, browser journeys, extension-host integration, clean VSIX installation, dependency security and live Gemini generation. Browser failures and high/critical dependency findings block CI; the release gate requires a working Gemini key.
-- **Package efficiency:** Approximately 1.25 MB total VSIX size, with no separate rendering service required.
-- **Broad format support:** Native import support for Structurizr DSL and PlantUML C4 models without manual syntax conversion.
-- **Rich assets and accessibility:** 1,083 built-in cloud architecture sprites for AWS, Azure and GCP, alongside six themes that meet WCAG AA contrast.
-- **Agent interoperability:** Dedicated Model Context Protocol (MCP) server enabling external AI coding agents to validate and repair C4X diagrams.
-
-## Milestones
-
-### Achieved
-- **Visual C4 Editor:** Direct drag-to-edit canvas with guarded text write-back of spatial coordinates (`$x`, `$y`).
-- **Atomic staging:** Visual change staging with unified diff previews and complete single-operation undo.
-- **Connect mode and dynamic boundaries:** Interactive connection creation and dynamic boundary re-wrapping during drag movements.
-- **Runtime model discovery and self-healing:** `C4X: Select Gemini Model` lists what your key can reach; a model that is withdrawn is replaced automatically, once, with a notice. Keys are held in encrypted SecretStorage.
-- **Model Context Protocol (MCP) server:** Standalone `c4x-validator` bundle enabling AI agent verification.
-- **Broad dialect compatibility:** Native parsing support for Structurizr DSL and PlantUML C4 files.
-- **Design system:** Six themes meeting WCAG AA contrast, alongside 1,083 AWS, Azure and GCP icons.
-
-### Next: 1.8.0 and beyond
-- **Release 1.8.0 — Authoring the model, not just its layout:** a drag-and-drop element palette, and deletion of elements and relationships with the same guarded write-back that moves already use.
-- **Release 1.9.0 — Across files:** drill down from a C1 context to the C2 container file behind it, and organisation-specific icon packs.
-
-### Vision
-- **Continuous architecture verification:** Automated CI/CD detection of architectural drift between code implementations and C4X models.
-- **Collaborative workspaces:** Branch-aware collaborative canvas sessions synchronised directly through Git.
-- **Hosted architecture portal:** Automated static portal generation transforming repository diagrams into interactive documentation.
-
-## Technical Capabilities and Scale
-
-C4X is designed for lightweight efficiency, predictability, and local responsiveness:
-
-| Metric | Target | Achieved | Notes |
-|---|---|---|---|
-| **Activation time** | < 200 ms | **Not separately established** | The installed smoke proves activation and rendering, but is not an activation benchmark |
-| **Packaged size** | ≤ 2.5 MB | **1.25 MB** | The whole VSIX; 11 allowlisted payload files plus 2 generated package-metadata entries |
-| **Parse time** | < 50 ms | **Checked by the benchmark gate** | Fixture and environment dependent |
-| **Preview render** | < 250 ms | **Checked by the benchmark gate** | Fixture and environment dependent; local render, no network |
-
-Key technical guarantees include:
-
-- **No separate rendering runtime:** No Java virtual machine, Graphviz binary, or Docker container is required.
-- **Automated quality gates:** Release review includes unit, browser, extension-host, packaged-installation and live-generation evidence. Coverage percentages apply to the documented unit-test tier. The packaged smoke installs the VSIX into an isolated profile and requires a document-scoped receipt from rendered webview nodes and labels.
-- **Cloud icon catalogue:** 1,083 AWS, Azure and GCP sprites with IntelliSense auto-completion.
-- **Accessibility standards:** Six themes that meet WCAG AA contrast, with keyboard controls and screen-reader announcements covered by the browser suite.
-
-<img src="assets/marketplace/icons/c4x-icons-example.png" width="900" alt="C4X icon integration example" />
-
-## Known limitations
-
-- Pan and zoom alone are not reliably persisted across reloads. Draft entries whose targets no longer exist produce a warning; draft identity and migration improvements remain pending. Save important changes before closing or switching diagrams.
-- Relationship labels can change position after saving. Long descriptions can extend beyond node boxes. Resize-handle positioning and mixed boundary/node edits remain under review.
-- Adding elements from a palette and deleting elements or relationships remain planned authoring features.
-
-## Quick Start
-
-### Install
-
-Install through the **VS Code Marketplace** by searching for `C4X` in the Extensions view (`Cmd+Shift+X` or `Ctrl+Shift+X`), or install via the command line:
 
 ```bash
 code --install-extension jpantsjoha.c4x
 ```
 
-The extension is also available on **Open VSX** under `jpantsjoha.c4x`.
+<img src="assets/marketplace/screenshots/visual-editor-markdown-split.png" width="900" alt="C4X source in a Markdown file on the left, the live editable diagram on the right" />
 
-### Create a Diagram
+## 1.8.0 highlights
 
-Create a file named `architecture.c4x`, define a system context model, and press `Cmd+K V` (macOS) or `Ctrl+K V` (Windows and Linux) to open the preview.
+C4X 1.8.0 adds C4 notation checks, component-to-code mapping and architecture conformance checks. Visual editing gains safer relationship saves, multi-selection dragging and clearer staged changes. Gemini uses the current Google SDK with live-tested model discovery and failover.
+
+From a Markdown preview, click **Edit C4 diagram** beneath the diagram to open its visual editor; confirm **Open** if the IDE asks to open the extension link. In source view, click the CodeLens above a `c4x` fence, or right-click inside the fence and choose **Edit C4 diagram in visual editor**. In the visual panel, select **Edit C4 Diagram**, select an element, change its properties, review the diff, then choose **Save Changes**. **Discard** cancels staged edits. Save an untitled Markdown file before using preview links.
+
+This release fixes preview links that silently did nothing and ensures each link opens its own file and diagram after preview refreshes. See [1.8.0 release notes](docs/releases/1.8.0.md) for changes and known limitations.
+
+## Traction
+
+Registry figures read on 2026-09-09; repository figures measured on 2026-09-10 at `21e57e6`, except the commit counts below, read on 2026-09-09.
+
+- **1,588 installs** on the VS Code Marketplace and **7,053 downloads** on Open VSX.
+- **Version 1.7.0 published 2026-09-07** on both registries. The first Marketplace release was 2025-12-04.
+- **469 commits since 2025-10-19:** 467 from one human author and two from a test-fixture identity, across 82 merged pull requests, 101 merge commits and 10 release tags.
+- **Six test tiers:** 1,569 unit tests at `21e57e6` (counted by `pnpm run test:unit`), 497 extension-host tests, 126 browser tests, a packaged-VSIX smoke test on Windows, macOS and Linux, a live Gemini generation gate, and an MCP functional check. The release gate holds the unit tier to a line and branch coverage floor.
+- **Built in:** 1,098 cloud sprites (430 AWS, 624 Azure, 44 Google Cloud), six themes at WCAG AA contrast, Structurizr DSL and PlantUML C4 import, and a Model Context Protocol server in the repository.
+
+## The problem
+
+Architecture diagrams rot because they live outside the repository. Three roles feel it differently.
+
+**Alex, a software architect.** The container diagram belongs in the pull request that changes the containers. Structurizr wants a Java runtime, PlantUML wants Graphviz or a server, and both sit outside the editor. So Alex draws the diagram once, at design time, and never again.
+
+**Jordan, a technical writer.** Mermaid renders inside Markdown; C4 does not. Jordan exports a PNG, uploads it, links it, and watches it go stale the week the code changes.
+
+**Sam, an engineering manager.** Every team picks a different drawing tool, and a proprietary canvas file produces no diff. Architecture never reaches code review, so Sam cannot enforce a standard the team never sees.
+
+## The solution
+
+**Alex** writes `architecture.c4x` beside the code and presses `Cmd+K V`. Dragging a box stages a coordinate change, the inspector shows the exact source diff, and **Save Changes** writes `$x` and `$y` back into the file. The diagram travels in the commit that changed the code.
+
+**Jordan** puts a fenced `c4x` block inside the Markdown file. The VS Code preview renders it live. There is no image to export, host or refresh.
+
+**Sam** reads architecture the way the team reads code. A moved container is two changed numbers in a text diff, on a branch, in a pull request.
+
+## What it does
+
+**1. Write text, see the diagram.** Create `architecture.c4x`, write a few lines of Mermaid-like syntax, press `Cmd+K V` (or `Ctrl+K V`). C4X parses the source and renders locally. No network call, no rendering service.
+
+**2. Generate a model from code.** Run `C4X: Generate Diagram Here (Gemini)`. Gemini reads the surrounding files and drafts a C4 model at the cursor. C4X parses the output before it reaches the document and re-prompts up to twice if the syntax is wrong.
+
+**3. Arrange by dragging.** Automatic layout gives you structure; you supply the emphasis. Drag gestures stage coordinates for review. Native `.c4x` files take `$x` and `$y` inline; imported formats use a layout sidecar so the original file is never rewritten.
+
+**4. Edit the model on the canvas.** Change an element's label, technology, description, tags or sprite. Renaming an element rewrites every relationship that references it. Draw new relationships, or move an existing one to a different endpoint.
+
+**5. Review before saving.** Every visual change is staged before it touches disk. Read the unified diff against your source, drop individual changes, then save the batch as one undo step.
+
+**6. Export and embed.** SVG for Figma or Illustrator, PNG at 1x, 2x or 4x without a headless browser, or SVG straight to the clipboard. Fenced `c4x` blocks render live in the VS Code Markdown preview.
+
+**7. Check the notation.** C4X checks each diagram against the C4 review checklist and lists what is missing in the Problems panel: a container with no technology, an unlabelled arrow, a component drawn in a system context view. Every finding carries a stable rule id and a fix, never blocks the preview, and has a severity you can change per rule. Rules and settings: [C4X lint rules](./docs/C4X-LINT-RULES.md).
+
+## Design choices
+
+- **No second runtime.** The package is about 1.47 MB and needs no Java, no Graphviz, no Docker and no rendering server. Preview and export run locally.
+- **Write-back that fails closed.** A visual change that cannot be turned into valid source is abandoned rather than written. Each completed action is one `WorkspaceEdit` and one undo step, reparsed and validated before it is acknowledged.
+- **Generation a parser has checked.** Gemini drafts the model; the C4X parser decides whether it is admissible. Failures are corrected by re-prompting with the parser's own error, at most twice, before anything is inserted.
+- **Your key, your bill.** Gemini calls use your own API key, held in VS Code SecretStorage. C4X has no backend, no hosted service and no telemetry, so nothing about your code leaves the machine except the context you asked to send.
+- **Diagrams in the diff.** Models are plain text in the repository. They branch with the feature, review in the pull request, and survive the people who wrote them.
+
+## New in 1.7.0
+
+- **Gemini model pickers.** `C4X: Select Gemini Model` and `C4X: Select Gemini Image Model` list the models your key can reach, marking preview, retired and specialist ones. Lists are cached for a day.
+- **Steadier arranging.** Nested boundaries resize child-first and keep authored origins and minimum sizes. Relationship-label layout no longer shifts elements you placed by hand. Discarding a move rewraps the frame around it.
+- **The preview stays put.** The visual editor opens reliably, and focusing the preview keeps its binding to the source document instead of clearing the diagram.
+- **Clearer recovery.** A failed save retries its rollback up to three times, and restoring a draft says which targets are missing.
+- **Clean installs, checked on three systems.** Clean-install checks run on Windows, macOS and Linux. Development files are out of the VSIX, and browser failures or high- and critical-severity dependency findings block a release.
+
+Full detail: [1.7.0 changelog](./CHANGELOG.md#170---2026-09-07).
+
+## Roadmap
+
+- **1.8.0 — model quality checks, a supported AI SDK and sturdier editing.** Check a model as you write it with C4 notation and coherence lint, run the same lint from a git hook, CI or MCP, and export a component view as a dependency-cruiser architecture check. Move Gemini calls to the `@google/genai` SDK. Fix diagram-editing defects found in installed testing. Ship third-party licence notices in the package.
+- **1.8.1 — draft recovery and model authoring.** Harden draft identity and schema migration. Add elements from a C4-aware palette. Delete elements and relationships with dependent-relationship review.
+- **1.9.0 — more checkers, agent-ready.** ArchUnit-family PlantUML export, MCP self-registration in VS Code, and a published agent skill.
+- **1.10.0 — larger models.** Drill from a C1 context into the C2 container file behind it, and load organisation-specific icon packs.
+- **Beyond the sequenced roadmap.** Unsequenced aspirations, not commitments: detect drift between code and model in CI, share branch-aware editing sessions through Git, and generate a static architecture portal from the repository.
+
+Detail and delivery rules: [product roadmap](./docs/ROADMAP.md).
+
+## Quick start
+
+Install from the Extensions view (`Cmd+Shift+X` or `Ctrl+Shift+X`) by searching for `C4X`, or from the command line:
+
+```bash
+code --install-extension jpantsjoha.c4x
+```
+
+The same extension is on Open VSX as `jpantsjoha.c4x`.
+
+Create `architecture.c4x`, paste this, and press `Cmd+K V` (macOS) or `Ctrl+K V` (Windows and Linux):
 
 ```c4x
 %%{ c4: system-context }%%
@@ -161,84 +120,9 @@ Customer -->|Uses| Banking
 Banking -->|Sends notifications| Email
 ```
 
-### Embed in Markdown
+The same block inside a fenced `c4x` code block renders live in the Markdown preview.
 
-Fenced `c4x` blocks embedded in Markdown files render as interactive diagrams within the VS Code Markdown preview:
-
-````markdown
-```c4x
-%%{ c4: system-context }%%
-graph TB
-    User[User<br/>Person]
-    System[My System<br/>Software System]
-    User -->|Uses| System
-```
-````
-
-## DSL Syntax
-
-C4X-DSL uses a Mermaid-compatible text syntax tailored for C4 architecture modelling.
-
-### View Types
-
-Declare the view level at the head of the file:
-
-```text
-%%{ c4: system-context }%%      %% C1 System Context
-%%{ c4: container }%%           %% C2 Container
-%%{ c4: component }%%           %% C3 Component
-%%{ c4: deployment }%%          %% C4 Deployment
-%%{ c4: dynamic }%%             %% Dynamic sequence flow
-```
-
-### Graph Direction
-
-Set the graph orientation using standard directional keywords:
-
-```text
-graph TB    %% Top-to-bottom: recommended for structural hierarchy
-graph LR    %% Left-to-right: recommended for data pipelines and flows
-graph BT    %% Bottom-to-top: recommended for dependency inversion
-graph RL    %% Right-to-left: reverse flow
-```
-
-### Elements
-
-Define elements using bracket notation or function syntax:
-
-```c4x
-%% Bracket syntax
-Admin[Administrator<br/>Person]
-API[Payment API<br/>Software System<br/>External]
-
-%% Function syntax with sprite icons and technology tags
-Container(WebApp, "Web App", "React", $sprite="c4xicons.aws.elastic-beanstalk-application")
-ContainerDb(DB, "Database", "PostgreSQL")
-Person(User, "End User")
-```
-
-Supported element types include `Person`, `Software System`, `Container`, `ContainerDb`, `Component`, `ComponentDb`, and their corresponding `*_Ext` external variants.
-
-### Relationships
-
-Connect elements using directional arrows indicating dependency types:
-
-```c4x
-%%{ c4: container }%%
-graph TB
-
-Web[Web App<br/>Container]
-Api[API<br/>Container]
-Queue[Event Bus<br/>Container]
-
-Web -->|Calls| Api                %% Standard dependency
-Api ==>|Reads and writes| Queue   %% Synchronous or blocking call
-Queue -.->|Notifies| Web          %% Asynchronous or event-driven
-```
-
-### Boundaries
-
-Group containers or components within named subgraphs:
+The first line declares the view: `system-context`, `container`, `component`, `deployment` or `dynamic`. The second sets direction: `graph TB`, `LR`, `BT` or `RL`. Elements take bracket or function form, arrows carry the relationship, and a `subgraph` draws a boundary:
 
 ```c4x
 %%{ c4: container }%%
@@ -254,48 +138,25 @@ graph TB
     WebApp ==>|Reads and writes| Database
 ```
 
-Full specification: [Syntax Guide](./docs/c4x-syntax.md)
+`-->` is a dependency, `==>` a synchronous call and `-.->` an asynchronous one. Function syntax adds technology and sprite icons:
 
-## AI Generation
+```c4x
+Container(WebApp, "Web App", "React", $sprite="c4xicons.aws.elastic-beanstalk-application")
+ContainerDb(DB, "Database", "PostgreSQL")
+Person(User, "End User")
+```
 
-C4X integrates with Google Gemini to draft architecture models from code, text, or file selections.
+In bracket form C4X understands the type labels `Person`, `Software System`, `Container`, `ContainerDb`, `Component` and `ComponentDb`. In function form the equivalents are `Person`, `System`, `SystemDb`, `Container`, `ContainerDb`, `Component` and `ComponentDb`, each with an `*_Ext` external variant. Full grammar: [syntax guide](./docs/c4x-syntax.md). Worked models: [examples](./docs/EXAMPLES.md).
 
-### Setup
+To generate diagrams from code, get a key from [Google AI Studio](https://aistudio.google.com/), run `C4X: Set Gemini API Key`, and paste it. C4X stores it in VS Code SecretStorage; it is never written to a settings file. `C4X: Clear Gemini API Key` removes it.
 
-1. Obtain a Gemini API key from [Google AI Studio](https://aistudio.google.com/). Generation sends the selected context to the Gemini API; local parsing, layout and SVG rendering work offline.
-2. In VS Code, open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and run `C4X: Set Gemini API Key`.
-3. Paste the key. C4X stores the credential in VS Code encrypted SecretStorage. Keys are never written to plain settings files or committed to source control.
-4. To replace or clear an existing key, run `C4X: Set Gemini API Key` or `C4X: Clear Gemini API Key`.
+The default model is `gemini-3.8-flash`, with a single failover to `gemini-3.1-pro-preview` when the first model fails. `C4X: Select Gemini Model` lists what your key can reach. Guides: [Gemini generation](./docs/GEMINI_GUIDE.md) and [visual diagrams](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md).
 
-### Commands
+Editing and export commands live under the same prefix: `C4X: Open Preview`, `C4X: Export SVG`, `C4X: Export Diagram as PNG`, `C4X: Copy SVG To Clipboard` and `C4X: Diagram from Selection`.
 
-| Command | Action |
-|---|---|
-| `C4X: Generate Diagram Here (Gemini)` | Reads code in the active folder and inserts a complete C4 model at the cursor. |
-| `C4X: Diagram from Selection` | Generates a visual PNG diagram from highlighted code or prose. |
-| `C4X: Select Gemini Model` | Discovers available Gemini models and sets the active generation endpoint. |
+## MCP server
 
-The default model is `gemini-3.8-flash`, with automatic failover to `gemini-3.1-pro-preview`. Generated diagrams undergo local parser verification with up to three automated self-correction retries before insertion.
-
-Full guides: [Gemini AI Guide](./docs/GEMINI_GUIDE.md) | [Visual Diagram Guide](./docs/DIAGRAM-WITH-GEMINI-IMAGE.md)
-
-## Export and MCP
-
-### Export Formats
-
-C4X exports diagrams cleanly for presentations, design tools, and documentation:
-
-| Command | Format | Details |
-|---|---|---|
-| `C4X: Export Diagram as PNG` | PNG | 1x, 2x, or 4x resolution using HTML5 Canvas without Chromium overhead. |
-| `C4X: Export SVG` | SVG | Scalable vector graphics suitable for Figma, Illustrator, or Sketch. |
-| `C4X: Copy SVG To Clipboard` | SVG | Copies vector XML directly to clipboard for rapid pasting. |
-
-All export outputs preserve the active theme styling.
-
-### MCP Server
-
-The C4X repository bundles a standalone Model Context Protocol (MCP) server for integration with external AI coding assistants. The server requires no local `node_modules` installation, ensuring reliable execution in clean clones:
+The repository ships a standalone Model Context Protocol server so coding agents can check C4X syntax themselves. It is a single bundle and needs no `node_modules`, so it runs in a clean clone:
 
 ```json
 {
@@ -308,41 +169,43 @@ The C4X repository bundles a standalone Model Context Protocol (MCP) server for 
 }
 ```
 
-For Codex environments, configure `.codex/config.toml`:
+The `validate_c4x` tool returns line and column errors an agent can act on, and the server exposes `c4x://guidelines`, `c4x://syntax` and `c4x://examples/*`. It works with Claude Desktop, Cursor, Windsurf, Cline and other MCP clients; Codex takes the same command in `.codex/config.toml`.
 
-```toml
-[mcp_servers.c4x-validator]
-command = "node"
-cwd = "/absolute/path/to/c4x-vscode-extension"
-args = ["mcp/c4x-mcp-server.bundle.cjs"]
-startup_timeout_sec = 10
-tool_timeout_sec = 10
+## Known limitations
+
+- A reload loses pan and zoom when nothing else has changed, because C4X persists element coordinates but not the camera. Restoring a draft whose target elements have gone raises a warning. Save important changes before closing or switching diagrams.
+- A relationship label can land in a different place after a save than it held during the drag, and a long description overflows its node box. Resize-handle placement and mixed boundary and node edits remain under review.
+- Only a boundary written as `subgraph` can be positioned or resized by hand, because only `subgraph` takes `$x`, `$y`, `$w` and `$h`. A boundary written as `System_Boundary`, `Container_Boundary` or `Enterprise_Boundary` has nowhere in the syntax to keep a position. In 1.7.0 the editor still offers to drag one and then refuses the whole save; an unreleased change leaves it fixed instead. Rewriting a boundary as a `subgraph` makes it movable and drops its C4 type, so the C4 lint rules for boundaries no longer apply to it.
+- C4X cannot yet add an element from a palette, or delete an element or a relationship. Both are planned.
+
+## For developers
+
+C4X builds on Node 20.20.2 (`.nvmrc`):
+
+```bash
+pnpm install       # install dependencies
+make quick-check   # typecheck, lint, unit tests, harness and MCP checks
+make check         # the above, plus documentation verification and a build
 ```
 
-- **Tool:** `validate_c4x` evaluates diagram syntax and returns line and column errors for automated agent correction.
-- **Resources:** Exposes `c4x://guidelines`, `c4x://syntax`, and `c4x://examples/*`.
-- **Client compatibility:** Works with Claude Desktop, Cursor, Windsurf, Cline, and standard MCP clients.
+Press `F5` in VS Code to launch the Extension Development Host with the extension loaded.
 
-## Contributing
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) for the branch, test and review rules, and the [documentation index](./docs/README.md) for guides and examples. Issues and pull requests go to [GitHub](https://github.com/jpantsjoha/c4x-vscode-extension/issues).
 
-Contributions are welcomed through [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) and pull requests. Please consult [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+## Icons
 
-## More from the Author
+<img src="assets/marketplace/icons/c4x-icons-example.png" width="900" alt="C4X icon integration example" />
 
-Developed by **[Jaroslav Pantsjoha](https://jpantsjoha.com)**.
-
-- **[Pine Script (v5)](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.pine-script-v5)**: Syntax highlighting, snippets, and linting for TradingView Pine Script.
+The bundled AWS, Azure and Google Cloud sprites belong to their vendors, not to this project. [NOTICE.md](./NOTICE.md) records the attribution and sources; [docs/ICONS.md](./docs/ICONS.md) lists the catalogue.
 
 ## Licence
 
-Distributed under the MIT Licence. See [LICENSE](./LICENSE) for details.
+MIT. See [LICENSE](./LICENSE).
 
-## Acknowledgements
-
-- [C4 Model](https://c4model.com/) created by Simon Brown.
-- [Mermaid.js](https://mermaid.js.org/) for DSL syntax inspiration.
-- [Dagre](https://github.com/dagrejs/dagre) for directed graph layout computation.
+- [C4 model](https://c4model.com/) by Simon Brown.
+- [Mermaid.js](https://mermaid.js.org/) for syntax inspiration.
+- [Dagre](https://github.com/dagrejs/dagre) for graph layout.
 
 ---
 
-**Built with [Gemini](https://blog.google/products/gemini/gemini-3/) for software architects who value simplicity** · [Jaroslav Pantsjoha](https://jpantsjoha.com) · [GitHub Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues) · [GitHub Repository](https://github.com/jpantsjoha/c4x-vscode-extension)
+Built by [Jaroslav Pantsjoha](https://jpantsjoha.com) · [GitHub repository](https://github.com/jpantsjoha/c4x-vscode-extension) · [Issues](https://github.com/jpantsjoha/c4x-vscode-extension/issues)

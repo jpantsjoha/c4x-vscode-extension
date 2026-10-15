@@ -8,7 +8,33 @@ if (!process.env.C4X_FORCE_THEME) {
   process.env.C4X_FORCE_THEME = 'classic';
 }
 
-export function run(): Promise<void> {
+/**
+ * The activation budget (#201) is judged on a measurement taken here, before any
+ * suite runs: the first suite mocha loads activates the extension itself, so a
+ * measurement taken inside a test always found it already active. If the host had
+ * activated it before this runner was even entered, `wasActive` says so and the
+ * budget test fails rather than passing on a number nobody took.
+ */
+async function measureColdActivation(): Promise<void> {
+  const vscode = await import('vscode');
+  const extension = vscode.extensions.getExtension('jpantsjoha.c4x');
+  if (!extension) {
+    (globalThis as Record<string, unknown>).__c4xActivation = { missing: true, wasActive: false, ms: NaN };
+    return;
+  }
+  // VS Code infers activation from contributions; the explicit onUri event
+  // also stays idle here. None fires in the empty test
+  // workspace before this runner is entered, which is why isActive is false here
+  // and activate() below is the cold path. isActive cannot see an activation that
+  // is in flight; if one ever were, ms would be short of the real cost, not over.
+  const wasActive = extension.isActive;
+  const startedAt = Date.now();
+  await extension.activate();
+  (globalThis as Record<string, unknown>).__c4xActivation = { missing: false, wasActive, ms: Date.now() - startedAt };
+}
+
+export async function run(): Promise<void> {
+  await measureColdActivation();
   // Create Mocha test runner
   const mocha = new Mocha({
     ui: 'bdd', // BDD-style (describe/it) instead of TDD (suite/test)

@@ -3,6 +3,7 @@
  * Validates performance claims:
  * - Parser: < 50ms
  * - Total pipeline: < 200ms
+ * - Notation lint of a 200-element model: < 5ms (#214)
  */
 
 import '../../scripts/mock-vscode';
@@ -12,6 +13,8 @@ import { c4ModelBuilder } from '../../src/model/C4ModelBuilder';
 import { dagreLayoutEngine } from '../../src/layout/DagreLayoutEngine';
 import { svgBuilder } from '../../src/render/SvgBuilder';
 import { ClassicTheme } from '../../src/themes/ClassicTheme';
+import { lintModel } from '../../src/model/lint';
+import { generateLintModel } from '../../src/__tests__/model/lint-fixtures';
 
 /**
  * Sample C4X diagram for benchmarking
@@ -189,11 +192,26 @@ export function runBenchmarks(): void {
     });
     console.log(pipelineBench.report());
 
-    // 6. Performance Targets Validation
+    // 6. Notation Lint Benchmark — the model the unit suite proves correct
+    console.log('\n--- NOTATION LINT PERFORMANCE ---\n');
+
+    const lintFixture = generateLintModel();
+    const lintInput = c4ModelBuilder.build(c4xParser.parse(lintFixture.source), 'benchmark');
+    const lintBench = new PerformanceMeasure(
+        `Notation lint (${lintFixture.elementCount} elements, ${lintFixture.relationshipCount} relationships)`,
+        200,
+    );
+    lintBench.measure(() => {
+        lintModel(lintInput);
+    });
+    console.log(lintBench.report());
+
+    // 7. Performance Targets Validation
     console.log('\n--- PERFORMANCE TARGETS ---\n');
 
     const c4xResults = c4xParserBench.getResults();
     const pipelineResults = pipelineBench.getResults();
+    const lintResults = lintBench.getResults();
 
     const parseTarget = 50; // ms
     const pipelineTarget = 200; // ms
@@ -208,7 +226,13 @@ export function runBenchmarks(): void {
     const pipelinePassed = pipelineResults.p95 < pipelineTarget;
     console.log(`Status: ${pipelinePassed ? '✅ PASS' : '❌ FAIL'}`);
 
-    // 7. Comparison Table
+    const lintTarget = 5; // ms, for a 200-element model
+    console.log(`\nTarget: Notation lint (${lintFixture.elementCount} elements) < ${lintTarget}ms`);
+    console.log(`Actual: ${lintResults.avg.toFixed(2)}ms (P95: ${lintResults.p95.toFixed(2)}ms)`);
+    const lintPassed = lintResults.p95 < lintTarget;
+    console.log(`Status: ${lintPassed ? '✅ PASS' : '❌ FAIL'}`);
+
+    // 8. Comparison Table
     console.log('\n--- COMPARATIVE PERFORMANCE ---\n');
     console.log('Component                     | Avg (ms) | P95 (ms) | % of Pipeline');
     console.log('------------------------------|----------|----------|---------------');
@@ -223,7 +247,7 @@ export function runBenchmarks(): void {
 
     console.log('\n========================================\n');
 
-    if (!parsePassed || !pipelinePassed) {
+    if (!parsePassed || !pipelinePassed || !lintPassed) {
         throw new Error('Performance regression: one or more P95 targets were exceeded');
     }
 }

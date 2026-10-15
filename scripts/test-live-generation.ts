@@ -12,9 +12,19 @@
  * A model that has been retired, renamed, or is not granted to the key fails
  * here rather than in a user's editor.
  *
+ * Every call goes through the extension's own client code in
+ * src/ai/geminiClient.ts — the `@google/genai` client it builds, the response
+ * reader and the model-list call — so the gate proves the SDK path users run,
+ * not just that the model ids answer a hand-written request. A text model is
+ * called through SyntaxValidator.executeWithRetry, the function generation
+ * calls for every model attempt, so the answer is read, de-fenced and parsed by
+ * the same code a user's diagram is. The gate allows it one attempt, not the
+ * three a user gets: a model that needs self-correction to answer this prompt
+ * is a finding, not a pass.
+ *
  * Key resolution, first WORKING key wins:
- *   GEMINI_API_KEY, then GEMINI_API_KEY_FALLBACK, from the environment
- *   then the same two from ./.env
+ *   GEMINI_API_KEY, then GEMINI_API_KEY_FALLBACK, from the environment only.
+ *   No .env file is read: keys come from environment variables.
  *
  * Each candidate is probed before use, so an expired primary key falls through
  * to the fallback rather than failing the whole gate. Keys expire; that should
@@ -26,9 +36,11 @@
  * Run: pnpm run test:live
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
+import type { GenerateContentResponse } from '@google/genai';
+import type { executeWithRetry as ExecuteWithRetry } from '../src/ai/SyntaxValidator';
 import { C4XParser } from '../src/parser/C4XParser';
+import { createGeminiClient, fetchModelList } from '../src/ai/geminiClient';
 import {
     DEFAULT_MODEL,
     PRO_MODEL,
@@ -39,7 +51,29 @@ import {
 } from '../src/ai/models';
 
 const ROOT = path.resolve(__dirname, '..');
-const API = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+/**
+ * SyntaxValidator imports `vscode`: for its progress type, and through
+ * PromptBuilder for workspace reads that a single attempt never makes. Outside
+ * VS Code that import resolves to the unit tier's stand-in, which is enough for
+ * both. Loaded on first use, after the resolver is in place.
+ */
+let executeWithRetryLoaded: typeof ExecuteWithRetry | undefined;
+function loadExecuteWithRetry(): typeof ExecuteWithRetry {
+    if (executeWithRetryLoaded) {
+        return executeWithRetryLoaded;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Module = require('module');
+    const resolve = Module._resolveFilename;
+    const standIn = path.join(ROOT, 'src', '__tests__', '__mocks__', 'vscode.ts');
+    Module._resolveFilename = function (request: string, ...args: unknown[]) {
+        return resolve.call(this, request === 'vscode' ? standIn : request, ...args);
+    };
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    executeWithRetryLoaded = (require('../src/ai/SyntaxValidator') as typeof import('../src/ai/SyntaxValidator')).executeWithRetry;
+    return executeWithRetryLoaded;
+}
 
 const KEY_NAMES = ['GEMINI_API_KEY', 'GEMINI_API_KEY_FALLBACK'];
 
@@ -58,26 +92,16 @@ function candidateKeys(): Array<{ name: string; value: string }> {
         add(`${name} (env)`, process.env[name]);
     }
 
-    const envFile = path.join(ROOT, '.env');
-    if (fs.existsSync(envFile)) {
-        const contents = fs.readFileSync(envFile, 'utf8');
-        for (const name of KEY_NAMES) {
-            const match = contents.match(new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=\\s*["']?([^"'\\s]+)`, 'm'));
-            add(`${name} (.env)`, match?.[1]);
-        }
-    }
-
     return found;
 }
 
-/** Probe a key with the cheapest call there is, so a dead key is skipped not fatal. */
+/**
+ * Probe a key with the cheapest call there is, so a dead key is skipped not
+ * fatal. The model list is free, and fetchModelList never throws: a rejected
+ * key comes back as an empty list.
+ */
 async function keyWorks(key: string): Promise<boolean> {
-    try {
-        const response = await fetch(`${API}?key=${key}&pageSize=1`, { signal: AbortSignal.timeout(15_000) });
-        return response.ok;
-    } catch {
-        return false;
-    }
+    return (await fetchModelList(key, 15_000)).length > 0;
 }
 
 async function resolveKey(): Promise<{ key: string; source: string } | undefined> {
@@ -100,19 +124,67 @@ interface Result {
 
 const results: Result[] = [];
 
-async function callModel(key: string, model: string, body: unknown): Promise<{ ok: boolean; json: any; detail: string }> {
-    const response = await fetch(`${API}/${model}:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120_000),
-    });
-    const json: any = await response.json();
-    if (!response.ok) {
-        const error = json?.error ?? {};
-        return { ok: false, json, detail: `${error.code ?? response.status} ${error.status ?? ''} ${String(error.message ?? '').slice(0, 90)}` };
+/** One line from an SDK error: the API's code, status and message when it sent them. */
+function errorDetail(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    try {
+        // @google/genai's ApiError carries the API's JSON error body as its message.
+        const body = JSON.parse(message)?.error ?? {};
+        const code = body.code ?? (error as { status?: number }).status ?? '';
+        return `${code} ${body.status ?? ''} ${String(body.message ?? '').slice(0, 90)}`;
+    } catch {
+        return message.slice(0, 90);
     }
-    return { ok: true, json, detail: '' };
+}
+
+/**
+ * How long one model call may take. 120 s; C4X_LIVE_TIMEOUT_MS overrides it,
+ * which only the dry-run test does, to prove the deadline without waiting.
+ */
+const CALL_TIMEOUT_MS = Number(process.env.C4X_LIVE_TIMEOUT_MS) > 0 ? Number(process.env.C4X_LIVE_TIMEOUT_MS) : 120_000;
+
+/** A client whose every request the SDK aborts at the call deadline. */
+function clientWithDeadline(key: string): ReturnType<typeof createGeminiClient> {
+    return createGeminiClient(key, { timeoutMs: CALL_TIMEOUT_MS });
+}
+
+/**
+ * Bound one live call. The deadline is enforced by the transport: the client
+ * from clientWithDeadline aborts the HTTP request, so the next model never
+ * starts while this one is still open, and a late answer is never read. It
+ * used to be a Promise.race, which stopped waiting but left the request
+ * running.
+ *
+ * The timer here is only a backstop, a few seconds after the deadline, for a
+ * call that somehow outlives its abort. It also holds the process open: the
+ * SDK's own deadline timer is unref'd, and a pending fetch alone does not
+ * always keep Node running.
+ */
+const BACKSTOP_GRACE_MS = 5_000;
+async function withTimeout<T>(work: Promise<T>): Promise<{ ok: true; value: T } | { ok: false; detail: string }> {
+    const noAnswer = `no answer within ${CALL_TIMEOUT_MS / 1000} s`;
+    let timer: NodeJS.Timeout | undefined;
+    const backstop = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${noAnswer}, and the request outlived its abort`)), CALL_TIMEOUT_MS + BACKSTOP_GRACE_MS);
+    });
+    try {
+        return { ok: true, value: await Promise.race([work, backstop]) };
+    } catch (error) {
+        const aborted = error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+        return { ok: false, detail: aborted ? `${noAnswer}; the request was cancelled` : errorDetail(error) };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/** Call a model exactly as the extension does: its client, a prompt and no config. */
+async function callModel(
+    key: string,
+    model: string,
+    contents: string,
+): Promise<{ ok: true; response: GenerateContentResponse } | { ok: false; detail: string }> {
+    const call = await withTimeout(clientWithDeadline(key).then(client => client.models.generateContent({ model, contents })));
+    return call.ok ? { ok: true, response: call.value } : call;
 }
 
 /** A text model must return C4X the extension's own parser accepts. */
@@ -126,23 +198,22 @@ async function checkTextModel(key: string, model: string, role: string): Promise
         '    User -->|Uses| App';
 
     try {
-        const { ok, json, detail } = await callModel(key, model, {
-            contents: [{ parts: [{ text: prompt }] }],
-        });
-        if (!ok) {
-            results.push({ model, role, ok: false, detail });
+        // One attempt through the generation path: the extension's client, its
+        // reader (throws for a blocked answer), its fence cleaner and its parser.
+        // It throws when the API refuses, the answer is blocked or empty, or the
+        // C4X does not parse; errorDetail reports which.
+        const executeWithRetry = loadExecuteWithRetry();
+        const call = await withTimeout(
+            clientWithDeadline(key).then(client => executeWithRetry(client, model, prompt, 1, 1, new C4XParser())),
+        );
+        if (!call.ok) {
+            results.push({ model, role, ok: false, detail: call.detail });
             return;
         }
 
-        const text: string = json?.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? '').join('') ?? '';
-        if (!text.trim()) {
-            results.push({ model, role, ok: false, detail: 'returned no text' });
-            return;
-        }
-
-        // The point of this gate: the output must survive the real parser.
-        const cleaned = text.replace(/```[a-z0-9]*\n?/gi, '').trim();
-        const parsed = new C4XParser().parse(cleaned);
+        // The output survived the real parser. Count what it drew, so a
+        // degenerate diagram does not pass.
+        const parsed = new C4XParser().parse(call.value);
         const elements = parsed?.elements?.length ?? 0;
         if (elements < 2) {
             results.push({ model, role, ok: false, detail: `parsed but only ${elements} element(s)` });
@@ -157,22 +228,25 @@ async function checkTextModel(key: string, model: string, role: string): Promise
 /** An image model must return actual image bytes, not a text apology. */
 async function checkImageModel(key: string, model: string, role: string): Promise<void> {
     try {
-        const { ok, json, detail } = await callModel(key, model, {
-            contents: [{ parts: [{ text: 'A simple architecture diagram: one blue box labelled "Web App" connected by an arrow to one grey box labelled "Database".' }] }],
-        });
-        if (!ok) {
-            results.push({ model, role, ok: false, detail });
+        const call = await callModel(
+            key,
+            model,
+            'A simple architecture diagram: one blue box labelled "Web App" connected by an arrow to one grey box labelled "Database".',
+        );
+        if (!call.ok) {
+            results.push({ model, role, ok: false, detail: call.detail });
             return;
         }
 
-        const parts: any[] = json?.candidates?.[0]?.content?.parts ?? [];
-        const image = parts.find(p => p.inlineData?.data || p.inline_data?.data);
+        // Read the parts the way GeminiService.generateVisualDiagram does.
+        const parts = call.response.candidates?.[0]?.content?.parts ?? [];
+        const image = parts.find(p => p.inlineData?.data && p.inlineData.mimeType?.startsWith('image/'));
         if (!image) {
             const text = parts.map(p => p.text ?? '').join('').slice(0, 70);
             results.push({ model, role, ok: false, detail: `no image bytes returned${text ? `; said "${text}"` : ''}` });
             return;
         }
-        const bytes = Buffer.from(image.inlineData?.data ?? image.inline_data?.data, 'base64');
+        const bytes = Buffer.from(image.inlineData?.data ?? '', 'base64');
         const isPng = bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50;
         results.push({
             model,
@@ -192,7 +266,7 @@ async function main(): Promise<void> {
             console.error('Live generation gate: REQUIRED but no working Gemini key is available.');
             process.exit(1);
         }
-        console.log('Live generation gate: SKIPPED (no working key in GEMINI_API_KEY, GEMINI_API_KEY_FALLBACK, or ./.env)');
+        console.log('Live generation gate: SKIPPED (no working key in GEMINI_API_KEY or GEMINI_API_KEY_FALLBACK)');
         console.log('  Run with a key before releasing. This is the only gate that proves the');
         console.log('  shipped model ids still exist and still work.');
         process.exit(0);
@@ -212,20 +286,17 @@ async function main(): Promise<void> {
         console.log(`  ${r.ok ? 'PASS' : 'FAIL'}  ${r.role.padEnd(14)} ${r.model.padEnd(30)} ${r.detail}`);
     }
 
-    // ── Discovery, against the same live list the extension will use ────────
+    // ── Discovery, through the extension's own call, against the live list ──
     try {
-        const response = await fetch(`${API}?key=${key}&pageSize=200`, { signal: AbortSignal.timeout(15_000) });
-        if (!response.ok) {
-            throw new Error(`Model discovery returned HTTP ${response.status}`);
+        // fetchModelList collapses every failure to an empty list, by design:
+        // discovery must never block generation. Here, empty is a failure.
+        const discovered = await fetchModelList(key, 15_000);
+        if (discovered.length === 0) {
+            throw new Error('Model discovery returned no models (fetchModelList reports every failure as an empty list)');
         }
-        const json: any = await response.json();
-        if (!Array.isArray(json.models) || json.models.length === 0) {
-            throw new Error('Model discovery returned no models');
+        if (!discovered.some(m => m.supportedGenerationMethods?.includes('generateContent'))) {
+            throw new Error('Model discovery lost supportedGenerationMethods: no model lists generateContent');
         }
-        const discovered = (json.models ?? []).map((m: any) => ({
-            id: String(m.name ?? '').replace(/^models\//, ''),
-            supportedGenerationMethods: m.supportedGenerationMethods,
-        }));
         const { selectBestModel, resolveModelChoice } = await import('../src/ai/modelDiscovery');
         const { DEFAULT_MODEL, DEFAULT_IMAGE_MODEL } = await import('../src/ai/models');
 

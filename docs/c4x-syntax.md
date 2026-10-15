@@ -275,6 +275,68 @@ Elements now support optional key-value arguments for advanced customization.
 
 - `$tags="tag1, tag2"`: Comma-separated tags.
 - `$sprite="icon-name"`: Icon identifier (for future icon support).
+- `$code="glob, glob"`: Where a Container or Component lives in source code. See [Code Mapping](#code-mapping-code).
+
+### Code Mapping (`$code`)
+
+A Container or Component can say which source files it owns. The mapping is what
+**C4X: Export Architecture Conformance** turns into dependency rules, so a team's CI can check
+that the code still has only the dependencies the diagram declares.
+
+**Syntax**: `$code="<glob>[, <glob> ...]"` as a key-value argument.
+
+```c4x
+%%{ c4: component }%%
+graph TB
+    Container_Boundary(host, "Extension host") {
+        Component(entry, "Extension entry", "TypeScript", "Composition root", $code="src/extension.ts")
+        Component(parser, "Parsers", "Peggy", "C4X grammar and adapters", $code="src/parser/**")
+        Component(core, "Model and layout", "TypeScript", "Shared model", $code="src/{model,layout}/**")
+    }
+    entry -->|parses with| parser
+    parser -->|builds| core
+```
+
+Rules:
+
+- **Containers and Components only.** `$code` on a Person, Software System or deployment `Node`
+  is a parse error, reported on the element's line.
+- **Globs are relative to the workspace root** and use forward slashes. `**` matches any depth,
+  `*` one path segment, `?` one character, `{a,b}` either alternative. A path without a
+  wildcard, such as `src/extension.ts` or `src/parser`, matches that file or everything below that
+  folder.
+- **Several globs** are separated by commas. A comma inside `{...}` belongs to its glob, so
+  `$code="src/{parser,model}/**"` is one entry.
+- Absolute paths, a leading `./`, `..` segments, backslashes and `!` negations are rejected with
+  a message naming the entry. So is any character outside letters, digits, spaces and
+  `. _ - / * ? { } [ ] , ! @ + ~ ( ) #`, and a glob with more than three wildcards (`*` and `**`
+  each count once; more makes matching slow on long paths).
+- One `$code` per element: a second `$code` on the same element is a parse error.
+- **Overlapping globs.** When two elements' globs match the same file, the glob with the longer
+  fixed part before its first wildcard owns it; on a tie, the element declared first does. With
+  `$code="src/orders/**"` on one component and `$code="src/orders/pricing.ts"` on another,
+  `pricing.ts` belongs only to the second.
+- The value must be quoted, because globs contain `/` and `*`.
+- Visual editing never changes `$code`. Moving, renaming or relabelling an element in the
+  visual editor leaves the attribute byte-for-byte as written.
+
+Hovering over `$code` lists each glob and how many workspace files it matches, so a glob that
+matches nothing is visible while you type. Typing `$` inside an element offers `$code`, and
+inside its value completion lists the folders and files of the workspace.
+
+**Structurizr DSL**: the same mapping is read from an element's `properties` block:
+
+```text
+parser = component "Parsers" {
+    properties {
+        "code" "src/parser/**"
+    }
+}
+```
+
+Because `code` is an ordinary Structurizr property that a workspace may already use for
+something else (`"code" "SYS:001"`), a value C4X cannot use, on a person or software system or
+one that is not a valid glob list, is ignored with a warning instead of failing the import.
 
 ---
 

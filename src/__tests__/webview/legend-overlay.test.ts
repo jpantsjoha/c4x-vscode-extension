@@ -286,10 +286,20 @@ describe('legend overlay wiring pins (#98)', () => {
         assert.ok(panelSrc.includes('role="region"'), 'overlay must be a region');
         assert.ok(panelSrc.includes('aria-label='), 'overlay must have an aria-label');
         assert.ok(panelSrc.includes('tabindex="0"'), 'overlay must be tab-focusable');
-        // Default position per audit Appendix B.
+        // Default position per audit Appendix B (bottom-right, 20px gutter),
+        // laid out in the bottom overlay dock beside the toolbar (#250) rather
+        // than pinned independently on top of it. The browser suite
+        // (legend-toolbar-overlap.spec.ts) proves the geometry.
+        const dockCss = panelSrc.slice(panelSrc.indexOf('#canvas-overlay-dock {'));
+        assert.ok(dockCss.includes('padding: 20px;'), 'overlay dock must keep the 20px gutter');
+        const dockMarkup = panelSrc.slice(panelSrc.indexOf('<div id="canvas-overlay-dock">'));
+        assert.ok(
+            dockMarkup.indexOf('class="canvas-toolbar"') < dockMarkup.indexOf('id="legend-overlay"'),
+            'toolbar and legend must share the dock, toolbar first (bottom line and Tab order)',
+        );
         const legendCss = panelSrc.slice(panelSrc.indexOf('#legend-overlay {'));
-        assert.ok(legendCss.includes('bottom: 20px;'), 'default anchor must be bottom: 20px');
-        assert.ok(legendCss.includes('right: 20px;'), 'default anchor must be right: 20px');
+        assert.ok(legendCss.includes('margin-left: auto;'), 'default anchor must be the right-hand end of the dock row');
+        assert.ok(legendCss.includes('#legend-overlay.legend-floating {'), 'a dragged legend must leave the dock row');
         assert.ok(legendCss.includes('#legend-overlay:focus-visible'), 'overlay needs :focus-visible styling');
     });
 

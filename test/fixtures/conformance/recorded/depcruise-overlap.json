@@ -1,0 +1,63 @@
+{
+  "modules": [
+    {
+      "source": "src/api/server.js",
+      "dependencies": [
+        {
+          "resolved": "src/orders/pricing.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "src/orders/pricing.js",
+      "dependencies": [
+        {
+          "resolved": "src/store/repo.js",
+          "coreModule": false,
+          "couldNotResolve": false,
+          "dependencyTypes": [
+            "local",
+            "require"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "src/store/repo.js",
+      "dependencies": []
+    },
+    {
+      "source": "src/orders/service.js",
+      "dependencies": []
+    }
+  ],
+  "summary": {
+    "violations": [
+      {
+        "type": "dependency",
+        "from": "src/api/server.js",
+        "to": "src/orders/pricing.js",
+        "rule": {
+          "severity": "error",
+          "name": "not-in-allowed"
+        }
+      },
+      {
+        "type": "dependency",
+        "from": "src/orders/pricing.js",
+        "to": "src/store/repo.js",
+        "rule": {
+          "severity": "error",
+          "name": "not-in-allowed"
+        }
+      }
+    ],
+    "totalCruised": 4
+  }
+}

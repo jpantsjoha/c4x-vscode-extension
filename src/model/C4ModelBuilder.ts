@@ -1,5 +1,6 @@
 import { C4XParseError, ParseResult, RawElement, RawRelationship, RawBoundary } from '../parser';
 import { C4Element, C4ElementType, C4Model, C4Rel, C4View, RelType, C4Boundary } from './C4Model';
+import { CODE_MAPPABLE_TYPES, parseCodePaths } from './codePaths';
 
 /* eslint-disable @typescript-eslint/naming-convention */
 const ELEMENT_TYPE_MAP: Record<string, C4ElementType> = {
@@ -68,9 +69,11 @@ export class C4ModelBuilder {
             const tagsToProcess = element.tags ? [...element.tags] : [];
             tagsToProcess.forEach(tag => {
                 if (tag.startsWith('$')) {
-                    const parts = tag.substring(1).split('=');
-                    if (parts.length === 2) {
-                        tagMetadata[parts[0]] = parts[1].replace(/['"]/g, ''); // Remove quotes
+                    // Split at the first `=` only: a value may itself contain one.
+                    const body = tag.substring(1);
+                    const equals = body.indexOf('=');
+                    if (equals > 0) {
+                        tagMetadata[body.slice(0, equals)] = body.slice(equals + 1).replace(/['"]/g, ''); // Remove quotes
                     } else {
                         // Just a flag like $flag?
                         tagMetadata[tag.substring(1)] = 'true';
@@ -90,6 +93,11 @@ export class C4ModelBuilder {
                 if (!finalTags.includes('Database')) { finalTags.push('Database'); }
             }
 
+            // `A[Label<br/>Component<br/>$code=src/a]` carries $code as a tag line.
+            // It is the same mapping, so it must not fall into generic metadata.
+            const rawCode = element.code ?? tagMetadata.code;
+            delete tagMetadata.code;
+
             // Merge explicit metadata (from ElementCall) with tag metadata
             const metadata = { ...tagMetadata, ...(element.metadata || {}) };
 
@@ -105,6 +113,10 @@ export class C4ModelBuilder {
                 sourceRange: element.sourceRange,
                 sourceId: element.sourceId,
             };
+
+            if (rawCode !== undefined) {
+                c4Element.codePaths = this.resolveCodePaths(element, rawCode, elementType, index);
+            }
 
             if (element.children && element.children.length > 0) {
                 c4Element.children = this.buildElements(element.children, seen);
@@ -162,6 +174,8 @@ export class C4ModelBuilder {
             return {
                 id: boundary.label.toLowerCase().replace(/\s+/g, '-') + '-boundary-' + index,
                 label: boundary.label,
+                ...(boundary.boundaryType ? { boundaryType: boundary.boundaryType } : {}),
+                ...(boundary.boundaryType && boundary.id ? { alias: boundary.id } : {}),
                 direction: boundary.direction,
                 elements: boundary.elements.map(elem => elem.id), // elem is a RawElement with id property
                 metadata: boundary.metadata,
@@ -169,6 +183,30 @@ export class C4ModelBuilder {
                 sourceId: boundary.sourceId,
             };
         });
+    }
+
+    /**
+     * `$code` maps a Container or Component to source paths. Anywhere else it
+     * is an authoring mistake, reported at the element rather than ignored.
+     */
+    private resolveCodePaths(element: RawElement, rawCode: string, elementType: C4ElementType, index: number): string[] {
+        const location = element.sourceRange
+            ? { line: element.sourceRange.start.line, column: element.sourceRange.start.column }
+            : { line: index + 1, column: 1 };
+        if (!CODE_MAPPABLE_TYPES.has(elementType)) {
+            throw new C4XParseError(
+                `$code is only valid on Container and Component elements; "${element.id}" is a ${elementType}`,
+                location,
+            );
+        }
+        try {
+            return parseCodePaths(rawCode);
+        } catch (error) {
+            throw new C4XParseError(
+                `Element "${element.id}": ${error instanceof Error ? error.message : String(error)}`,
+                location,
+            );
+        }
     }
 
     private resolveElementType(element: RawElement, index: number): C4ElementType {

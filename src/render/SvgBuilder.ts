@@ -291,15 +291,11 @@ ${layeredContent}
                     path = toPath(edge.points);
                     labelPoint = midpoint(edge.points);
                 } else {
-                    // Fallback if no points from Dagre (shouldn't happen usually)
-                    // Just do center to center
-                    if (fromElement && toElement) {
-                        path = `M${(fromElement.x + fromElement.width / 2).toFixed(2)},${(fromElement.y + fromElement.height / 2).toFixed(2)} L${(toElement.x + toElement.width / 2).toFixed(2)},${(toElement.y + toElement.height / 2).toFixed(2)}`;
-                        labelPoint = { x: (fromElement.x + fromElement.width / 2 + toElement.x + toElement.width / 2) / 2, y: (fromElement.y + fromElement.height / 2 + toElement.y + toElement.height / 2) / 2 };
-                    } else {
-                        path = "";
-                        labelPoint = { x: 0, y: 0 };
-                    }
+                    // No dagre points, and this arm is the else of
+                    // `fromElement && toElement` — so at least one endpoint is
+                    // missing by construction and there is no geometry to draw.
+                    path = "";
+                    labelPoint = { x: 0, y: 0 };
                 }
             }
         } else {

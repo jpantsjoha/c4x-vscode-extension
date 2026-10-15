@@ -185,7 +185,10 @@ async function main() {
         client.notify('notifications/initialized');
 
         const tools = assertResult(await client.request('tools/list', {}));
-        assert.deepEqual(tools.tools.map(tool => tool.name), ['validate_c4x']);
+        assert.deepEqual(tools.tools.map(tool => tool.name), ['validate_c4x', 'lint_c4x']);
+        const lintTool = tools.tools.find(tool => tool.name === 'lint_c4x');
+        assert.deepEqual(lintTool.inputSchema.required, ['code']);
+        assert.deepEqual(lintTool.inputSchema.properties.rules.additionalProperties.enum, ['off', 'ignore', 'info', 'warning', 'error']);
 
         const listedResources = assertResult(await client.request('resources/list', {}));
         assert.deepEqual(listedResources.resources.map(resource => resource.uri), Object.keys(resourceFixtures));
@@ -220,6 +223,79 @@ async function main() {
         }));
         assert.equal(oversized.isError, true);
         assert.match(oversized.content[0].text, /must not exceed 1 MiB/);
+
+        const cleanLint = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: {
+                code: '%%{ c4: system-context }%%\ngraph TB\n    customer[Customer<br/>Person]\n'
+                    + '    banking[Internet Banking<br/>Software System]\n    customer -->|Views balances using| banking\n',
+            },
+        }));
+        assert.equal(cleanLint.content[0].text, 'Lint CLEAN. No findings.');
+        assert.equal(cleanLint.isError, undefined);
+
+        const noProtocol = '%%{ c4: container }%%\ngraph TB\n'
+            + '    Container(api, "API Application", "Java and Spring Boot", "Serves the API")\n'
+            + '    Container(db, "Database", "PostgreSQL", "Stores accounts")\n'
+            + '    api -->|Reads accounts from| db\n';
+        const findings = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { code: noProtocol },
+        }));
+        assert.equal(findings.isError, undefined, 'Lint findings are advice, not a tool error.');
+        const [heading, ...lines] = findings.content[0].text.split('\n');
+        assert.equal(heading, 'Lint FINDINGS. 1 total: 0 error, 0 warning, 1 info.');
+        assert.deepEqual(lines.map(line => line.split(' ').slice(0, 3).join(' ')), ['5:5 info C4X-L004']);
+
+        const raised = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { code: noProtocol, rules: { 'C4X-L004': 'error', 'C4X-NOPE': 'error' } },
+        }));
+        assert.match(raised.content[0].text, /^Lint FINDINGS\. 1 total: 1 error, 0 warning, 0 info\.\nNote: unknown rule "C4X-NOPE" ignored\n5:5 error C4X-L004 /);
+
+        const typo = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { code: noProtocol, rules: { 'C4X-L004': 'off', 'C4X-L003': 'loud' } },
+        }));
+        assert.equal(typo.content[0].text, 'Lint CLEAN. No findings.\nNote: C4X-L003 must be one of off, ignore, info, warning, error; using its default');
+
+        // 150 containers with no description, technology or relationship: 450 findings.
+        const crowded = ['%%{ c4: container }%%', 'graph TB']
+            .concat(Array.from({ length: 150 }, (_, index) => `    Container(c${index}, "Container ${index}")`))
+            .join('\n');
+        const capped = assertResult(await client.request('tools/call', { name: 'lint_c4x', arguments: { code: crowded } }));
+        const cappedLines = capped.content[0].text.split('\n');
+        assert.equal(cappedLines[0], 'Lint FINDINGS. 450 total: 0 error, 0 warning, 450 info.');
+        assert.equal(cappedLines.length, 1 + 200 + 1, 'heading, 200 findings, and one line for the rest');
+        assert.equal(cappedLines[cappedLines.length - 1], '… 250 more findings not shown.');
+
+        const silenced = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { code: noProtocol, rules: { 'C4X-L004': 'off' } },
+        }));
+        assert.equal(silenced.content[0].text, 'Lint CLEAN. No findings.');
+
+        const lintSyntax = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { code: 'graph TB\nNotARealElement[]\n' },
+        }));
+        assert.equal(lintSyntax.isError, true);
+        assert.match(lintSyntax.content[0].text, /^Syntax ERROR\. Lint needs code that parses/);
+        assert.match(lintSyntax.content[0].text, /\n2:\d+ error C4X-SYNTAX /);
+
+        const lintMissing = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { rules: {} },
+        }));
+        assert.equal(lintMissing.isError, true);
+        assert.match(lintMissing.content[0].text, /required 'code' field/);
+
+        const lintOversized = assertResult(await client.request('tools/call', {
+            name: 'lint_c4x',
+            arguments: { code: 'x'.repeat((1024 * 1024) + 1) },
+        }));
+        assert.equal(lintOversized.isError, true);
+        assert.match(lintOversized.content[0].text, /must not exceed 1 MiB/);
 
         for (const uri of Object.keys(resourceFixtures)) {
             const resource = assertResult(await client.request('resources/read', { uri }));

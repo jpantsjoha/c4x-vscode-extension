@@ -1,0 +1,91 @@
+{
+  "allowedSeverity": "error",
+  "allowed": [
+    {
+      "comment": "c4x: imports of anything outside src/ (packages, Node built-ins, host APIs) are not constrained",
+      "from": {},
+      "to": {
+        "pathNot": "^src/.*$"
+      }
+    },
+    {
+      "comment": "c4x: code outside src/ is not constrained",
+      "from": {
+        "pathNot": "^src/.*$"
+      },
+      "to": {}
+    },
+    {
+      "comment": "c4x: same component api (HTTP API) may import itself",
+      "from": {
+        "path": "^src/api(?:$|/.*)$"
+      },
+      "to": {
+        "path": "^src/api(?:$|/.*)$"
+      }
+    },
+    {
+      "comment": "c4x: same component orders (Orders) may import itself",
+      "from": {
+        "path": "^src/orders(?:$|/.*)$"
+      },
+      "to": {
+        "path": "^src/orders(?:$|/.*)$"
+      }
+    },
+    {
+      "comment": "c4x: same component store (Store) may import itself",
+      "from": {
+        "path": "^src/store(?:$|/.*)$"
+      },
+      "to": {
+        "path": "^src/store(?:$|/.*)$"
+      }
+    },
+    {
+      "comment": "c4x: same component notify (Notifications) may import itself",
+      "from": {
+        "path": "^(?:src/notifications(?:$|/.*)|src/mailer\\.js(?:$|/.*))$"
+      },
+      "to": {
+        "path": "^(?:src/notifications(?:$|/.*)|src/mailer\\.js(?:$|/.*))$"
+      }
+    },
+    {
+      "comment": "c4x: api -> orders (places orders through), line 16",
+      "from": {
+        "path": "^src/api(?:$|/.*)$"
+      },
+      "to": {
+        "path": "^src/orders(?:$|/.*)$"
+      }
+    },
+    {
+      "comment": "c4x: orders -> store (persists with), line 17",
+      "from": {
+        "path": "^src/orders(?:$|/.*)$"
+      },
+      "to": {
+        "path": "^src/store(?:$|/.*)$"
+      }
+    },
+    {
+      "comment": "c4x: orders -> notify (notifies via), line 18",
+      "from": {
+        "path": "^src/orders(?:$|/.*)$"
+      },
+      "to": {
+        "path": "^(?:src/notifications(?:$|/.*)|src/mailer\\.js(?:$|/.*))$"
+      }
+    }
+  ],
+  "options": {
+    "tsPreCompilationDeps": true,
+    "doNotFollow": {
+      "path": "node_modules"
+    },
+    "exclude": {
+      "path": "(^|/)(__tests__|__mocks__)/|\\.(test|spec)\\.[cm]?[jt]sx?$"
+    }
+  }
+}

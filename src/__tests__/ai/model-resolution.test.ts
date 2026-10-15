@@ -12,6 +12,8 @@ Module._resolveFilename = function (request: string, ...args: unknown[]) {
 };
 
 import * as vscodeMock from '../__mocks__/vscode';
+import { ApiError } from '@google/genai';
+import { emptyResponse, imageResponse, textResponse, fakeGenAI } from '../__mocks__/genai';
 import type { DiscoveredModel } from '../../ai/modelDiscovery';
 import {
     announceModelChange,
@@ -54,12 +56,23 @@ const WITH_NEWER_GA: DiscoveredModel[] = [
 const validC4X = '%%{ c4: container }%%\ngraph TB\nPerson(user, "User", "A user")\nSystem(sys, "System", "Main system")\nuser -->|Uses| sys';
 const validResponse = `\`\`\`c4x\n${validC4X}\n\`\`\``;
 
-/** What the SDK actually throws for a retired, renamed or ungranted model. */
+/**
+ * What the SDK actually throws for a retired, renamed or ungranted model:
+ * `@google/genai` raises an ApiError carrying the HTTP status and the API's
+ * JSON error body as its message.
+ */
 function notFoundError(model: string): Error {
-    return new Error(
-        `[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent: ` +
-        `[404 Not Found] models/${model} is not found for API version v1beta, or is not supported for generateContent.`
-    );
+    return new ApiError({
+        status: 404,
+        message: JSON.stringify({
+            error: {
+                code: 404,
+                message: `models/${model} is not found for API version v1beta, or is not supported for generateContent. ` +
+                    'Call ListModels to see the list of available models and their supported methods.',
+                status: 'NOT_FOUND',
+            },
+        }),
+    });
 }
 
 /**
@@ -73,24 +86,19 @@ function createMockGenAI(behaviors: Array<[string, Array<string | Error>]>) {
     const calls = new Map<string, number>();
     return {
         calls,
-        genAI: {
-            getGenerativeModel: ({ model }: { model: string }) => ({
-                generateContent: async () => {
-                    const responses = scripted.get(model);
-                    if (!responses) {
-                        throw notFoundError(model);
-                    }
-                    const index = calls.get(model) ?? 0;
-                    calls.set(model, index + 1);
-                    const item = responses[index % responses.length];
-                    if (item instanceof Error) {
-                        throw item;
-                    }
-                    return { response: { text: () => item } };
-                },
-            }),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any,
+        genAI: fakeGenAI(async ({ model }) => {
+            const responses = scripted.get(model);
+            if (!responses) {
+                throw notFoundError(model);
+            }
+            const index = calls.get(model) ?? 0;
+            calls.set(model, index + 1);
+            const item = responses[index % responses.length];
+            if (item instanceof Error) {
+                throw item;
+            }
+            return textResponse(item);
+        }),
     };
 }
 
@@ -105,27 +113,17 @@ function createVisualService(
     const mutable = service as unknown as Record<string, unknown>;
 
     mutable.context = { extensionUri: {} };
-    mutable.genAI = {
-        getGenerativeModel: ({ model }: { model: string }) => ({
-            generateContent: async () => {
-                const responses = scripted.get(model) ?? [notFoundError(model)];
-                const index = calls.get(model) ?? 0;
-                calls.set(model, index + 1);
-                const selectedIndex = Math.min(index, responses.length - 1);
-                const item = responses.find((_response, responseIndex) => responseIndex === selectedIndex);
-                if (item instanceof Error) {
-                    throw item;
-                }
-                return {
-                    response: {
-                        candidates: item === null
-                            ? []
-                            : [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: item } }] } }],
-                    },
-                };
-            },
-        }),
-    };
+    mutable.genAI = fakeGenAI(async ({ model }) => {
+        const responses = scripted.get(model) ?? [notFoundError(model)];
+        const index = calls.get(model) ?? 0;
+        calls.set(model, index + 1);
+        const selectedIndex = Math.min(index, responses.length - 1);
+        const item = responses.find((_response, responseIndex) => responseIndex === selectedIndex);
+        if (item instanceof Error) {
+            throw item;
+        }
+        return item === null ? emptyResponse() : imageResponse(item as string);
+    });
     mutable.resolveModelId = async () => initial;
     mutable.healModelId = async () => healed;
 
@@ -163,7 +161,7 @@ describe('model resolution in the generation path', () => {
         const service = Object.create(GeminiService.prototype) as GeminiService;
         const mutable = service as unknown as Record<string, unknown>;
         mutable.genAI = genAI;
-        mutable.model = genAI.getGenerativeModel({ model: previous });
+        mutable.modelName = previous;
         mutable.discoverModels = async () => [{ id: previous }, { id: selected }];
 
         patchSettings([['model', previous]]);
@@ -403,9 +401,8 @@ describe('model resolution in the generation path', () => {
         const { genAI } = createMockGenAI([
             [resolution.model, [validResponse]],
         ]);
-        const primary = genAI.getGenerativeModel({ model: resolution.model });
 
-        const generation = generateWithFallback(genAI, primary, 'prompt', undefined, {
+        const generation = generateWithFallback(genAI, 'prompt', undefined, {
             primaryModelName: resolution.model,
             onPrimaryModelServed: () => announce(resolution.notice),
         });
@@ -421,9 +418,8 @@ describe('model resolution in the generation path', () => {
             [resolution.model, [new Error('overloaded')]],
             [PRO_MODEL, [validResponse]],
         ]);
-        const primary = genAI.getGenerativeModel({ model: resolution.model });
 
-        await generateWithFallback(genAI, primary, 'prompt', undefined, {
+        await generateWithFallback(genAI, 'prompt', undefined, {
             primaryModelName: resolution.model,
             onPrimaryModelServed: () => announce(resolution.notice),
         });
@@ -483,11 +479,10 @@ describe('model resolution in the generation path', () => {
             ['gemini-3.5-flash', [validResponse]],
             [PRO_MODEL, [validResponse]],
         ]);
-        const primary = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
         const healCalls: string[] = [];
         const served: Array<[string, string]> = [];
-        const result = await generateWithFallback(genAI, primary, 'prompt', undefined, {
+        const result = await generateWithFallback(genAI, 'prompt', undefined, {
             primaryModelName: 'gemini-3.1-flash-image-preview',
             heal: async failed => {
                 healCalls.push(failed);
@@ -514,10 +509,9 @@ describe('model resolution in the generation path', () => {
             ['gemini-3.5-flash', [notFoundError('gemini-3.5-flash')]],
             [PRO_MODEL, [validResponse]],
         ]);
-        const primary = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
 
         const served: Array<[string, string]> = [];
-        const result = await generateWithFallback(genAI, primary, 'prompt', undefined, {
+        const result = await generateWithFallback(genAI, 'prompt', undefined, {
             primaryModelName: DEFAULT_MODEL,
             heal: async () => ({
                 model: 'gemini-3.5-flash',
@@ -539,10 +533,9 @@ describe('model resolution in the generation path', () => {
             [DEFAULT_MODEL, [new Error('429 RESOURCE_EXHAUSTED: quota exceeded')]],
             [PRO_MODEL, [validResponse]],
         ]);
-        const primary = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
 
         let healed = false;
-        await generateWithFallback(genAI, primary, 'prompt', undefined, {
+        await generateWithFallback(genAI, 'prompt', undefined, {
             primaryModelName: DEFAULT_MODEL,
             heal: async () => {
                 healed = true;
@@ -563,9 +556,8 @@ describe('model resolution in the generation path', () => {
             [PRO_MODEL, [validResponse]],
             [DEFAULT_MODEL, [validResponse]],
         ]);
-        const primary = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
-        const result = await generateWithFallback(genAI, primary, 'prompt', undefined, {
+        const result = await generateWithFallback(genAI, 'prompt', undefined, {
             primaryModelName: 'gemini-3.5-flash',
         });
 

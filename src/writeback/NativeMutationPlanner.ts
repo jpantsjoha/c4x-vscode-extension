@@ -759,9 +759,25 @@ export function planRelationshipEndpointUpdate(
 }
 
 /**
- * Plans the insertion of a new native C4X relationship statement immediately
- * after the source element declaration. The caller is responsible for C4
- * legality validation against the model.
+ * Plans the insertion of a new native C4X relationship statement as a new
+ * top-level statement after the block's last top-level statement. The caller is
+ * responsible for C4 legality validation against the model.
+ *
+ * Relationship ids (`rel-N`) follow the parser's processing order, and a
+ * boundary's own relationships are numbered after those of its nested
+ * boundaries (`c4x.pegjs`). Inserting next to the source element, or after the
+ * last relationship of its scope, would therefore renumber every later
+ * relationship. Only a statement at the very end of the block leaves every
+ * existing id unchanged (#259).
+ *
+ * `sourceRef` still anchors the edit's identity: it must describe the
+ * element the staged edit names. The insertion offset itself comes from the
+ * source text, never from a parser range, because a range may include trailing
+ * whitespace or newlines.
+ *
+ * `statementSourceId` is how the statement spells the source element. It is
+ * the element's current id unless the same Save renames the element, when it
+ * is the new id (#269); `sourceRef` keeps describing the element as it is now.
  */
 export function planRelationshipAdd(
     source: string,
@@ -770,6 +786,7 @@ export function planRelationshipAdd(
     label: string,
     technology: string | null,
     relType: 'uses' | 'async' | 'sync',
+    statementSourceId: string = sourceRef.elementId,
 ): BoundedTextEdit[] {
     // The insertion point is derived from the source element's declaration, so
     // the anchor must still describe that element. Geometry alone cannot see a
@@ -792,6 +809,9 @@ export function planRelationshipAdd(
     if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(targetId)) {
         throw new InvalidMetadataPatchError('Relationship target must be a valid C4X identifier');
     }
+    if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(statementSourceId)) {
+        throw new InvalidMetadataPatchError('Relationship source must be a valid C4X identifier');
+    }
 
     const arrow = REL_TYPE_TO_ARROW.get(relType);
     if (!arrow) {
@@ -805,28 +825,25 @@ export function planRelationshipAdd(
         technologySegment = ` "${validateRelationshipTechnology(technology)}"`;
     }
 
-    const statement = `${sourceRef.elementId} ${arrow}|${validatedLabel}|${technologySegment} ${targetId}`;
+    const statement = `${statementSourceId} ${arrow}|${validatedLabel}|${technologySegment} ${targetId}`;
 
-    const insertOffset = sourceRef.range.end.offset;
-    const indentation = extractLineIndentation(source, sourceRef.range.start.offset);
-    let newText = '\n' + indentation + statement;
-    if (source.charAt(insertOffset) !== '\n') {
-        newText += '\n';
+    // The end of the last non-whitespace character is the end of the last
+    // top-level statement (a closing brace, bracket, parenthesis or comment).
+    // Whitespace is the grammar's own set, `[ \t\r\n]`, so no other Unicode
+    // space is skipped over.
+    let insertOffset = source.length;
+    while (insertOffset > 0 && /[ \t\r\n]/.test(source.charAt(insertOffset - 1))) {
+        insertOffset--;
     }
+    const eol = source.includes('\r\n') ? '\r\n' : '\n';
 
-    return [{ range: buildRange(source, insertOffset, insertOffset), newText }];
-}
+    // A fence nested in a Markdown list item is indented, and a line at column
+    // 0 would end the list item and with it the fence. The first non-blank line
+    // of the body is a top-level statement in the same container, so its
+    // indentation is the one every top-level statement shares.
+    const indentation = /^[ \t]*(?=[^ \t\r\n])/m.exec(source)?.[0] ?? '';
 
-function extractLineIndentation(source: string, offset: number): string {
-    let lineStart = offset;
-    while (lineStart > 0 && source.charAt(lineStart - 1) !== '\n') {
-        lineStart--;
-    }
-    let idx = lineStart;
-    while (idx < offset && /[ \t]/.test(source.charAt(idx))) {
-        idx++;
-    }
-    return source.slice(lineStart, idx);
+    return [{ range: buildRange(source, insertOffset, insertOffset), newText: eol + indentation + statement }];
 }
 
 /**
@@ -938,6 +955,15 @@ export function planBoundaryMetadataUpdate(
     }
 
     const statement = source.slice(target.range.start.offset, target.range.end.offset);
+    const typedForm = readTypedBoundaryKeyword(statement);
+    if (typedForm) {
+        // The grammar gives `System_Boundary(id, "Label")` and its siblings no
+        // metadata slot, so there is nowhere to write a position or size (#271).
+        throw new UnsupportedNativeSyntaxError(
+            `Boundary "${target.boundaryLabel}" is declared with ${typedForm}(...), ` +
+            'which cannot hold a position or size; only a subgraph boundary can be moved or resized'
+        );
+    }
     const parsed = parseSubgraphStatement(statement);
     if (!parsed) {
         throw new UnsupportedNativeSyntaxError(
@@ -1055,6 +1081,19 @@ function serializeBoundaryCoordinate(name: 'x' | 'y' | 'w' | 'h', value: unknown
     }
 
     return Object.is(value, -0) ? '0' : String(value);
+}
+
+/** The C4 typed boundary keywords. Their declarations carry no layout metadata. */
+const TYPED_BOUNDARY_KEYWORDS: ReadonlySet<string> = new Set([
+    'System_Boundary',
+    'Container_Boundary',
+    'Enterprise_Boundary',
+]);
+
+/** The typed boundary keyword a statement opens with, or null (`subgraph`, or anything else). */
+function readTypedBoundaryKeyword(statement: string): string | null {
+    const keyword = readIdentifier(statement, skipWhitespace(statement, 0));
+    return keyword && TYPED_BOUNDARY_KEYWORDS.has(keyword.value) ? keyword.value : null;
 }
 
 /** Parse a subgraph statement and locate its metadata region (between label and `{`). */

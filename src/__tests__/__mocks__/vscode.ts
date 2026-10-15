@@ -10,12 +10,27 @@ export function setMarkdownPreviewScaleForTests(value: unknown): void {
     markdownPreviewScale = value;
 }
 
+// Test-controllable values for any other `c4x.*` key, e.g. `lint.rules`.
+// A key absent from the map behaves as "not set".
+const configurationValues = new Map<string, unknown>();
+
+export function setConfigurationValueForTests(key: string, value: unknown): void {
+    if (value === undefined) {
+        configurationValues.delete(key);
+    } else {
+        configurationValues.set(key, value);
+    }
+}
+
 export const workspace = {
     workspaceFolders: undefined as unknown,
-    getConfiguration: (_section?: string) => ({
+    getConfiguration: (_section?: string, _scope?: unknown) => ({
         get: (key: string, defaultValue?: unknown) => {
             if (key === 'markdown.previewScale' && markdownPreviewScale !== undefined) {
                 return markdownPreviewScale;
+            }
+            if (configurationValues.has(key)) {
+                return configurationValues.get(key);
             }
             return defaultValue;
         },
@@ -63,9 +78,43 @@ export enum ProgressLocation {
     Window = 10,
 }
 
+export enum ConfigurationTarget {
+    Global = 1,
+    Workspace = 2,
+    WorkspaceFolder = 3,
+}
+
 export enum FileType {
     Unknown = 0,
     File = 1,
     Directory = 2,
     SymbolicLink = 64,
+}
+
+export enum DiagnosticSeverity {
+    Error = 0,
+    Warning = 1,
+    Information = 2,
+    Hint = 3,
+}
+
+export class Position {
+    constructor(public readonly line: number, public readonly character: number) {}
+}
+
+export class Range {
+    public readonly start: Position;
+    public readonly end: Position;
+
+    constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
+        this.start = new Position(startLine, startCharacter);
+        this.end = new Position(endLine, endCharacter);
+    }
+}
+
+export class Diagnostic {
+    public code?: string | number;
+    public source?: string;
+
+    constructor(public range: Range, public message: string, public severity: DiagnosticSeverity = DiagnosticSeverity.Error) {}
 }
