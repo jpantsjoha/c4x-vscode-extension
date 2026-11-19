@@ -1,0 +1,21 @@
+node_modules
+out
+# Upstream Contributor Covenant text, kept verbatim
+CODE_OF_CONDUCT.md
+# Dated historical records (archive); not edited after the fact
+docs/archive/**
+# Untracked and generated directories (all gitignored), so the gate lints exactly the tracked Markdown
+.vscode-test
+dist
+coverage
+.coverage
+.nyc_output
+.test-report
+test-results
+playwright-report
+.cache
+.archive
+logs
+.gemini
+.idea
+.claude/worktrees

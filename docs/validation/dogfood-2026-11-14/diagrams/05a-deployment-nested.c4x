@@ -1,0 +1,22 @@
+%%{ c4: deployment }%%
+graph TB
+    %% Original deployment view (four levels of nesting), kept as authored. Renders with nodes outside their parents; see README.
+    Node(workstation, "Developer workstation", "macOS, Windows or Linux", "") {
+        Node(vscodeApp, "VS Code", "Electron", "") {
+            Node(extHostProc, "Extension host process", "Node.js", "") {
+                Container(host, "Extension host", "TypeScript, dist/extension.js", "Commands, preview, writeback")
+            }
+            Node(webviewProc, "Webview", "Chromium frame", "") {
+                Container(webview, "Preview webview", "HTML and JavaScript", "Draws SVG, stages edits")
+            }
+        }
+        Node(assistantProc, "Assistant tool process", "Node.js child processes", "") {
+            Container(mcp, "MCP server", "mcp/c4x-mcp-server.bundle.cjs", "validate_c4x, lint_c4x")
+            Container(cli, "Lint command line", "cli/c4x-lint.cjs", "Notation lint for hooks")
+        }
+        Node(disk, "Workspace on disk", "File system", "") {
+            ContainerDb(sidecar, "Layout sidecar", "JSON file", "Element positions in sidecar mode")
+        }
+    }
+    host -->|Exchanges messages with| "postMessage" webview
+    host -->|Reads and writes| "workspace.fs" sidecar
