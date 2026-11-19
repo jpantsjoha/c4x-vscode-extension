@@ -8,6 +8,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import MarkdownIt from 'markdown-it';
 import { c4xPlugin } from '../markdown/c4xPlugin';
+import { themeManager } from '../themes/ThemeManager';
+import { defaultExportUri } from './defaultExportUri';
 
 export class HtmlExporter {
     private md: MarkdownIt;
@@ -22,7 +24,7 @@ export class HtmlExporter {
 
         // Apply C4X plugin for diagram rendering. Exports keep diagrams at
         // intrinsic size — c4x.markdown.previewScale is preview-only (#128).
-        c4xPlugin(this.md, { applyPreviewScale: false });
+        c4xPlugin(this.md, { applyPreviewScale: false, theme: () => themeManager.getExportTheme() });
     }
 
     /**
@@ -54,7 +56,7 @@ export class HtmlExporter {
                     'HTML Files': ['html', 'htm'],
                     'All Files': ['*'],
                 },
-                defaultUri: this.getDefaultUri(defaultFileName, fileUri),
+                defaultUri: defaultExportUri('html', { suggestedName: defaultFileName, source: fileUri }),
             });
 
             if (!saveUri) {
@@ -237,15 +239,6 @@ ${bodyHtml}
         }
 
         return undefined;
-    }
-
-    /**
-     * Get default URI for save dialog
-     */
-    private getDefaultUri(fileName: string, sourceUri: vscode.Uri): vscode.Uri {
-        // Save in same directory as source file
-        const sourceDir = vscode.Uri.joinPath(sourceUri, '..');
-        return vscode.Uri.joinPath(sourceDir, fileName);
     }
 
     /**

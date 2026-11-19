@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="930" viewBox="0 0 390 930" role="img">
+
+<defs>
+  <style type="text/css">
+    <![CDATA[
+      /* System fonts only - no external dependencies. Defaults only: the
+         renderer sets font-size, font-weight and font-family on every text it
+         draws, and element text is wrapped for exactly those (#340), so an
+         author rule here must not override them. */
+      text:not([font-family]) {
+        font-family: Arial, sans-serif;
+      }
+      text:not([font-size]) {
+        font-size: 14px;
+      }
+      text:not([font-weight]) {
+        font-weight: 400;
+      }
+
+      text.c4x-title {
+        font-weight: 600;
+      }
+
+      /* Ensure crisp rendering */
+      svg {
+        shape-rendering: geometricPrecision;
+        text-rendering: optimizeLegibility;
+      }
+    ]]>
+  </style>
+</defs>
+  <rect x="0" y="0" width="390" height="930" fill="#FFFFFF" />
+  
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+          <feOffset in="blur" dx="3" dy="3" result="offsetBlur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+      </defs>
+  
+  <g class="diagram-content" transform="translate(0, 0)">
+    <g class="boundaries">
+<g class="boundary" data-id="shop-boundary-0" data-label-position="bottom-left" data-label-reserve="48" data-label-min-width="118">
+    <rect x="40.00" y="317.00" width="320.00" height="398.00"
+          rx="8" ry="8"
+          fill="none"
+          stroke="#1168BD"
+          stroke-width="1"
+          opacity="1" />
+    <text x="50.00" y="689.00"
+          fill="#1168BD"
+          font-size="14"
+          font-family="Arial, sans-serif"
+          font-weight="bold">Shop</text>
+    <text class="boundary-type" x="50.00" y="705.00"
+          fill="#1168BD"
+          font-size="12"
+          font-family="Arial, sans-serif">[Software System]</text>
+  </g>
+    </g>
+    <g class="nodes">
+<g class="node" data-id="f" data-shape="folder" data-type-label="Container" >
+    <path d="M 80.00 507.00 L 80.00 391.00 L 87.20 391.00 L 87.20 381.00 A 4.00 4.00 0 0 1 91.20 377.00 L 160.00 377.00 A 4.00 4.00 0 0 1 164.00 381.00 L 164.00 391.00 L 320.00 391.00 L 320.00 507.00 Z" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="200.00" y="449.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Static Content</text>
+    <text data-field="technology" x="200.00" y="465.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Container: Directory]</text>
+  </g>
+<g class="node" data-id="w" data-shape="webBrowser" data-type-label="Container" >
+    <rect x="80.00" y="537.00" width="240.00" height="130.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+    <g class="shape-detail"><rect data-paint="stroke" x="80.00" y="537.00" width="240.00" height="18.00" rx="6" ry="6" fill="#1168BD" stroke="none" /><circle data-paint="fill" cx="91.70" cy="546.00" r="3.60" fill="#FFFFFF" stroke="none" /><circle data-paint="fill" cx="104.30" cy="546.00" r="3.60" fill="#FFFFFF" stroke="none" /><circle data-paint="fill" cx="116.90" cy="546.00" r="3.60" fill="#FFFFFF" stroke="none" /><rect data-paint="fill" x="126.80" y="541.95" width="186.00" height="8.10" rx="4.05" ry="4.05" fill="#FFFFFF" stroke="none" /></g>
+<text data-field="label" x="200.00" y="609.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">UI</text>
+    <text data-field="technology" x="200.00" y="625.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Container: Angular]</text>
+  </g>
+<g class="node" data-id="u" data-shape="person" data-type-label="Person" >
+    <rect x="100.00" y="101.60" width="200.00" height="98.40" rx="36.00" ry="36.00" fill="#FFFFFF" stroke="#297E06" stroke-width="2" />
+    <circle cx="200.00" cy="75.20" r="35.20" fill="#FFFFFF" stroke="#297E06" stroke-width="2" />
+<text data-field="label" x="200.00" y="150.80" fill="#297E06" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Customer</text>
+    <text data-field="technology" x="200.00" y="166.80" fill="#297E06" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Person]</text>
+  </g>
+<g class="node" data-id="pay" data-type-label="Software System" >
+    <rect x="70.00" y="760.00" width="260.00" height="140.00" rx="6" ry="6" fill="#FFFFFF" stroke="#BF101D" stroke-width="2" />
+<text data-field="label" x="200.00" y="830.00" fill="#BF101D" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Payments</text>
+    <text data-field="technology" x="200.00" y="846.00" fill="#BF101D" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+  </g>
+    </g>
+    <g class="edges">
+<g class="edge" data-id="rel-0">
+    <path class="edge-hit-area" d="M295.40,120.00 L344.00,120.00 L344.00,602.00 L320.00,602.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M295.40,120.00 L344.00,120.00 L344.00,602.00 L320.00,602.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="344.00" y="355.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
+  </g>
+<g class="edge" data-id="rel-1">
+    <path class="edge-hit-area" d="M200.00,507.00 L200.00,537.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M200.00,507.00 L200.00,537.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="200.00" y="516.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Delivers</text>
+  </g>
+<g class="edge" data-id="rel-2">
+    <path class="edge-hit-area" d="M200.00,667.00 L200.00,760.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M200.00,667.00 L200.00,760.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-sync)" />
+    <text x="200.00" y="707.50" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Pays with</text>
+  </g>
+    </g>
+  </g>
+</svg>

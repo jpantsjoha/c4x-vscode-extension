@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { parseModelId, type DiscoveredModel } from '../ai/modelDiscovery';
 import { DEFAULT_MODEL, DEFAULT_IMAGE_MODEL, isRetired } from '../ai/models';
+import { readGenerationProvider } from '../ai/providerSetting';
 
 /**
  * Let the user choose a model from what their key can actually reach.
@@ -73,6 +74,16 @@ export async function selectModelCommand(
     discover: () => Promise<DiscoveredModel[]>,
     kind: 'text' | 'image' = 'text',
 ): Promise<string | undefined> {
+    // With `c4x.ai.provider` = `vscode-lm`, the text model is a VS Code chat
+    // model: list what VS Code offers (and re-list when that changes) instead of
+    // asking Gemini. The provider's code loads only on this path. Image models
+    // are Gemini's alone.
+    if (kind === 'text' && readGenerationProvider() === 'vscode-lm') {
+        const { selectLanguageModel, vscodeLanguageModelUi } = await import('../ai/providers/vscodeLanguageModelFlow');
+        const host = vscode as unknown as import('../ai/providers/vscodeLanguageModel').LanguageModelHost;
+        return selectLanguageModel(host, vscodeLanguageModelUi(host));
+    }
+
     const settingKey = kind === 'image' ? 'imageModel' : 'model';
     const config = vscode.workspace.getConfiguration('c4x.ai');
     const current = config.get<string>(settingKey) ?? (kind === 'image' ? DEFAULT_IMAGE_MODEL : DEFAULT_MODEL);

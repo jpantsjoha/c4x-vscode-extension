@@ -17,7 +17,8 @@ import {
     sourcePositionAt,
 } from './SourceRange';
 import { C4XParser } from '../parser/C4XParser';
-import { SPRITES } from '../assets/icons';
+import { isDescriptionFirstElementType } from '../parser/elementArguments';
+import { BUNDLED_SPRITE_IDS } from '../assets/spriteIds';
 import {
     INSPECTOR_LABEL_MAX,
     INSPECTOR_TAG_COUNT_MAX,
@@ -119,6 +120,8 @@ interface SerializedField {
 interface ParsedElementCall {
     readonly syntax: 'function' | 'bracket' | 'legacyNode';
     readonly elementId: string;
+    /** The call's type identifier (`Person`, `Container`, ...) for function syntax. */
+    readonly elementType?: string;
     /** Offsets of the declaration identifier inside the bounded statement. */
     readonly elementIdStart?: number;
     readonly elementIdEnd?: number;
@@ -318,6 +321,7 @@ function parseElementCall(statement: string): ParsedElementCall | null {
     return {
         syntax: 'function',
         elementId: elementId.value,
+        elementType: type.value,
         elementIdStart: cursor,
         elementIdEnd: elementId.end,
         metadataInsertAt: findMetadataInsertOffset(statement, closeParen),
@@ -1224,7 +1228,7 @@ export function planElementTextUpdates(
     patch: NativeElementTextPatch,
 ): BoundedTextEdit[] {
     validateTextPatch(patch);
-    const { statement, base } = parseSupportedFunctionElement(source, target, 'text edits');
+    const { statement, parsed, base } = parseSupportedFunctionElement(source, target, 'text edits');
     const openParen = statement.indexOf('(');
     const closeParen = findClosingParen(statement, openParen);
     if (openParen === -1 || closeParen === -1) {
@@ -1235,6 +1239,10 @@ export function planElementTextUpdates(
     const quotes = scanQuotedStrings(statement, openParen + 1, metadataStart);
     if (quotes.length === 0 || quotes.length > 3) {
         throw new StaleRangeError('Element call must have one label and at most technology and description arguments');
+    }
+
+    if (isDescriptionFirstElementType(parsed.elementType) && quotes.length <= 2) {
+        return sortEdits(planDescriptionFirstTextUpdates(source, base, statement, quotes, patch));
     }
 
     const edits: BoundedTextEdit[] = [];
@@ -1259,7 +1267,7 @@ export function planElementTextUpdates(
     } else if (quotes.length === 2) {
         if (requestedTechnology !== undefined && requestedTechnology !== currentTechnology) {
             if (requestedTechnology === null && !wantsDescription) {
-                edits.push(removeArgument(source, base, statement, quotes[1]));
+                edits.push(removeArgument(source, base, statement, quotes[1], 'technology'));
             } else {
                 edits.push(replaceQuote(source, base, quotes[1], requestedTechnology ?? ''));
             }
@@ -1277,6 +1285,53 @@ export function planElementTextUpdates(
     }
 
     return sortEdits(edits);
+}
+
+/**
+ * Text edits for a Person or System call written with at most one positional
+ * argument after the label (#420). That argument is the description, so a
+ * description edit replaces, inserts or removes it in place. Giving such an
+ * element a technology needs both slots, `"Technology", "Description"`, which is
+ * how the parser reads a description-first call with two positional arguments.
+ */
+function planDescriptionFirstTextUpdates(
+    source: string,
+    base: number,
+    statement: string,
+    quotes: ReadonlyArray<{ start: number; end: number }>,
+    patch: NativeElementTextPatch,
+): BoundedTextEdit[] {
+    const edits: BoundedTextEdit[] = [];
+    if (patch.label !== undefined && patch.label !== unquote(statement, quotes[0])) {
+        edits.push(replaceQuote(source, base, quotes[0], patch.label));
+    }
+    const slot = quotes.length === 2 ? quotes[1] : undefined;
+    const currentDescription = slot ? unquote(statement, slot) : undefined;
+    const wantsDescription = patch.description !== undefined;
+    const description = wantsDescription ? patch.description ?? null : currentDescription ?? null;
+    const technology = patch.technology;
+
+    if (technology !== undefined && technology !== null && technology !== '') {
+        if (slot) {
+            edits.push(replaceQuote(source, base, slot, technology));
+            edits.push(insertAt(source, base + slot.end, `, "${description ?? ''}"`));
+        } else {
+            edits.push(insertAt(source, base + quotes[0].end, `, "${technology}", "${description ?? ''}"`));
+        }
+        return edits;
+    }
+
+    if (!wantsDescription || description === (currentDescription ?? null)) {
+        return edits;
+    }
+    if (slot) {
+        edits.push(description === null
+            ? removeArgument(source, base, statement, slot, 'description')
+            : replaceQuote(source, base, slot, description));
+    } else if (description !== null) {
+        edits.push(insertAt(source, base + quotes[0].end, `, "${description}"`));
+    }
+    return edits;
 }
 
 /**
@@ -1471,7 +1526,7 @@ function validateAttributePatch(patch: NativeElementAttributePatch): void {
         }
     }
     if (patch.sprite !== undefined && patch.sprite !== null) {
-        if (typeof patch.sprite !== 'string' || !Object.prototype.hasOwnProperty.call(SPRITES, patch.sprite)) {
+        if (typeof patch.sprite !== 'string' || !BUNDLED_SPRITE_IDS.includes(patch.sprite)) {
             throw new InvalidMetadataPatchError(`Unknown sprite "${String(patch.sprite)}"`);
         }
     }
@@ -1505,13 +1560,32 @@ function insertAt(source: string, offset: number, newText: string): BoundedTextE
     return { range: buildRange(source, offset, offset), newText };
 }
 
-function removeArgument(source: string, base: number, statement: string, quote: { start: number; end: number }): BoundedTextEdit {
+/**
+ * Whitespace the C4X grammar allows between call arguments: its `_` rule is
+ * spaces, tabs, carriage returns and line feeds. Comments (`%%`) are
+ * statements and cannot appear inside a call.
+ */
+const ARGUMENT_WHITESPACE = /[ \t\r\n]/;
+
+/**
+ * Removes a positional argument together with the comma before it and the
+ * whitespace between them, so `"Label",\n  "Old", $tags=...` becomes
+ * `"Label", $tags=...`: no dangling comma and no line left holding only
+ * indentation.
+ */
+function removeArgument(
+    source: string,
+    base: number,
+    statement: string,
+    quote: { start: number; end: number },
+    field: 'technology' | 'description',
+): BoundedTextEdit {
     let start = quote.start;
-    while (start > 0 && /[ \t]/.test(statement.charAt(start - 1))) {
+    while (start > 0 && ARGUMENT_WHITESPACE.test(statement.charAt(start - 1))) {
         start--;
     }
     if (statement.charAt(start - 1) !== ',') {
-        throw new StaleRangeError('Technology argument does not have its expected comma delimiter');
+        throw new StaleRangeError(`The ${field} argument does not have its expected comma delimiter`);
     }
     return {
         range: buildRange(source, base + start - 1, base + quote.end),
@@ -1529,12 +1603,12 @@ function onlyMetadataLocation(parsed: ParsedElementCall, key: string): KvLocatio
 
 function removeMetadataEntry(source: string, base: number, statement: string, location: KvLocation): BoundedTextEdit {
     let start = location.keyStart;
-    while (start > 0 && /[ \t]/.test(statement.charAt(start - 1))) {
+    while (start > 0 && ARGUMENT_WHITESPACE.test(statement.charAt(start - 1))) {
         start--;
     }
     let end = location.valueEnd;
     let trailing = end;
-    while (trailing < statement.length && /[ \t]/.test(statement.charAt(trailing))) {
+    while (trailing < statement.length && ARGUMENT_WHITESPACE.test(statement.charAt(trailing))) {
         trailing++;
     }
 

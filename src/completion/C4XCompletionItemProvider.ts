@@ -1,6 +1,17 @@
 import * as vscode from 'vscode';
-import { SPRITES } from '../assets/icons';
+import { BUNDLED_SPRITE_IDS } from '../assets/spriteIds';
 import { attributeNameContext, codeValueContext, isInsideC4xFence, isOfferedEntry } from './codeAttribute';
+import {
+    AttributeEntry,
+    BORDER_VALUES,
+    ELEMENT_ATTRIBUTES,
+    borderValueContext,
+    shapeEntries,
+    shapeHelp,
+    shapeValueContext,
+    styleKeyContext,
+    styleKeyEntries,
+} from './styleAttributes';
 
 /** Path completion never lists more entries than this from one directory. */
 const MAX_PATH_ITEMS = 200;
@@ -34,7 +45,7 @@ export class C4XCompletionItemProvider implements vscode.CompletionItemProvider 
         });
 
         // 3. Icons -> Vendor Buckets
-        Object.keys(SPRITES).forEach(key => {
+        BUNDLED_SPRITE_IDS.forEach(key => {
             const parts = key.split('-');
             if (parts.length > 1) {
                 const potentialVendor = parts[0];
@@ -76,22 +87,29 @@ export class C4XCompletionItemProvider implements vscode.CompletionItemProvider 
             return this.codePathItems(document, position, codeContext.directory, codeContext.fragment);
         }
 
+        const shapeContext = codeAllowed ? shapeValueContext(linePrefix) : undefined;
+        if (shapeContext) {
+            return this.shapeItems(position, shapeContext.typed);
+        }
+
+        const borderContext = codeAllowed ? borderValueContext(linePrefix) : undefined;
+        if (borderContext) {
+            return BORDER_VALUES.map(value => {
+                const item = new vscode.CompletionItem(value, vscode.CompletionItemKind.EnumMember);
+                item.detail = 'Outline style';
+                item.range = new vscode.Range(position.line, position.character - borderContext.typed.length, position.line, position.character);
+                return item;
+            });
+        }
+
+        const styleContext = codeAllowed ? styleKeyContext(linePrefix) : undefined;
+        if (styleContext) {
+            return this.attributeItems(position, styleContext.typed, styleKeyEntries());
+        }
+
         const attributeContext = codeAllowed ? attributeNameContext(linePrefix) : undefined;
         if (attributeContext) {
-            const item = new vscode.CompletionItem('$code', vscode.CompletionItemKind.Property);
-            item.detail = 'Map this Container or Component to source code';
-            item.documentation = new vscode.MarkdownString(
-                'Comma-separated, workspace-relative globs naming the code this element owns, e.g. ' +
-                '`$code="src/parser/**, src/extension.ts"`. Used by **C4X: Export Architecture Conformance**.'
-            );
-            item.insertText = new vscode.SnippetString('\\$code="${1:src/}$0"');
-            item.range = new vscode.Range(
-                position.line, position.character - attributeContext.typed.length,
-                position.line, position.character,
-            );
-            item.filterText = '$code';
-            item.command = { title: 'Suggest paths', command: 'editor.action.triggerSuggest' };
-            return [item];
+            return this.attributeItems(position, attributeContext.typed, ELEMENT_ATTRIBUTES);
         }
 
         // Regex to detect context
@@ -129,6 +147,42 @@ export class C4XCompletionItemProvider implements vscode.CompletionItemProvider 
         }
 
         return [];
+    }
+
+    /** `$name="..."` items for the attributes whose name starts with what was typed after the `$`. */
+    private attributeItems(
+        position: vscode.Position,
+        typed: string,
+        entries: readonly AttributeEntry[],
+    ): vscode.CompletionItem[] {
+        const range = new vscode.Range(position.line, position.character - typed.length, position.line, position.character);
+        return entries
+            .filter(entry => entry.name.startsWith(typed.slice(1)))
+            .map((entry, index) => {
+                const item = new vscode.CompletionItem('$' + entry.name, vscode.CompletionItemKind.Property);
+                item.detail = entry.detail;
+                item.documentation = new vscode.MarkdownString(entry.documentation);
+                item.insertText = new vscode.SnippetString('\\$' + entry.snippet);
+                item.range = range;
+                item.filterText = '$' + entry.name;
+                item.sortText = String(index).padStart(2, '0');
+                if (entry.name === 'code' || entry.name === 'shape') {
+                    item.command = { title: 'Suggest values', command: 'editor.action.triggerSuggest' };
+                }
+                return item;
+            });
+    }
+
+    /** Every shape name, drawn ones first; the cursor sits after the opening quote. */
+    private shapeItems(position: vscode.Position, typed: string): vscode.CompletionItem[] {
+        const range = new vscode.Range(position.line, position.character - typed.length, position.line, position.character);
+        return shapeEntries().map((entry, index) => {
+            const item = new vscode.CompletionItem(entry.name, vscode.CompletionItemKind.EnumMember);
+            item.detail = entry.drawn ? `Shape: ${shapeHelp(entry.name)}` : 'Shape: draws the theme rectangle today';
+            item.range = range;
+            item.sortText = String(index).padStart(2, '0');
+            return item;
+        });
     }
 
     /**

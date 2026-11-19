@@ -3,6 +3,7 @@ import {
     computeCentringPan,
     computeContentBounds,
     computeZoomToFit,
+    computeZoomToFitClearOf,
     formatMultiSelectAnnouncement,
     type NodeBounds,
     type ViewBox,
@@ -175,6 +176,53 @@ describe('formatMultiSelectAnnouncement', () => {
         for (const n of [0, 1, 2, 10, 100]) {
             const result = formatMultiSelectAnnouncement(n);
             assert.ok(result.includes(String(n)), `result "${result}" should include ${n}`);
+        }
+    });
+});
+
+/**
+ * Fit kept clear of the docked key (#262, #327): nodes never sit under the key
+ * after Fit or auto-fit; with no obstacle, or one already clear, the fit is unchanged.
+ */
+describe('computeZoomToFitClearOf (#262, #327)', () => {
+    const viewport = { w: 800, h: 600 };
+    const anchor: ViewBox = { x: 0, y: 0, w: 800, h: 600 };
+    const nodes: NodeBounds[] = [
+        { x: 0, y: 0, width: 200, height: 100 },
+        { x: 600, y: 500, width: 200, height: 100 },
+    ];
+    /** Screen boxes of the nodes under a camera (applyZoomPan's mapping). */
+    function screenBoxes(fit: { zoom: number; panX: number; panY: number }) {
+        const minX = anchor.x + anchor.w / 2 - viewport.w / (2 * fit.zoom) - fit.panX;
+        const minY = anchor.y + anchor.h / 2 - viewport.h / (2 * fit.zoom) - fit.panY;
+        return nodes.map(n => ({
+            left: (n.x - minX) * fit.zoom, right: (n.x + n.width - minX) * fit.zoom,
+            top: (n.y - minY) * fit.zoom, bottom: (n.y + n.height - minY) * fit.zoom,
+        }));
+    }
+    const overlaps = (b: { left: number; right: number; top: number; bottom: number }, o: { x: number; y: number; w: number; h: number }) =>
+        b.right > o.x && b.left < o.x + o.w && b.bottom > o.y && b.top < o.y + o.h;
+
+    it('equals the plain fit with no obstacle', () => {
+        assert.deepStrictEqual(computeZoomToFitClearOf(nodes, anchor, 32, viewport, null), computeZoomToFit(nodes, anchor, 32, viewport));
+    });
+
+    it('equals the plain fit when the key does not cover any node', () => {
+        const key = { x: 700, y: 4, w: 50, h: 20 };
+        const plain = computeZoomToFit(nodes, anchor, 32, viewport);
+        assert.ok(!screenBoxes(plain).some(b => overlaps(b, key)));
+        assert.deepStrictEqual(computeZoomToFitClearOf(nodes, anchor, 32, viewport, key), plain);
+    });
+
+    it('moves every node out from under a bottom-right key', () => {
+        const key = { x: 540, y: 300, w: 240, h: 280 };
+        const plain = computeZoomToFit(nodes, anchor, 32, viewport);
+        assert.ok(screenBoxes(plain).some(b => overlaps(b, key)), 'the plain fit puts a node under the key');
+        const clear = computeZoomToFitClearOf(nodes, anchor, 32, viewport, key);
+        assert.ok(clear.zoom < plain.zoom);
+        for (const box of screenBoxes(clear)) {
+            assert.ok(!overlaps(box, key), JSON.stringify(box));
+            assert.ok(box.top >= 0 && box.left >= 0 && box.right <= viewport.w, 'still inside the viewport');
         }
     });
 });

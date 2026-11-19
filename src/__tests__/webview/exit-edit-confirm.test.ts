@@ -109,7 +109,10 @@ describe('exit-edit announcement strings (static pins)', () => {
     it('pins the banner dismissal on re-render and error paths (review fix)', () => {
         // showSvg and showError must both hide the exit-edit banner so it
         // cannot linger over a reset draft.
-        const showSvgMatch = /function showSvg\([\s\S]{0,600}?hideExitEditConfirm\(\)/.test(PREVIEW_CLIENT_SCRIPT);
+        const showSvg = PREVIEW_CLIENT_SCRIPT.match(
+            /function showSvg\(svg, metrics[\s\S]*?\n {4}\}\n/,
+        );
+        const showSvgMatch = showSvg !== null && showSvg[0].includes('hideExitEditConfirm()');
         const showErrorMatch = /function showError\([\s\S]{0,600}?hideExitEditConfirm\(\)/.test(PREVIEW_CLIENT_SCRIPT);
         assert.ok(showSvgMatch, 'showSvg must call hideExitEditConfirm()');
         assert.ok(showErrorMatch, 'showError must call hideExitEditConfirm()');

@@ -1,0 +1,13 @@
+{
+  "name": "c4x",
+  "version": "1.9.2",
+  "description": "Write C4 model diagrams in C4X that a parser has checked: the c4x skill, the C4X MCP server (validate_c4x, lint_c4x) and /c4x commands.",
+  "mcpServers": {
+    "c4x": {
+      "command": "node",
+      "args": [
+        "${extensionPath}${/}plugins${/}c4x${/}server${/}c4x-mcp.cjs"
+      ]
+    }
+  }
+}

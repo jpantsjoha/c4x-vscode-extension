@@ -13,6 +13,7 @@ Module._resolveFilename = function (request: string, ...args: unknown[]) {
 };
 
 import { buildVisualDiagramPrompt, buildVisualFixPrompt } from '../../ai/PromptBuilder';
+import { C4_STANDARD_PROMPT_PALETTE } from '../../ai/promptPalette';
 
 describe('buildVisualDiagramPrompt', () => {
     const sampleText = 'A web application with a React frontend, Node.js API, and PostgreSQL database';
@@ -46,7 +47,8 @@ describe('buildVisualDiagramPrompt', () => {
             args.reasoning,
             args.userGrounding,
             args.layoutPreference,
-            args.layoutHint
+            args.layoutHint,
+            C4_STANDARD_PROMPT_PALETTE
         );
     }
 

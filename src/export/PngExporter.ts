@@ -11,6 +11,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { C4Theme } from '../themes/Theme';
 import { themeManager } from '../themes/ThemeManager';
+import { defaultExportUri } from './defaultExportUri';
 
 export interface ResolutionOption {
     label: string;
@@ -56,7 +57,7 @@ export class PngExporter {
      */
     public async export(
         svg: string,
-        theme: C4Theme = themeManager.getCurrentTheme(),
+        theme: C4Theme = themeManager.getExportTheme(),
         suggestedFileName?: string,
     ): Promise<void> {
         // 1. Resolution picker
@@ -70,14 +71,13 @@ export class PngExporter {
         }
 
         // 2. Save dialog
-        const defaultFileName = suggestedFileName ?? 'diagram.png';
         const saveUri = await vscode.window.showSaveDialog({
             // eslint-disable-next-line @typescript-eslint/naming-convention
             filters: {
                 'PNG Files': ['png'],
                 'All Files': ['*'],
             },
-            defaultUri: this.getDefaultUri(defaultFileName),
+            defaultUri: defaultExportUri('png', { suggestedName: suggestedFileName }),
         });
 
         if (!saveUri) {
@@ -290,13 +290,5 @@ export class PngExporter {
             text += possible.charAt(Math.floor(Math.random() * possible.length));
         }
         return text;
-    }
-
-    private getDefaultUri(fileName: string): vscode.Uri | undefined {
-        const [folder] = vscode.workspace.workspaceFolders ?? [];
-        if (!folder) {
-            return undefined;
-        }
-        return vscode.Uri.joinPath(folder.uri, fileName);
     }
 }

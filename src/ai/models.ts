@@ -22,7 +22,7 @@ export const DEFAULT_MODEL = 'gemini-3.8-flash';
  * (#178, revisited against the live model list on 2026-09-05): no generally
  * available Pro model exists in the Gemini 3.x line. The only GA Pro is
  * gemini-2.5-pro — a generation back from the 3.8 primary and itself
- * sunsetting 2026-10-16 — so moving the failover to it would rescue a
+ * sunsetting 2026-12-01 — so moving the failover to it would rescue a
  * 3.8-flash failure with an older, slower model that retires within weeks.
  * The preview stays, labelled preview wherever the id appears, and
  * verify-doc-claims rule R1 allows it explicitly. Revisit when a GA 3.x Pro
@@ -71,7 +71,7 @@ export const MODEL_REGISTRY: ModelInfo[] = [
     { id: 'gemini-3.7-flash', purpose: 'Previous generation (still GA)', channel: 'ga' },
     { id: 'gemini-3.6-flash', purpose: 'Previous default (still GA)', channel: 'ga' },
     { id: 'gemini-3.5-flash', purpose: 'Previous default (still GA)', channel: 'ga' },
-    { id: LITE_MODEL, purpose: 'Budget option (user-selectable)', channel: 'ga' },
+    { id: LITE_MODEL, purpose: 'Budget option (user-selectable)', channel: 'ga', sunsetDate: '2027-05-07' },
     { id: 'gemini-3.5-flash-lite', purpose: 'Budget option, newer but priced above 3.1-flash-lite', channel: 'ga' },
 
     // ── Text, preview ────────────────────────────────────────────────────────
@@ -92,11 +92,16 @@ export const MODEL_REGISTRY: ModelInfo[] = [
     { id: 'gemini-3-flash-preview', purpose: 'Retired: use gemini-3.8-flash', channel: 'retired', sunsetDate: '2026-07-17' },
     { id: 'gemini-3-pro-preview', purpose: 'Retired: use gemini-3.1-pro-preview', channel: 'retired', sunsetDate: '2026-03-09' },
 
-    // Gemini 2.5 retires 2026-10-16. An earlier registry recorded 2026-06-17,
-    // which was wrong; the family is still live. Verified 2026-08-07.
-    { id: 'gemini-2.5-pro', purpose: 'Legacy user option', channel: 'ga', sunsetDate: '2026-10-16' },
-    { id: 'gemini-2.5-flash', purpose: 'Legacy budget option', channel: 'ga', sunsetDate: '2026-10-16' },
-    { id: 'gemini-2.5-flash-image', purpose: 'Legacy image generation', channel: 'ga', sunsetDate: '2026-10-16' },
+    // Gemini 2.5. Dates are Google's published shutdown dates, read from
+    // https://ai.google.dev/gemini-api/docs/deprecations (aistudio.google.com/docs/deprecations)
+    // on 2026-11-14 (issue #290). After the date, requests auto-route to a newer model.
+    { id: 'gemini-2.5-pro', purpose: 'Legacy user option (auto-routes to gemini-3.8-flash after sunset)', channel: 'ga', sunsetDate: '2026-12-01' },
+    { id: 'gemini-2.5-flash', purpose: 'Legacy budget option (auto-routes to gemini-3.5-flash-lite after sunset)', channel: 'ga', sunsetDate: '2026-12-01' },
+    { id: 'gemini-2.5-flash-image', purpose: 'Legacy image generation', channel: 'ga', sunsetDate: '2027-03-15' },
+
+    // ── Video, listed by the API; never a default, selectable only by pinning ─
+    { id: 'gemini-omni-1.2-flash', purpose: 'Video generation and editing (pin-only)', channel: 'ga' },
+    { id: 'gemini-omni-1.1-flash', purpose: 'Video generation (pin-only; auto-routes to gemini-omni-1.2-flash after sunset)', channel: 'ga', sunsetDate: '2026-12-03' },
 ];
 
 /** Ids that may occupy a default position: generally available only. */
@@ -105,7 +110,7 @@ export function isGenerallyAvailable(modelId: string): boolean {
 }
 
 /** True when a model is past its recorded sunset date. */
-export function isRetired(modelId: string): boolean {
+export function isRetired(modelId: string, now: number = Date.now()): boolean {
     const entry = MODEL_REGISTRY.find(e => e.id === modelId);
     if (!entry) {
         return false;
@@ -113,7 +118,7 @@ export function isRetired(modelId: string): boolean {
     if (entry.channel === 'retired') {
         return true;
     }
-    return entry.sunsetDate !== undefined && new Date(entry.sunsetDate).getTime() < Date.now();
+    return entry.sunsetDate !== undefined && new Date(entry.sunsetDate).getTime() < now;
 }
 
 /**

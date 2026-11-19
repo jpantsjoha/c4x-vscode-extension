@@ -26,29 +26,29 @@ describe('Theme System', () => {
             assert.strictEqual(theme.name, 'classic');
         });
 
-        it('should switch to modern theme', () => {
-            themeManager.setCurrentTheme('modern');
+        it('should switch to modern theme', async () => {
+            await themeManager.setCurrentTheme('modern');
             const theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'modern');
             assert.strictEqual(theme.displayName, 'Modern');
         });
 
-        it('should switch to muted theme', () => {
-            themeManager.setCurrentTheme('muted');
+        it('should switch to muted theme', async () => {
+            await themeManager.setCurrentTheme('muted');
             const theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'muted');
             assert.strictEqual(theme.displayName, 'Muted');
         });
 
-        it('should switch to high-contrast theme', () => {
-            themeManager.setCurrentTheme('high-contrast');
+        it('should switch to high-contrast theme', async () => {
+            await themeManager.setCurrentTheme('high-contrast');
             const theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'high-contrast');
             assert.strictEqual(theme.displayName, 'High Contrast');
         });
 
-        it('should switch to auto theme', () => {
-            themeManager.setCurrentTheme('auto');
+        it('should switch to auto theme', async () => {
+            await themeManager.setCurrentTheme('auto');
             const theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'auto');
             assert.strictEqual(theme.displayName, 'Auto');
@@ -58,8 +58,9 @@ describe('Theme System', () => {
             const themes = ThemeManager.getAllThemes();
             const themeNames = themes.map((t: { name: string }) => t.name);
             assert.deepStrictEqual(themeNames, [
-                'c4-standard',
                 'classic',
+                'c4-model',
+                'c4-standard',
                 'modern',
                 'muted',
                 'high-contrast',
@@ -67,18 +68,18 @@ describe('Theme System', () => {
             ]);
         });
 
-        it('should persist theme selection', () => {
-            themeManager.setCurrentTheme('modern');
+        it('should persist theme selection', async () => {
+            await themeManager.setCurrentTheme('modern');
             let theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'modern');
 
             // Switch to another theme
-            themeManager.setCurrentTheme('muted');
+            await themeManager.setCurrentTheme('muted');
             theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'muted');
 
             // Reset to classic
-            themeManager.setCurrentTheme('classic');
+            await themeManager.setCurrentTheme('classic');
             theme = themeManager.getCurrentTheme();
             assert.strictEqual(theme.name, 'classic');
         });
@@ -324,6 +325,57 @@ describe('Theme System', () => {
                     assert.ok(theme.styles.fontFamily);
                 });
             });
+        });
+    });
+
+    describe('c4x.theme setting applied live (#390)', function () {
+        this.timeout(15000);
+        const vscodeApi = require('vscode') as typeof import('vscode'); // eslint-disable-line @typescript-eslint/no-require-imports
+        let savedForce: string | undefined;
+        let saved: unknown;
+
+        let watch: import('vscode').Disposable;
+
+        before(() => {
+            // The extension runs from its own bundle, so watch with this copy of the manager.
+            watch = themeManager.watchConfiguration();
+            savedForce = process.env.C4X_FORCE_THEME;
+            delete process.env.C4X_FORCE_THEME;
+            saved = vscodeApi.workspace.getConfiguration('c4x').inspect('theme')?.workspaceValue;
+        });
+
+        after(async () => {
+            watch.dispose();
+            if (savedForce !== undefined) { process.env.C4X_FORCE_THEME = savedForce; }
+            await vscodeApi.workspace.getConfiguration('c4x').update('theme', saved, vscodeApi.ConfigurationTarget.Workspace);
+        });
+
+        it('writing the workspace setting changes the manager theme without a reload', async () => {
+            await vscodeApi.workspace.getConfiguration('c4x').update('theme', 'muted', vscodeApi.ConfigurationTarget.Workspace);
+            const deadline = Date.now() + 5000;
+            while (themeManager.getCurrentTheme().name !== 'muted' && Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            assert.strictEqual(themeManager.getCurrentTheme().name, 'muted');
+        });
+
+        it('the activated extension restyles a Markdown c4x render after the setting changes', async () => {
+            // Exercises the bundled manager through the extension's own export, so it
+            // fails if activation stops registering the configuration watcher.
+            const MarkdownIt = require('markdown-it'); // eslint-disable-line @typescript-eslint/no-require-imports
+            const ext = vscodeApi.extensions.getExtension('jpantsjoha.c4x');
+            const api = await ext!.activate();
+            const fence = '```c4x\n%%{ c4: system-context }%%\ngraph TB\nuser[User<br/>Person]\napp[Application<br/>Software System]\nuser -->|Uses| app\n```\n';
+            const render = (): string => api.extendMarkdownIt(new MarkdownIt()).render(fence);
+            const config = vscodeApi.workspace.getConfiguration('c4x');
+            await config.update('theme', 'classic', vscodeApi.ConfigurationTarget.Workspace);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const before = render();
+            await config.update('theme', 'high-contrast', vscodeApi.ConfigurationTarget.Workspace);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const after = render();
+            assert.ok(before.includes('<svg') && after.includes('<svg'));
+            assert.notStrictEqual(after, before, 'SVG colours follow the changed setting');
         });
     });
 });

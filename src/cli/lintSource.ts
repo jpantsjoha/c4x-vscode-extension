@@ -19,6 +19,7 @@ import { findingAnchor, lintModel, type LintFinding, type LintOptions, type Lint
 import { c4xParser } from '../parser/C4XParser';
 import { C4XParseError, type ParseResult } from '../parser/types';
 import { findC4xFencedBlocksInSource } from '../writeback/SaveAnchor';
+import { LIMIT_RULE_ID, findLimitViolation } from './limits';
 
 /** Rule id for a source the C4X parser rejects. Not a catalogue rule: it cannot be configured. */
 export const SYNTAX_RULE_ID = 'C4X-SYNTAX';
@@ -90,8 +91,24 @@ function locate(finding: LintFinding, model: C4Model, lineOffset: number): Pick<
  * only when a rule itself fails.
  */
 export function lintC4xSource(text: string, options: LintOptions, lineOffset = 0): HeadlessFinding[] {
+    return analyseC4xSource(text, options, lineOffset).findings;
+}
+
+/** What `analyseC4xSource` found, and the model when the source parsed, stayed in bounds and built. */
+export interface SourceAnalysis {
+    readonly findings: HeadlessFinding[];
+    /** Absent for a blank source and after a syntax, limit or model error. */
+    readonly model?: C4Model;
+}
+
+/**
+ * `lintC4xSource` with the model it built, so a caller that goes on to draw
+ * the diagram (`checkC4xSource`, #353) parses and builds once, through the
+ * same steps and bounds as lint.
+ */
+export function analyseC4xSource(text: string, options: LintOptions, lineOffset = 0): SourceAnalysis {
     if (!text.trim()) {
-        return [];
+        return { findings: [] };
     }
     let parsed: ParseResult;
     try {
@@ -99,12 +116,18 @@ export function lintC4xSource(text: string, options: LintOptions, lineOffset = 0
     } catch (error) {
         const location = error instanceof C4XParseError ? error.location : undefined;
         const message = error instanceof Error ? error.message : 'Unknown parser error';
-        return [pointFinding(
+        return { findings: [pointFinding(
             SYNTAX_RULE_ID,
             `C4X syntax error: ${message}`,
             lineOffset + Math.max(1, location?.line ?? 1),
             Math.max(1, location?.column ?? 1),
-        )];
+        )] };
+    }
+    // Size bounds (#362): a source past them is refused before the model
+    // builder and the rules run, so no input can make either stage unbounded.
+    const overLimit = findLimitViolation(parsed);
+    if (overLimit) {
+        return { findings: [pointFinding(LIMIT_RULE_ID, `C4X input limit: ${overLimit.message}`, lineOffset + overLimit.line, overLimit.column)] };
     }
     let model: C4Model;
     try {
@@ -113,29 +136,50 @@ export function lintC4xSource(text: string, options: LintOptions, lineOffset = 0
         // The builder's location is an index into the element list, not a
         // source line, so the finding sits at the start of the source.
         const message = error instanceof Error ? error.message : 'Unknown model error';
-        return [pointFinding(MODEL_RULE_ID, `C4X model error: ${message}`, lineOffset + 1, 1)];
+        return { findings: [pointFinding(MODEL_RULE_ID, `C4X model error: ${message}`, lineOffset + 1, 1)] };
     }
+    // Element style diagnostics (#322) come from the model builder, like the
+    // model check above, so `enabled: false` does not switch them off either.
+    const styleFindings = modelDiagnosticFindings(model, lineOffset);
     // `enabled: false` switches the notation rules off, never the syntax and
     // model checks above: a diagram that cannot be drawn is never clean.
     if (options.enabled === false) {
-        return [];
+        return { findings: styleFindings, model };
     }
     try {
-        return lintModel(model, options).map(finding => ({
+        return { findings: [...lintModel(model, options).map(finding => ({
             ruleId: finding.ruleId,
             severity: finding.severity,
             message: finding.message,
             hint: finding.hint,
             ...locate(finding, model, lineOffset),
-        }));
+        })), ...styleFindings], model };
     } catch (error) {
         throw new LintEngineError(error);
     }
 }
 
-function countLines(text: string, end: number): number {
+/** The model builder's located diagnostics (element styles, #322) as findings, in source order. */
+export function modelDiagnosticFindings(model: C4Model, lineOffset: number): HeadlessFinding[] {
+    return (model.diagnostics ?? []).map(diagnostic => {
+        const range = diagnostic.range;
+        return {
+            ruleId: diagnostic.code,
+            severity: diagnostic.severity,
+            message: diagnostic.message,
+            hint: '',
+            line: lineOffset + (range?.start.line ?? 1),
+            column: range?.start.column ?? 1,
+            endLine: lineOffset + (range?.end.line ?? 1),
+            endColumn: range?.end.column ?? 1,
+        };
+    });
+}
+
+/** Newlines in `text` from `from` up to (not including) `end`. */
+function countLines(text: string, end: number, from = 0): number {
     let lines = 0;
-    for (let index = text.indexOf('\n'); index !== -1 && index < end; index = text.indexOf('\n', index + 1)) {
+    for (let index = text.indexOf('\n', from); index !== -1 && index < end; index = text.indexOf('\n', index + 1)) {
         lines++;
     }
     return lines;
@@ -154,9 +198,16 @@ export function lintFileText(rawText: string, kind: SourceKind, options: LintOpt
         return lintC4xSource(text, options);
     }
     const findings: HeadlessFinding[] = [];
+    // Lines are counted on from the previous fence, not from the top of the
+    // file each time: counting from the top was quadratic in the number of
+    // fences (#362).
+    let line = 0;
+    let counted = 0;
     for (const block of findC4xFencedBlocksInSource(text)) {
+        line += countLines(text, block.bodyRange.start, counted);
+        counted = block.bodyRange.start;
         const body = text.slice(block.bodyRange.start, block.bodyRange.end);
-        findings.push(...lintC4xSource(body, options, countLines(text, block.bodyRange.start)));
+        findings.push(...lintC4xSource(body, options, line));
     }
     return findings;
 }

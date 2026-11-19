@@ -97,7 +97,6 @@ describe('C4 legality element matrix', () => {
 describe('C4 legality aliases and runtime validation', () => {
     const aliases: readonly [C4ElementType, C4ElementType][] = [
         ['System', 'SoftwareSystem'],
-        ['SoftwareSystem_Ext', 'System_Ext'],
         ['SystemDb', 'SoftwareSystem'],
         ['SystemDb_Ext', 'System_Ext'],
         ['ContainerDb', 'Container'],

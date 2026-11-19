@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1830 430" role="img">
+  <rect x="0" y="0" width="1830" height="430" fill="#FFFFFF" />
+  
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+          <feOffset in="blur" dx="3" dy="3" result="offsetBlur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#000000" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#000000" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#000000" fill-opacity="1" />
+        </marker>
+      </defs>
+  
+  <g class="diagram-content" transform="translate(0, 0)">
+    <g class="boundaries">
+
+    </g>
+    <g class="nodes">
+<g class="node" data-id="arabic" >
+    <rect x="40.00" y="40.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="160.00" y="97.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">نظام إدارة المدفوعات</text>
+    <text data-field="technology" x="160.00" y="113.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="160.00" y="129.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">يعالج النظام جميع المدفوعات الواردة من العملاء ويرسل الإيصالات ويحفظ سجلاً كاملاً لكل عملية دفع وتحويل</text>
+  </g>
+<g class="node" data-id="hebrew" >
+    <rect x="40.00" y="250.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="160.00" y="307.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">מערכת תשלומים</text>
+    <text data-field="technology" x="160.00" y="323.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="160.00" y="339.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">המערכת מעבדת את כל התשלומים הנכנסים מהלקוחות, שולחת קבלות ושומרת תיעוד מלא של כל תשלום והעברה</text>
+  </g>
+<g class="node" data-id="thai" >
+    <rect x="340.00" y="40.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="460.00" y="97.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">ระบบชำระเงิน</text>
+    <text data-field="technology" x="460.00" y="113.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="460.00" y="129.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">ระบบนี้ประมวลผลการชำระเงินทั้งหมดจากลูกค้าส่งใบเสร็จและเก็บบันทึกการชำระเงินและการโอนเงินทุกรายการอย่างครบถ้วน</text>
+  </g>
+<g class="node" data-id="devanagari" >
+    <rect x="340.00" y="250.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="460.00" y="307.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">भुगतान प्रणाली</text>
+    <text data-field="technology" x="460.00" y="323.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="460.00" y="339.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">यह प्रणाली ग्राहकों से आने वाले सभी भुगतानों को संसाधित करती है, रसीदें भेजती है और हर भुगतान और हस्तांतरण का पूरा रिकॉर्ड रखती है</text>
+  </g>
+<g class="node" data-id="cjk" >
+    <rect x="640.00" y="40.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="760.00" y="97.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">支付系统</text>
+    <text data-field="technology" x="760.00" y="113.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="760.00" y="129.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">该系统处理客户的所有付款发送收据并完整记录每一笔付款和转账以便日后审计和对账</text>
+  </g>
+<g class="node" data-id="hangul" >
+    <rect x="640.00" y="250.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="760.00" y="307.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">결제 시스템</text>
+    <text data-field="technology" x="760.00" y="323.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="760.00" y="339.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">이 시스템은 고객의 모든 결제를 처리하고 영수증을 보내며 모든 결제와 이체에 대한 전체 기록을 보관합니다</text>
+  </g>
+<g class="node" data-id="emoji" >
+    <rect x="940.00" y="40.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="1060.00" y="97.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Payments 👨‍👩‍👧‍👦 team</text>
+    <text data-field="technology" x="1060.00" y="113.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="1060.00" y="129.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦 🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧</text>
+  </g>
+<g class="node" data-id="symbols" >
+    <rect x="1240.00" y="40.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="1360.00" y="97.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Checks ✓ ♠ ⚙</text>
+    <text data-field="technology" x="1360.00" y="113.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="1360.00" y="129.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐</text>
+  </g>
+<g class="node" data-id="mixed" >
+    <rect x="1540.00" y="40.00" width="240.00" height="130.00" rx="8" ry="8" fill="#FFFFFF" stroke="#006600" stroke-width="3" />
+<text data-field="label" x="1660.00" y="97.00" fill="#006600" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Payments API that sends receipts 支付 to every customer</text>
+    <text data-field="technology" x="1660.00" y="113.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java]</text>
+    <text data-field="description" x="1660.00" y="129.00" fill="#006600" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Records every payment and every refund for every customer 支付 and keeps a full audit trail</text>
+  </g>
+    </g>
+    <g class="edges">
+<g class="edge" data-id="rel-0">
+    <path class="edge-hit-area" d="M160.00,170.00 L160.00,250.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M160.00,170.00 L160.00,250.00" fill="none" stroke="#000000" stroke-width="3" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="160.00" y="204.00" fill="#000000" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Calls</text>
+  </g>
+<g class="edge" data-id="rel-1">
+    <path class="edge-hit-area" d="M460.00,170.00 L460.00,250.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M460.00,170.00 L460.00,250.00" fill="none" stroke="#000000" stroke-width="3" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="460.00" y="204.00" fill="#000000" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Calls</text>
+  </g>
+<g class="edge" data-id="rel-2">
+    <path class="edge-hit-area" d="M760.00,170.00 L760.00,250.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M760.00,170.00 L760.00,250.00" fill="none" stroke="#000000" stroke-width="3" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="760.00" y="204.00" fill="#000000" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Calls</text>
+  </g>
+    </g>
+  </g>
+</svg>

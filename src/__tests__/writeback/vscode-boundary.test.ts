@@ -66,7 +66,9 @@ function createMemorySidecar(
         getWorkspaceFolders: () => workspaceFolders.map(uri => ({ uri })),
         readFile: uri => {
             const bytes = files.get(uri.fsPath);
-            return bytes ? Promise.resolve(bytes) : Promise.reject(new Error('ENOENT'));
+            return bytes
+                ? Promise.resolve(bytes)
+                : Promise.reject(Object.assign(new Error('ENOENT'), { code: 'FileNotFound' }));
         },
         writeFile: (uri, content) => {
             files.set(uri.fsPath, content);
@@ -734,8 +736,159 @@ describe('WritebackTransaction boundary seam', () => {
 
         assert.strictEqual(transaction.calls.apply, 1);
         assert.ok(document.getText().includes(
-            'Person(User, "User", "TypeScript", $tags="Core", $x="100", $y="150")',
+            // A Person's lone positional argument is its description (#420), so a
+            // technology needs both slots.
+            'Person(User, "User", "TypeScript", "", $tags="Core", $x="100", $y="150")',
         ));
+    });
+
+    it('[#420] saves a Person or System description to its third argument through the transaction', async () => {
+        const original = [
+            'graph TB',
+            'Person(User, "User", "Pays bills")',
+            'System_Ext(Mail, "Mail", "Sends receipts", $tags="Email")',
+            'Container(Api, "API", "Java")',
+            'User --> Api',
+        ].join('\n');
+        const document = new MemoryDocument(fileUri('/workspace/system.c4x'), 'c4x', '/workspace/system.c4x', original);
+        const transaction = createMemoryTransaction(document, createMemorySidecar().boundary);
+
+        assert.strictEqual(await executeWritebackTransaction(document, {
+            type: 'visualLayout.applySemanticEdits',
+            protocolVersion: 1,
+            revision: String(document.version),
+            edits: [
+                { id: 'User', description: 'Pays bills and checks balances' },
+                { id: 'Mail', description: null },
+                { id: 'Api', description: 'Serves requests' },
+            ],
+        }, undefined, transaction.boundary), true);
+
+        assert.strictEqual(document.getText(), [
+            'graph TB',
+            'Person(User, "User", "Pays bills and checks balances")',
+            'System_Ext(Mail, "Mail", $tags="Email")',
+            'Container(Api, "API", "Java", "Serves requests")',
+            'User --> Api',
+        ].join('\n'));
+        const saved = new C4XParser().parse(document.getText()).elements;
+        assert.deepStrictEqual(saved.map(el => [el.id, el.technology, el.description]), [
+            ['User', undefined, 'Pays bills and checks balances'],
+            ['Mail', undefined, undefined],
+            ['Api', 'Java', 'Serves requests'],
+        ]);
+    });
+
+    describe('[#420] multiline Person and System calls: clear, set and replace the description', () => {
+        const kinds = ['Person', 'Person_Ext', 'System', 'System_Ext', 'SystemDb', 'SystemDb_Ext'];
+        // Each layout gives the call with the description argument and without it.
+        // Clearing must produce exactly the "without" form, setting must insert
+        // after the label, and replacing must touch only the quoted text.
+        // `cleared` is what Clear leaves: the argument goes with the comma and
+        // whitespace before it, so no comma dangles and no line is left holding
+        // only indentation.
+        const layouts: Array<{ name: string; eol: string; withDesc: (k: string) => string; without: (k: string) => string; cleared?: (k: string) => string }> = [
+            {
+                name: 'LF, argument on its own line, trailing attribute',
+                eol: '\n',
+                withDesc: k => `${k}(u, "User",\n  "Desc", $tags="Core")`,
+                without: k => `${k}(u, "User",\n  $tags="Core")`,
+                cleared: k => `${k}(u, "User", $tags="Core")`,
+            },
+            {
+                name: 'CRLF, argument on its own line, trailing attribute',
+                eol: '\r\n',
+                withDesc: k => `${k}(u, "User",\r\n  "Desc", $tags="Core")`,
+                without: k => `${k}(u, "User",\r\n  $tags="Core")`,
+                cleared: k => `${k}(u, "User", $tags="Core")`,
+            },
+            {
+                name: 'tabs between arguments',
+                eol: '\n',
+                withDesc: k => `${k}(u,\t"User",\t"Desc",\t$tags="Core")`,
+                without: k => `${k}(u,\t"User",\t$tags="Core")`,
+            },
+            {
+                name: 'every argument on its own line',
+                eol: '\n',
+                withDesc: k => `${k}(\n  u,\n  "User",\n  "Desc",\n  $tags="Core"\n)`,
+                without: k => `${k}(\n  u,\n  "User",\n  $tags="Core"\n)`,
+            },
+            {
+                name: 'CRLF, every argument on its own line, description last',
+                eol: '\r\n',
+                withDesc: k => `${k}(\r\n  u,\r\n  "User",\r\n  "Desc"\r\n)`,
+                without: k => `${k}(\r\n  u,\r\n  "User"\r\n)`,
+            },
+        ];
+
+        async function save(statement: string, eol: string, description: string | null): Promise<string> {
+            const text = `graph TB${eol}${statement}${eol}`;
+            const document = new MemoryDocument(fileUri('/workspace/system.c4x'), 'c4x', '/workspace/system.c4x', text);
+            const transaction = createMemoryTransaction(document, createMemorySidecar().boundary);
+            assert.strictEqual(await executeWritebackTransaction(document, {
+                type: 'visualLayout.applySemanticEdits',
+                protocolVersion: 1,
+                revision: String(document.version),
+                edits: [{ id: 'u', description }],
+            }, undefined, transaction.boundary), true);
+            const saved = document.getText();
+            assert.ok(saved.startsWith(`graph TB${eol}`) && saved.endsWith(eol), 'surrounding source changed');
+            return saved.slice(`graph TB${eol}`.length, saved.length - eol.length);
+        }
+
+        function reparsed(statement: string): { technology?: string; description?: string; tags?: string[] } {
+            return new C4XParser().parse(`graph TB\n${statement}`).elements[0];
+        }
+
+        for (const layout of layouts) {
+            for (const kind of kinds) {
+                it(`${kind}, ${layout.name}: clear`, async () => {
+                    const saved = await save(layout.withDesc(kind), layout.eol, null);
+                    assert.strictEqual(saved, (layout.cleared ?? layout.without)(kind));
+                    assert.strictEqual(reparsed(saved).description, undefined);
+                    assert.strictEqual(reparsed(saved).technology, undefined);
+                });
+                it(`${kind}, ${layout.name}: set`, async () => {
+                    const saved = await save(layout.without(kind), layout.eol, 'New');
+                    assert.strictEqual(saved, layout.without(kind).replace('"User"', '"User", "New"'));
+                    assert.strictEqual(reparsed(saved).description, 'New');
+                    assert.strictEqual(reparsed(saved).technology, undefined);
+                });
+                it(`${kind}, ${layout.name}: replace`, async () => {
+                    const saved = await save(layout.withDesc(kind), layout.eol, 'New');
+                    assert.strictEqual(saved, layout.withDesc(kind).replace('"Desc"', '"New"'));
+                    assert.strictEqual(reparsed(saved).description, 'New');
+                    assert.strictEqual(reparsed(saved).technology, undefined);
+                });
+            }
+        }
+
+        it('clearing a Container technology on its own line removes it with its comma', async () => {
+            const text = 'graph TB\nContainer(u, "API",\n  "Java", $tags="Core")\n';
+            const document = new MemoryDocument(fileUri('/workspace/c.c4x'), 'c4x', '/workspace/c.c4x', text);
+            const transaction = createMemoryTransaction(document, createMemorySidecar().boundary);
+            assert.strictEqual(await executeWritebackTransaction(document, {
+                type: 'visualLayout.applySemanticEdits',
+                protocolVersion: 1,
+                revision: String(document.version),
+                edits: [{ id: 'u', technology: null }],
+            }, undefined, transaction.boundary), true);
+            assert.strictEqual(document.getText(), 'graph TB\nContainer(u, "API", $tags="Core")\n');
+        });
+
+        it('removing a $tags attribute on its own line leaves no indentation-only line', async () => {
+            const text = 'graph TB\nPerson(u, "User", "Desc",\n  $tags="Core")\n';
+            const document = new MemoryDocument(fileUri('/workspace/t.c4x'), 'c4x', '/workspace/t.c4x', text);
+            const transaction = createMemoryTransaction(document, createMemorySidecar().boundary);
+            assert.strictEqual(await executeWritebackTransaction(document, {
+                type: 'visualLayout.applySemanticEdits',
+                protocolVersion: 1,
+                revision: String(document.version),
+                edits: [{ id: 'u', tags: [] }],
+            }, undefined, transaction.boundary), true);
+            assert.strictEqual(document.getText(), 'graph TB\nPerson(u, "User", "Desc")\n');
+        });
     });
 
     it('applies field edits and identifier rename with all relationship references in one workspace edit', async () => {
@@ -1137,5 +1290,65 @@ describe('VscodeWritebackBoundary adapter', () => {
             }, undefined, transaction.boundary),
             (error: unknown) => error instanceof WritebackTransactionError && error.code === 'invalid_payload',
         );
+    });
+});
+
+describe('WritebackTransaction with positional Structurizr source (#242)', () => {
+    const positionalSource =
+        'workspace "W" {\n' +
+        '  model {\n' +
+        '    s = softwareSystem "S" "Core" {\n' +
+        '      api = container "API" "Serves" "Node.js"\n' +
+        '    }\n' +
+        '  }\n' +
+        '  views { containerView s "Containers" { include * } }\n' +
+        '}';
+
+    it('saves a layout move for a positional element to the sidecar and never rewrites the DSL', async () => {
+        const document = new MemoryDocument(
+            fileUri('/workspace/pos.dsl'), 'structurizr-dsl', '/workspace/pos.dsl', positionalSource,
+        );
+        const sidecar = createMemorySidecar();
+        const transaction = createMemoryTransaction(document, sidecar.boundary);
+        assert.strictEqual(
+            await executeWritebackTransaction(document, move(document, 'api'), undefined, transaction.boundary),
+            true,
+        );
+        assert.strictEqual(transaction.calls.apply, 0);
+        assert.strictEqual(document.getText(), positionalSource);
+        assert.deepStrictEqual(await loadSidecarLayout(document.uri, sidecar.boundary), { api: { x: 120, y: 240 } });
+    });
+
+    it('refuses a semantic edit on positional source without touching it', async () => {
+        const document = new MemoryDocument(
+            fileUri('/workspace/pos.dsl'), 'structurizr-dsl', '/workspace/pos.dsl', positionalSource,
+        );
+        const transaction = createMemoryTransaction(document, createMemorySidecar().boundary);
+        await assert.rejects(
+            executeWritebackTransaction(document, {
+                type: 'visualLayout.applySemanticEdits',
+                protocolVersion: 1,
+                revision: String(document.version),
+                edits: [{ id: 'api', description: 'Changed' }],
+            }, undefined, transaction.boundary),
+            (error: unknown) => error instanceof WritebackTransactionError &&
+                error.code === 'validation_failed' && /not supported for external DSL/.test(error.message),
+        );
+        assert.strictEqual(transaction.calls.apply, 0);
+        assert.strictEqual(document.getText(), positionalSource);
+    });
+
+    it('fails validation with the parser error, not an empty model, when positional source is malformed', async () => {
+        const bad = positionalSource.slice(0, -1);
+        const document = new MemoryDocument(
+            fileUri('/workspace/bad.dsl'), 'structurizr-dsl', '/workspace/bad.dsl', bad,
+        );
+        const transaction = createMemoryTransaction(document, createMemorySidecar().boundary);
+        await assert.rejects(
+            executeWritebackTransaction(document, move(document, 'api'), undefined, transaction.boundary),
+            (error: unknown) => error instanceof WritebackTransactionError &&
+                error.code === 'validation_failed' && /Failed to parse Structurizr/.test(error.message),
+        );
+        assert.strictEqual(document.getText(), bad);
     });
 });

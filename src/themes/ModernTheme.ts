@@ -4,7 +4,7 @@
  * White boxes with vibrant colored borders
  */
 
-import { C4Theme } from './Theme';
+import { C4Theme, legacyThemeTokens } from './Theme';
 
 export const ModernTheme: C4Theme = {
     name: 'modern',
@@ -54,4 +54,5 @@ export const ModernTheme: C4Theme = {
         fontFamily: 'Helvetica, Arial, sans-serif',
         shadowEnabled: true,      // Drop shadows for depth
     },
+    ...legacyThemeTokens({ stroke: '#6B7280', text: '#374151' }),
 };

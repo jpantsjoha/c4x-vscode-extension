@@ -11,7 +11,7 @@
  * @see https://structurizr.com
  */
 
-import { C4Theme } from './Theme';
+import { C4Theme, legacyThemeTokens } from './Theme';
 import {
     C4_PERSON_FILL,
     C4_PERSON_STROKE,
@@ -104,4 +104,5 @@ export const C4StandardTheme: C4Theme = {
         fontFamily: 'Arial, sans-serif',
         shadowEnabled: false,       // No decorative shadows
     },
+    ...legacyThemeTokens({ stroke: C4_ARROW_STROKE, text: C4_ARROW_TEXT }),
 };

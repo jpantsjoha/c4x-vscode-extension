@@ -25,7 +25,7 @@ node tools/c4x-lint.cjs 'docs/**/*.{c4x,md}'
 
 Arguments are files, directories or glob patterns. Quote a pattern, so every shell — and Windows — passes it to `c4x-lint` unchanged. A directory is searched recursively. `node_modules`, directories whose name starts with `.`, and symbolic links are skipped during a search; a path you name outright is always read, following a link. Every argument must match at least one `.c4x` or Markdown file, or the run stops with exit code 2 before linting anything, so a renamed or mistyped path cannot quietly shrink what is checked.
 
-Files are reported relative to the directory `c4x-lint` runs in, in every format. A file outside it is reported as a relative `../…` path, never by its absolute path. That is deliberate: a bare file name could match two different files, and the relative path still opens from where you ran the command. Control characters in a file name are printed as escapes such as `\n`, so a file name cannot forge an extra finding or annotation. A UTF-8 byte order mark at the start of a file is ignored.
+Files are reported relative to the directory `c4x-lint` runs in, in every format. A file outside it is reported as a relative `../…` path; on Windows, a file on another drive has no relative path and is reported by its absolute path, with `/` separators. That is deliberate: a bare file name could match two different files, and the relative path still opens from where you ran the command. Control characters in a file name are printed as escapes such as `\n`, so a file name cannot forge an extra finding or annotation. A UTF-8 byte order mark at the start of a file is ignored.
 
 | Option | Values | Default |
 |---|---|---|
@@ -42,14 +42,32 @@ Files are reported relative to the directory `c4x-lint` runs in, in every format
 - Every `c4x` fence in Markdown (`.md`, `.markdown`), at its real line in the file. Fences are found by the same scanner the editor uses. It shares that scanner's known limit: an unclosed fence inside a list item ends the scan for the rest of the document, so a `c4x` fence after it is not checked.
 - Nothing else. Structurizr DSL and PlantUML files are not linted, as in the editor.
 
-Two kinds of finding exist only outside the editor, because there is no preview to report them:
+Three kinds of finding exist only outside the editor, because there is no preview to report them:
 
 | Rule | Severity | Meaning |
 |---|---|---|
-| `C4X-SYNTAX` | always `error` | The diagram does not parse. Nothing else in it is checked. |
+| `C4X-SYNTAX` | always `error` | The diagram does not parse. Nothing else in it is checked. Nesting deeper than 32 levels is a syntax error, in the editor too. |
 | `C4X-MODEL` | always `error` | The diagram parses but cannot be drawn: a duplicate element id, or a relationship to an element that does not exist. It is reported on the first line of the diagram. |
+| `C4X-LIMIT` | always `error` | The diagram parses but exceeds an input limit (see [Limits](#limits)). It is reported at the first element, relationship, text field or list past the limit. Nothing else in the diagram is checked. |
 
-Neither can be configured. A diagram that does not render is never clean.
+None can be configured. A diagram that does not render is never clean.
+
+### Limits
+
+`c4x-lint` and the MCP tools refuse input past these bounds with an error, not a crash or a hang. The counts and lengths apply to what the parser keeps; text it discards (comments, the earlier value of a repeated attribute, a subgraph inside a deployment node) is bounded by the file-size cap. The same values are in the generated [C4X reference](reference/c4x-reference.md#input-limits). The largest diagram in this repository is about 9 KB, nests 4 levels and has 24 top-level elements, so real diagrams sit far inside them.
+
+| Limit | Value | What happens past it |
+|---|---|---|
+| File size (`c4x-lint`) | 4 MiB per file | The file is reported and not linted; the run exits 2. |
+| Code size (MCP tools) | 1 MiB per call | An input error. |
+| Nesting | 32 levels of boundaries, nodes and subgraphs, counted by the grammar (braces inside labels do not count) | `C4X-SYNTAX`, at the brace that opens level 33. |
+| Elements | 2,000 elements and boundaries per diagram, at every level | `C4X-LIMIT`. |
+| Relationships | 5,000 per diagram | `C4X-LIMIT`. |
+| Text | 4,096 characters in one label, description, technology, tag, attribute name or attribute value | `C4X-LIMIT`. |
+| Entries | 256 `$key="value"` pairs as written on one element, node or subgraph (each repeat of a key counts); 256 tags on one element; 256 pairs in one `elementStyle` | `C4X-LIMIT`. |
+| MCP output | 200 finding lines, 2,000 characters per line, 512 KiB per result | Lines are cut; the heading still counts every finding. |
+
+`c4x-lint` reads only the files, directories and globs you name and its configuration file. It is built to read no path written inside a diagram, open no network connection, start no process, and write only to standard output and standard error, plus the file named by `GITHUB_STEP_SUMMARY` when you run `--format github` in a CI job that sets it. The tests check the modules the bundle imports and watch the paths they exercise; they are tripwires, not a proof (see [SECURITY.md](../SECURITY.md)). Control characters, line and paragraph separators, bidirectional controls and marks and other format characters (Unicode categories Cc, Cf, Zl and Zp, except the joiners U+200C and U+200D) in a file name or a diagram label are printed as escapes (`\n`, `\x9b`, `\u2028`, `\u202e`) in the `text` and `github` formats; in `json` and `sarif` they are written as JSON `\uXXXX` escapes, which decode to the original text. In the `GITHUB_STEP_SUMMARY` table every finding and file name is literal text: punctuation is written as character references, so a label cannot become HTML, a link or Markdown formatting.
 
 ### Exit codes
 
@@ -59,7 +77,7 @@ Neither can be configured. A diagram that does not render is never clean.
 | `1` | At least one finding at or above `--max-severity`. |
 | `2` | Usage or input error: an unknown option, a configuration file that cannot be read, an argument that matches no file, or a file that cannot be read. Also a fault inside `c4x-lint` itself, so a broken checker never passes a diagram. |
 
-`--max-severity` is the gate. At the default, `error`, only syntax errors, model errors and rules you raised to `error` fail the run. Every rule defaults to `info`, so a first run reports findings without failing. `--max-severity warning` fails on warnings too; `--max-severity off` never fails on findings.
+`--max-severity` is the gate. At the default, `error`, only syntax errors, model errors and rules you raised to `error` fail the run. Every rule defaults to `info`, so a first run lists findings and still exits 0. Run with `--max-severity info` to make every finding fail the run (exit 1); without it, `--quiet` prints no `info` finding at all, because none of them fails the run. Use `--max-severity info` whenever you need to see or act on what the rules report, as an assistant checking its own output does. `--max-severity warning` fails on warnings too; `--max-severity off` never fails on findings. Verified against the CLI: a file with two `info` findings exits 0 at the default, and exits 1 with both findings printed under `--max-severity info --quiet`.
 
 ## Configure the rules
 
@@ -205,12 +223,14 @@ Any other CI system: run the `text` or `json` format and let the exit code fail 
 
 ## From an AI agent: the MCP `lint_c4x` tool
 
-The C4X MCP server (`mcp/c4x-mcp-server.bundle.cjs`) offers `lint_c4x` next to `validate_c4x`. It takes `code`, the C4X source, and optionally `rules`, the same table as the configuration file. It answers `Lint CLEAN. No findings.`, or `Lint FINDINGS.` with the counts, followed by one `line:column severity rule message fix` line per finding, at most 200, and a last line saying how many more there are. An entry in `rules` that is ignored, because the rule id or severity is unknown, is reported on a `Note:` line. Findings are advice, so the tool reports an error only when the code does not parse; an agent can call `validate_c4x`, then `lint_c4x`, before it hands a diagram back.
+The C4X MCP server (`mcp/c4x-mcp-server.bundle.cjs`) offers `lint_c4x` next to `validate_c4x`. It takes `code`, the C4X source, and optionally `rules`, the same table as the configuration file. It answers `Lint CLEAN. No findings.`, or `Lint FINDINGS.` with the counts, followed by one `line:column severity rule message fix` line per finding, at most 200, and a last line saying how many more there are. An entry in `rules` that is ignored, because the rule id or severity is unknown, is reported on a `Note:` line. Findings are advice, so the tool reports an error only when the code does not parse or exceeds a [limit](#limits); an agent can call `validate_c4x`, then `lint_c4x`, before it hands a diagram back.
+
+Findings quote diagram text, which whoever wrote the diagram controls. Control characters in quoted text are escaped, so a label cannot add a line to the result, and an agent should treat the quoted text as data, never as instructions. A malformed or unknown request gets a JSON-RPC error and the server keeps running.
 
 ## Limitations
 
 - There is no comment that suppresses one finding in the source. Turn the rule off or change its severity in the configuration.
 - A model error is reported on the first line of the diagram, not on the element that caused it; the message names the element.
 - The `c4x` fence scanner shares the editor's limit on unclosed fences inside list items.
-- `C4X-SYNTAX` and `C4X-MODEL` cannot be switched off, even with `"enabled": false`.
+- `C4X-SYNTAX`, `C4X-MODEL` and `C4X-LIMIT` cannot be switched off, even with `"enabled": false`.
 - The editor reads `c4x.lint.*` from VS Code settings and `c4x-lint` reads its own configuration file. Keep the two rule tables the same by copying one into the other.

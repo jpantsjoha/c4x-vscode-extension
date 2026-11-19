@@ -44,7 +44,7 @@ export interface PersistedStagedEdit {
     to?: string;
     /**
      * Relationships staged by connect mode (#260). Additive and optional, so
-     * `schemaVersion` stays 1: a reader that predates this field validates only
+     * `schemaVersion` stayed 1 when added: a reader that predates this field validates only
      * the fields it knows and drops this one, which loses the staged add (as
      * before) but never rejects or corrupts the rest of the draft.
      */
@@ -57,7 +57,17 @@ export interface PersistedStagedEdit {
  * objects beyond the staged-edit array.
  */
 export interface PersistedDraftState {
-    readonly schemaVersion: 1;
+    readonly schemaVersion: 2;
+    /**
+     * Identity of the diagram this draft belongs to: the document URI, plus
+     * the fence's content identity (model identity + body hash) for
+     * Markdown-bound panels. vscode.setState is scoped to the webview PANEL,
+     * and the singleton preview panel is reused across documents — without
+     * this, one diagram's camera and staged edits could be restored onto
+     * another diagram that happens to use the same element ids (#167 review).
+     * A missing scope fails validation outright.
+     */
+    readonly scope: string;
     readonly editMode: boolean;
     readonly selectedNodeId: string | null;
     readonly stagedEdits: readonly PersistedStagedEdit[];
@@ -69,6 +79,7 @@ export interface PersistedDraftState {
 // ── Schema constants ─────────────────────────────────────────────────────────
 
 const MAX_ID_LENGTH = 256;
+const MAX_SCOPE_LENGTH = 2_048;
 const MAX_LABEL_LENGTH = 120;
 const MAX_TECH_LENGTH = 120;
 const MAX_TEXT_LENGTH = 4_096;
@@ -331,7 +342,10 @@ export function isPersistedDraftState(value: unknown): value is PersistedDraftSt
     if (!isRecord(value)) {
         return false;
     }
-    if (value['schemaVersion'] !== 1) {
+    if (value['schemaVersion'] !== 2) {
+        return false;
+    }
+    if (!isBoundedString(value['scope'], MAX_SCOPE_LENGTH)) {
         return false;
     }
     if (typeof value['editMode'] !== 'boolean') {

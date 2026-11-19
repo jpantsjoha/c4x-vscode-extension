@@ -12,7 +12,6 @@ export type C4ElementType =
     | 'Person_Ext'
     | 'System'
     | 'System_Ext'
-    | 'SoftwareSystem_Ext'
     | 'Container_Ext'
     | 'Component_Ext'
     | 'Node'
@@ -96,7 +95,6 @@ const ELEMENT_BASES: ReadonlyMap<C4ElementType, ElementBase> = new Map([
     ['SoftwareSystem', 'SoftwareSystem'],
     ['System', 'SoftwareSystem'],
     ['System_Ext', 'SoftwareSystem'],
-    ['SoftwareSystem_Ext', 'SoftwareSystem'],
     ['SystemDb', 'SoftwareSystem'],
     ['SystemDb_Ext', 'SoftwareSystem'],
     ['Container', 'Container'],
@@ -113,6 +111,21 @@ const ELEMENT_BASES: ReadonlyMap<C4ElementType, ElementBase> = new Map([
     ['Container_Boundary', 'Container_Boundary'],
     ['Enterprise_Boundary', 'Enterprise_Boundary'],
 ]);
+
+/**
+ * Types that name a built element but are not a source spelling: the model
+ * builder maps `Node` to `DeploymentNode` and has no `DeploymentNode(...)` call
+ * (#449). The legality rules still look them up; the catalogue omits them.
+ */
+const MODEL_ONLY_TYPES: ReadonlySet<C4ElementType> = new Set<C4ElementType>(['DeploymentNode']);
+
+/**
+ * Every element spelling the legality rules accept: the palette types plus
+ * the source-facing aliases (`System`, `SystemDb`, `ContainerDb_Ext`, ...).
+ * Generation prompts list their element types from this catalogue.
+ */
+export const C4_ACCEPTED_ELEMENT_TYPES: readonly C4ElementType[] = [...ELEMENT_BASES.keys()]
+    .filter(type => !MODEL_ONLY_TYPES.has(type));
 
 const SCOPE_ALIASES: ReadonlyMap<C4Scope, CanonicalC4Scope> = new Map([
     ['root', 'root'],

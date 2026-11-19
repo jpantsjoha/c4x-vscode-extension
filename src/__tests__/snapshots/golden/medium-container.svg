@@ -83,9 +83,9 @@
     <text x="200.00" y="283.57" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Visits</text>
   </g>
 <g class="edge" data-id="rel-1">
-    <path class="edge-hit-area" d="M200.00,200.00 L200.00,539.11" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
-    <path d="M200.00,200.00 L200.00,539.11" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
-    <text x="200.00" y="363.56" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
+    <path class="edge-hit-area" d="M300.00,120.00 L344.00,120.00 L344.00,604.11 L320.00,604.11" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M300.00,120.00 L344.00,120.00 L344.00,604.11 L320.00,604.11" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="344.00" y="356.06" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
   </g>
 <g class="edge" data-id="rel-2">
     <path class="edge-hit-area" d="M200.00,669.11 L200.00,699.08" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
@@ -103,9 +103,9 @@
     <text x="200.00" y="838.06" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reads from and writes to</text>
   </g>
 <g class="edge" data-id="rel-5">
-    <path class="edge-hit-area" d="M200.00,829.08 L200.00,1200.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
-    <path d="M200.00,829.08 L200.00,1200.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
-    <text x="200.00" y="1008.54" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends e-mails using</text>
+    <path class="edge-hit-area" d="M320.00,764.08 L354.00,764.08 L354.00,1270.00 L330.00,1270.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M320.00,764.08 L354.00,764.08 L354.00,1270.00 L330.00,1270.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="341.60" y="1011.04" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends e-mails using</text>
   </g>
     </g>
   </g>

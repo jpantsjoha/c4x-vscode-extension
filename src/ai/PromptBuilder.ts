@@ -6,17 +6,57 @@
 import * as vscode from 'vscode';
 import { FileContext } from './CodeContextExtractor';
 import { DEFAULT_GUIDELINES } from './prompts/defaultGuidelines';
-import {
-    C4_PERSON_FILL,
-    C4_SYSTEM_FILL,
-    C4_EXTERNAL_FILL,
-    C4_CONTAINER_FILL,
-    C4_COMPONENT_FILL,
-    C4_BOUNDARY_STROKE,
-    C4_TEXT_WHITE,
-    C4_TEXT_DARK,
-    C4_ARROW_STROKE,
-} from '../themes/c4-palette';
+import { C4_ACCEPTED_ELEMENT_TYPES } from '../model/c4Legality';
+import { themeManager } from '../themes/ThemeManager';
+import { exampleText } from './promptExamples';
+import { styleShapeNames } from '../render/elementStyle';
+import { type PromptPalette, promptPaletteFromTheme, describeColours } from './promptPalette';
+
+/** The palette of the theme that exports use: the light variant of the selected theme. */
+export function activePromptPalette(): PromptPalette {
+    return promptPaletteFromTheme(themeManager.getExportTheme());
+}
+
+const PROMPT_OMITTED_TYPES: ReadonlySet<string> = new Set(['SoftwareSystem', 'SoftwareSystem_Ext', 'DeploymentNode']);
+
+/**
+ * Element types the prompts teach, taken from the legality catalogue so the
+ * list cannot drift from it. `SoftwareSystem`, `SoftwareSystem_Ext` and
+ * `DeploymentNode` are spellings of the rendered model; authors write
+ * `System`, `System_Ext` and `Node`.
+ */
+export const PROMPT_ELEMENT_TYPES: readonly string[] = C4_ACCEPTED_ELEMENT_TYPES
+    .filter(t => !PROMPT_OMITTED_TYPES.has(t));
+
+const ELEMENT_TYPE_GROUPS: ReadonlyArray<{ signature: string; note: string; members: RegExp }> = [
+    { signature: 'alias, label, descr', note: 'Human actors', members: /^Person/ },
+    { signature: 'alias, label, descr', note: 'Software systems', members: /^System(Db)?(_Ext)?$/ },
+    { signature: 'alias, label, tech', note: 'Apps, databases', members: /^Container(Db)?(_Ext)?$/ },
+    { signature: 'alias, label, descr', note: 'Internal modules', members: /^Component(Db)?(_Ext)?$/ },
+    { signature: 'alias, label, descr', note: 'Deployment nodes', members: /^Node$/ },
+    { signature: 'alias, label', note: 'Boundaries that group elements, followed by a { ... } body', members: /_Boundary$/ },
+];
+
+/** The bullet lines of the element type whitelist, one group per line. */
+export function buildElementTypeWhitelist(): string {
+    return ELEMENT_TYPE_GROUPS.map(group => {
+        const types = PROMPT_ELEMENT_TYPES.filter(t => group.members.test(t));
+        const [first, ...rest] = types;
+        const names = [`\`${first}(${group.signature})\``, ...rest.map(t => `\`${t}(...)\``)].join(' / ');
+        return `   - ${names} — ${group.note}`;
+    }).join('\n');
+}
+
+/**
+ * The notation the DSL prompts teach: `$shape` for data stores and the like,
+ * the relationship technology, and the boundary type. Shape names come from
+ * the renderer's catalogue so the list cannot drift from it (#330).
+ */
+export function buildNotationRules(): string {
+    return `   - **Shapes**: give data stores, queues, browsers and the like their own outline with \`$shape="<Name>"\` as the LAST argument: \`${exampleText('shape-db')}\`, \`${exampleText('shape-browser')}\`. Use \`Cylinder\` (databases and data stores), \`Bucket\` (object storage), \`Folder\` (file storage), \`WebBrowser\` (web UIs, SPAs), \`Terminal\` (command-line tools), \`Pipe\` (queues, topics). The value MUST be one of: ${styleShapeNames().join(', ')}. Inventing any other name is a lint finding.
+   - **Relationship technology**: put the protocol in quotes AFTER the label: \`${exampleText('rel-technology')}\`. Name the technology on every relationship between containers.
+   - **Boundary types**: pick the boundary macro that matches the level: \`System_Boundary\` around the containers of one system, \`Container_Boundary\` around the components of one container, \`Enterprise_Boundary\` around systems of one organisation. The type is drawn under the title.`;
+}
 
 /**
  * Build the full generation prompt sent to Gemini for C4X DSL diagram generation.
@@ -28,7 +68,23 @@ import {
 export async function buildGenerationPrompt(
     files: FileContext[],
     instruction: string,
-    options?: { direction?: 'TB' | 'LR' }
+    options?: {
+        direction?: 'TB' | 'LR';
+        /**
+         * `workspace` (the default, and the Gemini path's behaviour) reads the
+         * guideline and example files from the first workspace folder.
+         * `built-in` reads no workspace file and uses C4X's own guidance: the
+         * `vscode-lm` provider's default, so no document goes to a model the
+         * user did not agree to send it to.
+         */
+        guidance?: 'workspace' | 'built-in';
+        /**
+         * Called once for each workspace document read into the prompt, with
+         * its workspace-relative path and size in bytes, so a caller can show
+         * the user exactly what is sent. Does not change the prompt.
+         */
+        onWorkspaceDocument?: (relativePath: string, bytes: number) => void;
+    }
 ): Promise<string> {
     const fileDump = files.map(f => `### File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n');
 
@@ -37,7 +93,7 @@ export async function buildGenerationPrompt(
     let examplesParam = "";
 
     // Try to find GEMINI.md and EXAMPLES.md in the workspace root first
-    if (vscode.workspace.workspaceFolders) {
+    if (options?.guidance !== 'built-in' && vscode.workspace.workspaceFolders) {
         const root = vscode.workspace.workspaceFolders[0].uri;
 
         // Try comprehensive guidelines first (v2.0)
@@ -45,6 +101,7 @@ export async function buildGenerationPrompt(
             const guidelinesUri = vscode.Uri.joinPath(root, 'docs', 'C4X-GENERATION-GUIDELINES.md');
             const guidelinesData = await vscode.workspace.fs.readFile(guidelinesUri);
             geminiParam = Buffer.from(guidelinesData).toString('utf8');
+            if (geminiParam) { options?.onWorkspaceDocument?.('docs/C4X-GENERATION-GUIDELINES.md', guidelinesData.byteLength); }
             console.log('[PromptBuilder] Loaded comprehensive C4X-GENERATION-GUIDELINES.md');
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
@@ -53,6 +110,7 @@ export async function buildGenerationPrompt(
                 const geminiUri = vscode.Uri.joinPath(root, 'GEMINI.md');
                 const geminiData = await vscode.workspace.fs.readFile(geminiUri);
                 geminiParam = Buffer.from(geminiData).toString('utf8');
+                if (geminiParam) { options?.onWorkspaceDocument?.('GEMINI.md', geminiData.byteLength); }
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e2) { /* Ignore if missing */ }
         }
@@ -63,11 +121,13 @@ export async function buildGenerationPrompt(
             try {
                 const examplesData = await vscode.workspace.fs.readFile(examplesUri);
                 examplesParam = Buffer.from(examplesData).toString('utf8');
+                if (examplesParam) { options?.onWorkspaceDocument?.('EXAMPLES.md', examplesData.byteLength); }
             } catch {
                 // Try docs/ folder if root missing
                 examplesUri = vscode.Uri.joinPath(root, 'docs', 'EXAMPLES.md');
                 const examplesData = await vscode.workspace.fs.readFile(examplesUri);
                 examplesParam = Buffer.from(examplesData).toString('utf8');
+                if (examplesParam) { options?.onWorkspaceDocument?.('docs/EXAMPLES.md', examplesData.byteLength); }
             }
         } catch { /* Ignore if missing */ }
     }
@@ -101,28 +161,26 @@ ${examplesSection}
 
 ## CRITICAL SYNTAX RULES (OVERRIDE ANY OTHERS):
 1. **Subgraph IDs**: MUST NOT contain quotes.
-   - ❌ Invalid: \`subgraph "My System"\`
-   - ✅ Valid: \`subgraph MySystem {\`
-   - Always use \`subgraph ID {\` syntax (braces included).
+   - ❌ Invalid: \`${exampleText('subgraph-quoted')}\`
+   - ✅ Valid: \`${exampleText('subgraph-named')}\`
+   - Always use \`${exampleText('subgraph-valid')}\` syntax (braces included).
 2. **Directives**: Start with \`%%{ c4: container }%%\`.
-3. **Arrows**: Use \`-->\` (standard) or \`..>\` (dotted). Do NOT use \`->\`.
+3. **Arrows**: Use \`-->\` (standard), \`-.->\` (async) or \`==>\` (sync). Do NOT use \`->\`.
 4. **Relationship Labels**: PLAIN TEXT ONLY. NO HTML TAGS.
-   - ❌ Invalid: \`User -->|Clicks<br>Button| App\`
-   - ✅ Valid: \`User -->|Clicks Button| App\`
+   - ❌ Invalid: \`${exampleText('label-html')}\`
+   - ✅ Valid: \`${exampleText('label-plain')}\`
 
 5. **ELEMENT TYPE WHITELIST (CRITICAL)**: ONLY these types are valid:
-   - \`Person(alias, label, descr)\` — Human actors
-   - \`System(alias, label, descr)\` / \`System_Ext(...)\` — Software systems
-   - \`Container(alias, label, tech)\` / \`ContainerDb(...)\` — Apps, databases
-   - \`Component(alias, label, descr)\` — Internal modules
-   - \`Node(alias, label, descr)\` — Deployment nodes
+${buildElementTypeWhitelist()}
    - ❌ NEVER invent types like \`Goal()\`, \`Reason()\`, \`Decision()\`, \`Process()\`, \`Action()\`
    - C4 is for STRUCTURE, not behavior. Model components that implement processes, not abstract steps.
-6. **Node Labels**: \`ID[Label<br/>Type<br/>Tech]\`. Use \`<br/>\` for newlines in Nodes ONLY.
+5a. **NOTATION (use it)**:
+${buildNotationRules()}
+6. **Node Labels**: \`${exampleText('node-label')}\`. Use \`<br/>\` for newlines in Nodes ONLY.
 7. **Layout Strategy ("Smart Visuals")**:${layoutRule}
    - **User at Top**: Define User FIRST. Connect User ONLY to the initial entry point.
    - **Execution Order**: Define components in the order they are called.
-   - **Vertical Stack**: Create dependency chains (\`User --> Web --> API --> DB\`) to force vertical depth.
+   - **Vertical Stack**: Create dependency chains (\`${exampleText('chain-user-web')}\`, \`${exampleText('chain-web-api')}\`, \`${exampleText('chain-api-db')}\`, each on its own line) to force vertical depth.
    - **Grouping**: Use \`subgraph\` to cluster components.
 
 USER INSTRUCTION:
@@ -242,11 +300,14 @@ ${rawText}
 \`\`\`
 
 COMMON FIXES:
-1. **Subgraph Syntax**: Must be \`subgraph ID {\` (no usage of brackets [] in subgraph definition).
+1. **Subgraph Syntax**: Must be \`${exampleText('subgraph-valid')}\` (no usage of brackets [] in subgraph definition).
 2. **Missing Braces**: Ensure all \`{\` are closed with \`}\`.
-3. **Invalid Arrows**: Use \`-->\` (standard) or \`..>\`. Do NOT use \`->\`.
+3. **Invalid Arrows**: Use \`-->\` (standard), \`-.->\` (async) or \`==>\` (sync). Do NOT use \`->\`.
 4. **Directives**: Ensure \`%%{ c4: container }%%\` is at the very top.
-5. **Element Type Whitelist**: ONLY use \`Person\`, \`System\`, \`System_Ext\`, \`Container\`, \`ContainerDb\`, \`Component\`, \`Node\`. Do NOT invent types like \`Goal()\`, \`Reason()\`, \`Decision()\`, \`Process()\`.
+5. **Element Type Whitelist**: ONLY use ${PROMPT_ELEMENT_TYPES.map(t => '`' + t + '`').join(', ')}. Do NOT invent types like \`Goal()\`, \`Reason()\`, \`Decision()\`, \`Process()\`.
+6. **Shapes**: \`$shape="<Name>"\` is the last argument, quoted, and the name is one of ${styleShapeNames().join(', ')}.
+7. **Relationship technology**: in quotes after the label: \`${exampleText('rel-technology-generic')}\`.
+8. **Boundary by level**: \`Enterprise_Boundary\` encloses software systems (C1 context); \`System_Boundary\` encloses the containers of one system (C2); \`Container_Boundary\` encloses the components of one container (C3). Do not nest a boundary at the wrong level.
 
 You MUST fix this error.
 Output ONLY the corrected C4X DSL code block.
@@ -266,8 +327,13 @@ export function buildVisualDiagramPrompt(
     reasoning: string,
     userGrounding: string,
     layoutPreference: string,
-    layoutHint: string
+    layoutHint: string,
+    palette: PromptPalette = activePromptPalette()
 ): string {
+    const standard = palette.themeName === 'c4-standard';
+    const forbidden = (colours: string, target = 'structural elements') => standard
+        ? `DO NOT use ${colours} for ${target}.`
+        : `DO NOT use any colour outside this palette for ${target}.`;
     const layoutDirection = direction === 'LR' ? 'Left-to-Right flow' : 'Top-to-Bottom hierarchy';
 
     // Shared quality rules injected into every visual prompt
@@ -277,7 +343,7 @@ IMAGE QUALITY REQUIREMENTS (MANDATORY):
 - **Font Size**: All labels MUST be at least 14px equivalent. Relationship labels at least 12px. Never render text smaller than 11px.
 - **Text Contrast**: White text on dark backgrounds, black/dark text on light backgrounds. Every label must pass WCAG AA contrast.
 - **Text Wrapping**: Long labels must wrap gracefully inside their shapes. Never overflow or clip text outside a box.
-- **Background**: Clean white (#FFFFFF) background unless the visual style context specifies otherwise.
+- **Background**: ${palette.background} background unless the visual style context specifies otherwise.
 - **Anti-aliasing**: All shapes and text must be anti-aliased. No jagged edges.
 - **Diagram Title**: Include the diagram title at the top-center in bold, 18px+ font.
 
@@ -308,11 +374,11 @@ VISUAL GUIDELINES (STRICT COMPLIANCE):
    - Use consistent formatting: "1. Action description" (period after number).
 
 3. **Color Palette (C4 Compatible - EXACT HEX VALUES)**:
-   - **Person**: ${C4_PERSON_FILL} (Dark Blue) fill, White Text, Stick figure icon above label.
-   - **System/Container (Internal)**: ${C4_CONTAINER_FILL} (Light Blue) fill, White Text.
-   - **External System**: ${C4_EXTERNAL_FILL} (Grey) fill, White Text.
-   - **Arrows**: ${C4_ARROW_STROKE} (Dark Grey) lines with ${C4_ARROW_STROKE} filled arrowheads.
-   - **FORBIDDEN COLORS**: DO NOT use green, red, yellow, or orange for participants.
+   - **Person**: ${describeColours(palette.person)}, ${palette.personOutline ? 'person outline (head over a rounded body)' : 'Stick figure icon above label'}.
+   - **System/Container (Internal)**: ${describeColours(palette.container)}.
+   - **External System**: ${describeColours(palette.external)}.
+   - **Arrows**: ${palette.arrow} lines with ${palette.arrow} filled arrowheads.
+   - **FORBIDDEN COLORS**: ${forbidden('green, red, yellow, or orange')}
 
 4. **Participant Rendering**:
    - Actors/Systems as rounded rectangles with uniform width (minimum 120px).
@@ -359,19 +425,19 @@ VISUAL GUIDELINES (STRICT COMPLIANCE):
 
 2. **Shape Standards (STRICT - shapes encode meaning)**:
    - **Start/End**: Rounded rectangles or stadium shapes. Start = #2E7D32 (Green), End = #C62828 (Red). White text.
-   - **Process Steps**: Rectangles with rounded corners, ${C4_CONTAINER_FILL} (Light Blue) fill, White Text.
-   - **Decisions**: DIAMONDS, ${C4_PERSON_FILL} (Dark Blue) fill, White Text. Must contain a Yes/No question.
-   - **Data/Input/Output**: Parallelograms, ${C4_EXTERNAL_FILL} (Grey) fill, White Text.
-   - **Sub-process**: Double-bordered rectangle (rectangle with inner border), ${C4_CONTAINER_FILL} fill.
+   - **Process Steps**: Rectangles with rounded corners, ${describeColours(palette.container)}.
+   - **Decisions**: DIAMONDS, ${describeColours(palette.person)}. Must contain a Yes/No question.
+   - **Data/Input/Output**: Parallelograms, ${describeColours(palette.external)}.
+   - **Sub-process**: Double-bordered rectangle (rectangle with inner border), ${palette.container.fill} fill.
    - All shapes MUST be uniformly sized within their type category.
 
 3. **Color Palette (C4 Compatible)**:
-   - Primary Process: ${C4_CONTAINER_FILL} (Light Blue), White Text.
-   - Decisions: ${C4_PERSON_FILL} (Dark Blue), White Text.
-   - External/Data: ${C4_EXTERNAL_FILL} (Grey), White Text.
+   - Primary Process: ${describeColours(palette.container)}.
+   - Decisions: ${describeColours(palette.person)}.
+   - External/Data: ${describeColours(palette.external)}.
    - Start: #2E7D32 (Green), White Text.
    - End: #C62828 (Red), White Text.
-   - **FORBIDDEN**: DO NOT use yellow, orange, or purple for any flow shapes.
+   - **FORBIDDEN**: ${standard ? forbidden('yellow, orange, or purple', 'any flow shapes') : 'DO NOT use any colour outside this palette and the start/end colours for any flow shapes.'}
 
 4. **Layout**:
    - Use ${layoutDirection}.
@@ -381,7 +447,7 @@ VISUAL GUIDELINES (STRICT COMPLIANCE):
    - Maintain consistent spacing between sequential steps (at least 40px gap).
 
 5. **Arrows**:
-   - Solid lines (${C4_ARROW_STROKE} Dark Grey) for main flow, 2px stroke width.
+   - Solid lines (${palette.arrow}) for main flow, 2px stroke width.
    - Dotted lines for optional/async paths.
    - All arrows MUST have labels describing the condition or action.
    - Arrow labels: 12px+ font, positioned to avoid overlapping with other elements.
@@ -415,24 +481,24 @@ Generate the diagram image now. The detected context is: ${reasoning}
 LEVEL-SPECIFIC RULES (C1 - System Context):
 - Show the system under discussion at the CENTER, surrounded by its users and external systems.
 - The central system MUST be visually larger or more prominent than external systems.
-- External systems use GREY (${C4_EXTERNAL_FILL}). The main system uses BLUE (${C4_SYSTEM_FILL}).
+- External systems use ${describeColours(palette.external)}${palette.externalAccents.length ? `; give each external system the next accent in order (${palette.externalAccents.join(', ')}) as its border and text colour` : ''}. The main system uses ${describeColours(palette.system)}.
 - Relationships should describe WHAT is communicated, not HOW (e.g., "Views account balances" not "REST API call").
 - Keep it simple: typically 3-10 elements total. If more, consider C2 instead.
 - No internal details. The main system is a single box, not decomposed.`,
             'C2': `
 LEVEL-SPECIFIC RULES (C2 - Container):
 - Show the containers (applications, databases, message queues) INSIDE the system boundary.
-- The system boundary MUST be a dashed-border box enclosing all internal containers.
+- The system boundary MUST be a ${palette.boundaryDashed ? 'dashed' : 'solid'}-border box enclosing all internal containers.
 - Each container MUST show: Name (bold), Technology (e.g., "Spring Boot", "PostgreSQL"), and brief Description.
-- Databases MUST use cylinder shapes, not rectangles.
-- Message queues should use a distinct shape or icon annotation.
+- Databases and other data stores MUST use cylinder shapes, not rectangles (object stores a bucket, file stores a folder); web UIs a browser window with a title bar; message queues a pipe or a distinct shape.
+- Draw each relationship's technology after its label in square brackets on a second line.
 - External users and systems sit OUTSIDE the system boundary.
 - Relationships should include the protocol/technology (e.g., "Makes API calls [HTTPS/JSON]").`,
             'C3': `
 LEVEL-SPECIFIC RULES (C3 - Component):
 - Show the components (modules, classes, services) INSIDE a single container boundary.
-- The container boundary MUST be a dashed-border box with the container name as title.
-- Components use lighter blue (${C4_COMPONENT_FILL}) with black text to distinguish from containers.
+- The container boundary MUST be a ${palette.boundaryDashed ? 'dashed' : 'solid'}-border box with the container name as title.
+- Components use ${describeColours(palette.component)} to distinguish them from containers.
 - Each component MUST show: Name (bold) and Technology/Responsibility.
 - Group related components into logical clusters within the boundary.
 - Show interfaces/ports at the boundary edge where external connections enter.
@@ -449,21 +515,25 @@ ${sanitizedText.substring(0, 3000)}
 """
 
 VISUAL GUIDELINES (STRICT COMPLIANCE REQUIRED):
-1. **Color Palette (Official C4 - EXACT HEX VALUES MANDATORY)**:
-   - **Person**: ${C4_PERSON_FILL} (Dark Blue) fill, White (${C4_TEXT_WHITE}) Text, 14px+ bold label.
-   - **Software System (Internal)**: ${C4_SYSTEM_FILL} (Blue) fill, White (${C4_TEXT_WHITE}) Text.
-   - **External System**: ${C4_EXTERNAL_FILL} (Grey) fill, White (${C4_TEXT_WHITE}) Text.
-   - **Container**: ${C4_CONTAINER_FILL} (Light Blue) fill, White (${C4_TEXT_WHITE}) Text.
-   - **Database**: ${C4_CONTAINER_FILL} (Light Blue) fill, Cylinder Shape, White (${C4_TEXT_WHITE}) Text.
-   - **Component**: ${C4_COMPONENT_FILL} (Lighter Blue) fill, Black (${C4_TEXT_DARK}) Text.
-   - **Boundary Box**: Dashed ${C4_BOUNDARY_STROKE} border, NO fill (transparent), Grey title text.
-   - **Arrows**: ${C4_ARROW_STROKE} (Dark Grey) lines, 2px stroke width, with filled triangular arrowheads.
-   - **FORBIDDEN COLORS**: DO NOT use green, red, yellow, orange, or purple for structural elements.
+1. **Color Palette (${standard ? 'Official C4' : palette.themeName + ' theme'} - EXACT HEX VALUES MANDATORY)**:
+   - **Person**: ${describeColours(palette.person)}, 14px+ bold label.
+   - **Software System (Internal)**: ${describeColours(palette.system)}.
+   - **External System**: ${describeColours(palette.external)}.${palette.externalAccents.length ? `
+   - **External accents**: give each external system the next accent in order, as its border and text colour: ${palette.externalAccents.join(', ')}.` : ''}
+   - **Container**: ${describeColours(palette.container)}.
+   - **Database**: ${describeColours(palette.container)}, Cylinder Shape.
+   - **Component**: ${describeColours(palette.component)}.
+   - **Boundary Box**: ${palette.boundaryDashed ? 'Dashed' : 'Solid'} ${palette.boundary} border, NO fill (transparent), title text in ${palette.boundary}.
+   - **Arrows**: ${palette.arrow} lines, 2px stroke width, with filled triangular arrowheads.
+   - **Background**: ${palette.background}.
+   - **FORBIDDEN COLORS**: ${forbidden('green, red, yellow, orange, or purple')}
 
 2. **Shapes & Sizing (STRICT)**:
-   - **Person**: Stick figure icon (circle head + body lines) ABOVE a rounded rectangle label box. The stick figure is mandatory.
+   - **Person**: ${palette.personOutline ? 'Person outline (circle head over a rounded body) with the label inside the body.' : 'Stick figure icon (circle head + body lines) ABOVE a rounded rectangle label box. The stick figure is mandatory.'}
    - **System/Container**: Rounded rectangles with consistent corner radius (8-12px).
-   - **Database**: MUST use Cylinder shape (3D cylinder, not a rectangle with "DB" label).
+   - **Database / data store**: MUST use Cylinder shape (3D cylinder, not a rectangle with "DB" label). Object storage may use a bucket, a file system a folder.
+   - **Web application / single-page app**: a browser window (title bar above the label). **Command-line tool**: a terminal window (prompt line).
+   - **Message queue**: a pipe or a distinct shape.
    - **UNIFORM SIZE**: All elements of the same type MUST be the same width and height.
    - **Minimum Element Size**: Width >= 180px, Height >= 80px. Each element must comfortably fit its label.
    - **Element Content**: Each box must show up to 3 lines: Name (bold), [Technology] (italic/smaller), Description (regular).
@@ -472,7 +542,7 @@ VISUAL GUIDELINES (STRICT COMPLIANCE REQUIRED):
    - **Synchronous**: Solid lines, filled triangular arrowhead.
    - **Asynchronous**: Dashed lines, open triangular arrowhead.
    - **Data Flow**: Solid lines, filled diamond arrowhead (optional).
-   - **Arrow Labels**: Centered on the arrow path, 12px+ font, describing the interaction.
+   - **Arrow Labels**: Centered on the arrow path, 12px+ font, describing the interaction, with its technology in square brackets on a second line (e.g., "Reads from [JDBC]").
    - **Arrow Routing**: Use orthogonal (right-angle) routing. Avoid diagonal lines.
    - **Layout**: ${layoutDirection}.
 
@@ -488,15 +558,15 @@ VISUAL GUIDELINES (STRICT COMPLIANCE REQUIRED):
 
 5. **Boundaries (CRITICAL for C4 hierarchy)**:
    - Group related elements using visual boundary boxes.
-   - Boundaries MUST have: dashed borders (${C4_BOUNDARY_STROKE}), NO background fill (transparent), title text at top-left.
-   - Boundaries represent system or container scope. Label them clearly (e.g., "Internet Banking System [Software System]").
+   - Boundaries MUST have: ${palette.boundaryDashed ? 'dashed' : 'solid'} borders (${palette.boundary}), NO background fill (transparent), title text at ${palette.boundaryLabelBottom ? 'bottom-left' : 'top-left'}.
+   - Boundaries represent system or container scope. Label them with their type (e.g., "Internet Banking System [Software System]", "API Application [Container]").
    - Elements INSIDE a boundary are internal. Elements OUTSIDE are external.
    - Nested boundaries are allowed (e.g., a Container boundary inside a System boundary).
 
 6. **Legend (MANDATORY)**:
    - Include a Key/Legend box in the bottom-right corner.
    - The legend MUST show: each shape type with its color and meaning.
-   - Legend box: thin solid border, white background, 12px font.
+   - Legend box: thin solid border, ${palette.background} background, 12px font.
 
 7. **CRITICAL STRUCTURAL RULES**:
    - This is a STRUCTURAL diagram. Only use C4 element types: Person, System, System_Ext, Container, ContainerDb, Component.

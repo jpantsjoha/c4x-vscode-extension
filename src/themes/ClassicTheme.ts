@@ -1,17 +1,16 @@
 /**
- * Classic Theme - Official C4 Model Visual Style
- * Based on c4model.com official diagrams (2024 refresh)
- * White/transparent boxes with colored borders (not filled boxes)
- * @see https://c4model.com/#Notation
- * @see examples/SystemContext.png, examples/Containers.png for reference
+ * Classic Theme - outlined boxes in the earlier C4 blues
+ * White boxes with blue borders for person, systems, containers and
+ * components, grey borders for externals (not filled boxes). The c4model.com
+ * example colours are the `c4-model` theme (#321).
  */
 
-import { C4Theme } from './Theme';
+import { C4Theme, legacyThemeTokens } from './Theme';
 
 export const ClassicTheme: C4Theme = {
     name: 'classic',
     displayName: 'Classic',
-    description: 'Official C4 Model style - white boxes with colored borders',
+    description: 'White boxes with blue outlines and grey externals',
     colors: {
         // Person - Green border (official C4 model)
         person: {
@@ -78,6 +77,7 @@ export const ClassicTheme: C4Theme = {
         fontFamily: 'Arial, sans-serif',
         shadowEnabled: false,     // No shadows in official C4
     },
+    ...legacyThemeTokens({ stroke: '#707070', text: '#707070' }),
 };
 
 // Export default theme for backward compatibility

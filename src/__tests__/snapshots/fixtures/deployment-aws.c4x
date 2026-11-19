@@ -1,0 +1,32 @@
+%%{ c4: deployment }%%
+graph TB
+%% Deployment notation (#326): a C4X version of the c4model.com AWS deployment
+%% example (Internet Banking System, Live). Amazon Web Services > US-East-1 >
+%% Autoscaling group > Amazon EC2 nests four deployment nodes; Route 53 and the
+%% load balancer are leaf nodes; the AWS icons keep their own colours.
+
+Node(customerComputer, "Customer's computer", "Microsoft Windows or Apple macOS") {
+  Node(browser, "Web Browser", "Chrome, Firefox, Safari or Edge") {
+    Container(spa, "Single-Page Application", "JavaScript and Angular", "Provides all of the Internet banking functionality to customers via their web browser.")
+  }
+}
+
+Node(aws, "Amazon Web Services") {
+  Node(region, "US-East-1") {
+    Node(dns, "Route 53", "Amazon Route 53", "Routes requests to the load balancer.", $sprite="aws-route-53-hosted-zone")
+    Node(lb, "Elastic Load Balancer", "Amazon ELB", "Spreads requests across the API application instances.", $sprite="aws-elastic-load-balancing-application-load-balancer")
+    Node(asg, "Autoscaling group", "Amazon EC2 Auto Scaling", $sprite="aws-ec2-auto-scaling") {
+      Node(ec2, "Amazon EC2", "Ubuntu 22.04 LTS", $sprite="aws-ec2-instance") {
+        Container(api, "API Application", "Java and Spring Boot", "Provides Internet banking functionality via a JSON/HTTPS API.")
+      }
+    }
+    Node(rds, "Amazon RDS", "Amazon Aurora", $sprite="aws-aurora-mysql-instance") {
+      ContainerDb(db, "Database", "MySQL", "Stores user registration information, hashed authentication credentials, access logs, etc.")
+    }
+  }
+}
+
+spa --> |Makes API calls to| "JSON/HTTPS" dns
+dns --> |Forwards requests to| "HTTPS" lb
+lb --> |Forwards requests to| "HTTPS" api
+api --> |Reads from and writes to| "JDBC" db

@@ -1,0 +1,31 @@
+%%{ c4: deployment }%%
+graph TB
+    Node(customerpc, "Customer's computer", "Microsoft Windows or Apple macOS", "") {
+        Node(browser, "Web Browser", "Chrome, Firefox, Safari or Edge", "") {
+            Container(ui, "UI", "JavaScript and Angular", "Single-page app that provides Internet banking functionality to customers via their web browser.", $tags="WebBrowser")
+        }
+    }
+    Node(aws, "Amazon Web Services", "AWS", "", $tags="Cloud") {
+        Node(region, "US-East-1", "AWS Region", "") {
+            Node(dns, "Route 53", "Amazon Route 53", "", $sprite="c4xicons.aws.route-53-hosted-zone") {
+                Container(zone, "bigbank.example", "DNS hosted zone", "Routes customer traffic to the load balancer.", $sprite="c4xicons.aws.route-53-hosted-zone")
+            }
+            Node(elb, "Elastic Load Balancer", "AWS ELB", "", $sprite="c4xicons.aws.elastic-load-balancing-application-load-balancer") {
+                Container(lb, "Load balancer", "Application Load Balancer", "Distributes HTTPS requests across the backend instances.", $sprite="c4xicons.aws.elastic-load-balancing-application-load-balancer")
+            }
+            Node(ec2, "bigbank-api", "Amazon EC2", "", $sprite="c4xicons.aws.ec2-instance") {
+                Container(backend, "Backend", "Java and Spring Boot", "Provides Internet banking functionality via a JSON/HTTPS API.", $sprite="c4xicons.aws.ec2-instance")
+            }
+            Node(rds, "bigbank-db", "Amazon RDS", "", $sprite="c4xicons.aws.rds-multi-az") {
+                ContainerDb(db, "Database", "MySQL Database Schema", "User account information, access logs, etc.", $sprite="c4xicons.aws.rds-multi-az")
+            }
+            Node(s3, "bigbank-statements", "Amazon S3", "") {
+                ContainerDb(statements, "Statement Store", "Amazon Web Services S3 Bucket", "Bank account statements rendered as PDF files.", $tags="Bucket")
+            }
+        }
+    }
+    ui -->|Makes API calls to| "JSON/HTTPS" zone
+    zone -->|Resolves to| lb
+    lb -->|Forwards requests to| backend
+    backend -->|Reads from and writes to| "MySQL protocol/TLS" db
+    backend -->|Reads from and writes to| "AWS S3 API/HTTPS" statements

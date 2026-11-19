@@ -1,0 +1,32 @@
+%%{ c4: component }%%
+graph TB
+    System_Boundary(ibs, "Internet Banking System") {
+        Container(ui, "UI", "JavaScript and Angular", "Single-page app that provides Internet banking functionality to customers via their web browser.", $tags="WebBrowser")
+        Container_Boundary(backend, "Backend") {
+            Component(statementapi, "Statement API", "Spring MVC", "API endpoint for access to PDF statements.")
+            Component(signinapi, "Sign In API", "Spring MVC", "API endpoint for customer sign in.")
+            Component(accountsapi, "Accounts Summary API", "Spring MVC", "API endpoint for bank accounts summary information.")
+            Component(emailcomp, "Email Component", "Spring Bean", "Sends e-mails to users.")
+            Component(statementcomp, "Statement Component", "Spring Bean", "Provides access to PDF statements.")
+            Component(security, "Security Component", "Spring Bean", "Provides functionality related to signing in, changing passwords, etc.")
+            Component(adapter, "Core Banking System Adapter", "Spring Bean", "A Java wrapper around the API provided by the Core Banking System.")
+        }
+        ContainerDb(statements, "Statement Store", "Amazon Web Services S3 Bucket", "Bank account statements rendered as PDF files.", $tags="Bucket")
+        ContainerDb(db, "Database", "MySQL Database Schema", "User account information, access logs, etc.")
+    }
+    System_Ext(core, "Core Banking System", "Handles core banking functions including customer information, bank account management, transactions, etc.", $tags="Core Banking")
+    System_Ext(email, "Amazon Web Services Simple Email Service", "Cloud-based email service provider.", $tags="External Email")
+    ui -->|Requests statements from| "JSON/HTTPS" statementapi
+    ui -->|Makes sign in requests to| "JSON/HTTPS" signinapi
+    ui -->|Requests a list of bank accounts from| "JSON/HTTPS" accountsapi
+    statementapi -->|Requests statements from| statementcomp
+    statementapi -->|Validates authentication token using| security
+    signinapi -->|Validates credentials using| security
+    accountsapi -->|Validates authentication token using| security
+    accountsapi -->|Requests lists of bank accounts from| adapter
+    statementcomp -->|Requests statement information from| adapter
+    statementcomp -->|Reads from and writes to| "AWS S3 API/HTTPS" statements
+    security -->|Reads from and writes to| "MySQL protocol/TLS" db
+    security -->|Sends emails using| emailcomp
+    emailcomp -->|Sends e-mails to customers using| "JSON/HTTPS" email
+    adapter -->|Makes API calls to| "XML/HTTPS" core

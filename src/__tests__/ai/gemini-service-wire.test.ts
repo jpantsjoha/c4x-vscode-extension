@@ -282,6 +282,24 @@ describe('GeminiService over the real @google/genai client (#181)', function () 
         }
     });
 
+    it('generateDiagramFromPrompt sends the frozen prompt exactly, adding and rebuilding nothing (#485)', async () => {
+        settings({ model: DEFAULT_MODEL });
+        api = installFakeGeminiApi({ generate: () => textAnswer(VALID_C4X_ANSWER) });
+        const { context } = contextWithChangeableKey(KEY);
+        const service = new GeminiService(context);
+        await service.initialize();
+
+        const frozen = 'FROZEN-PROMPT-MARKER: the request the user confirmed';
+        const observed = await observe(() => service.generateDiagramFromPrompt(frozen));
+
+        assert.strictEqual(observed.error, undefined, observed.error?.message);
+        const sent = api.requests.filter(request => request.kind === 'generate');
+        assert.strictEqual(sent.length, 1);
+        const contents = (sent[0].body as { contents: Array<{ parts: Array<{ text?: string }> }> }).contents;
+        const texts = contents.flatMap(content => content.parts.map(part => part.text));
+        assert.deepStrictEqual(texts, [frozen], 'the wire prompt is the frozen prompt exactly');
+    });
+
     it('a key cleared while the client is being built stays cleared: no credentials, no request', async () => {
         settings({ model: DEFAULT_MODEL });
         api = installFakeGeminiApi({ generate: () => textAnswer(VALID_C4X_ANSWER) });

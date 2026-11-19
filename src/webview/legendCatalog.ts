@@ -8,6 +8,39 @@
  * via previewClientScript.
  */
 import type { C4Element, C4View } from '../model/C4Model';
+import { resolveElementStyle, type ElementStyleContext, type ElementStyleTheme } from '../render/elementStyle';
+import type { LayoutResult } from '../layout/DagreLayoutEngine';
+import type { C4Theme } from '../themes/Theme';
+import { boundLegendEntries, computeKeyEntries, keySwatchImage, keySwatchTheme, KEY_SWATCH_DEPS } from '../render/KeyRenderer';
+
+/**
+ * One overlay entry derived from the drawn view (#327): its label, its kind
+ * and a decorative swatch image drawn with the shared shape geometry.
+ */
+export interface LegendEntry {
+    label: string;
+    kind: 'element' | 'boundary' | 'relationship';
+    /** A standalone `<svg>` built by the host from validated colours; aria-hidden. */
+    swatch: string;
+}
+
+/**
+ * The overlay's entries: the same derived key the exports draw
+ * (`computeKeyEntries`), with webview-sized swatches. Replaces the fixed
+ * catalogue below whenever the host sends it. `styles` is the context the
+ * SVG was drawn with (`elementStyleContextFor`).
+ * Pure — no vscode or DOM access. Exported for unit tests.
+ */
+export function computeLegendEntries(
+    layout: LayoutResult,
+    theme: C4Theme,
+    styles: ElementStyleContext,
+): LegendEntry[] {
+    const swatchTheme = keySwatchTheme(theme);
+    // Bounded to the payload validator's limits, so the key never fails a render.
+    return boundLegendEntries(computeKeyEntries(layout, theme, styles)
+        .map(entry => ({ label: entry.label, kind: entry.kind, swatch: keySwatchImage(entry, swatchTheme, KEY_SWATCH_DEPS) })));
+}
 
 /**
  * Keys carried by the render payload's `presentElementTypes` field. The five
@@ -84,4 +117,29 @@ export function computePresentElementTypes(view: C4View): string[] {
         present.add('Relationship');
     }
     return [...present];
+}
+
+/**
+ * Swatch colours for the legend overlay, keyed by `LegendItem.colorKey`.
+ * Each is the resolved fill (`resolveElementStyle`, #322) of an untagged
+ * element of that type, so an `elementStyle` rule on an implied tag
+ * (`Container`, `Person`, `External`, ...) recolours the swatch as it
+ * recolours the elements. With no rules this is the theme's fill per type,
+ * as before. Deriving one entry per distinct style is #327.
+ * Pure — no vscode or DOM access. Exported for unit tests.
+ */
+export function computeLegendSwatchColors(
+    view: Pick<C4View, 'elementStyles'>,
+    theme: ElementStyleTheme,
+): Record<string, string> {
+    const styles = { rules: view.elementStyles ?? [] };
+    const fill = (type: string, tags?: string[]): string => resolveElementStyle({ type, tags }, theme, styles).fill;
+    return {
+        person: fill('Person'),
+        softwareSystem: fill('SoftwareSystem'),
+        container: fill('Container'),
+        component: fill('Component'),
+        deploymentNode: theme.colors.deploymentNode.fill,
+        external: fill('SoftwareSystem', ['External']),
+    };
 }

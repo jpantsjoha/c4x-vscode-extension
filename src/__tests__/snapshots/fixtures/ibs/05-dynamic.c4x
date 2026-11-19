@@ -1,0 +1,13 @@
+%%{ c4: dynamic }%%
+graph TB
+    Person(customer, "Personal Banking Customer", "A customer of the bank with one or more personal bank accounts.")
+    Container(ui, "UI", "JavaScript and Angular", "Single-page app that provides Internet banking functionality to customers via their web browser.", $tags="WebBrowser")
+    Component(signinapi, "Sign In API", "Spring MVC", "API endpoint for customer sign in.")
+    Component(security, "Security Component", "Spring Bean", "Provides functionality related to signing in, changing passwords, etc.")
+    ContainerDb(db, "Database", "MySQL Database Schema", "User account information, access logs, etc.")
+    customer -->|Submits credentials to| ui
+    ui -->|Submits credentials to| "JSON/HTTPS" signinapi
+    signinapi -->|Validates credentials using| security
+    security -->|select * from users where username = ?| "MySQL protocol/TLS" db
+    security -.->|Returns the matching user and password hash to| signinapi
+    signinapi -.->|Returns a signed token to| ui

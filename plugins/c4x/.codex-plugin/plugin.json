@@ -1,0 +1,28 @@
+{
+  "name": "c4x",
+  "version": "1.9.2",
+  "description": "Write C4 model diagrams in C4X that a parser has checked: the c4x skill, the C4X MCP server (validate_c4x, lint_c4x) and /c4x commands.",
+  "author": {
+    "name": "Jaroslav Pantsjoha"
+  },
+  "homepage": "https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x",
+  "repository": "https://github.com/jpantsjoha/c4x-vscode-extension",
+  "license": "MIT",
+  "keywords": [
+    "c4",
+    "c4model",
+    "architecture",
+    "diagrams",
+    "diagrams-as-code",
+    "architecture-as-code",
+    "mcp",
+    "skill"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./codex-mcp.json",
+  "interface": {
+    "displayName": "C4X",
+    "shortDescription": "Write C4 model diagrams in C4X that a parser has checked: the c4x skill, the C4X MCP server (validate_c4x, lint_c4x) and /c4x commands.",
+    "category": "development"
+  }
+}

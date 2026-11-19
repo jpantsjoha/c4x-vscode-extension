@@ -1,0 +1,13 @@
+%%{ c4: system-context }%%
+graph TB
+    Person(customer, "Customer", "Pays bills online")
+    Person_Ext(auditor, "Auditor", "Reviews payments")
+    System(bank, "Online Banking", "Lets customers pay bills")
+    SystemDb(ledger, "Ledger", "Records every payment")
+    System_Ext(email, "Email Service", "Sends receipts")
+    SystemDb_Ext(rates, "Rates Feed", "Publishes exchange rates")
+    customer -->|Pays bills using| bank
+    auditor -->|Reviews| ledger
+    bank -->|Records payments in| ledger
+    bank -->|Sends receipts using| email
+    bank -->|Reads rates from| rates

@@ -267,7 +267,10 @@ test('14. editor chrome with a staged change matches its visual regression basel
     await enterEditMode(page);
     await selectNode(page, 'api');
     await page.locator('#inspector-tags').fill('Internal, Reviewed');
-    await expect(page.locator('#main-viewport')).toHaveScreenshot('visual-c4-editor-chrome.png');
+    await expect(page.locator('#main-viewport')).toHaveScreenshot('visual-c4-editor-chrome.png', {
+        // Only darwin: its baseline was regenerated without the grip; the Linux baseline still contains it.
+        ...(process.platform === 'darwin' ? { stylePath: path.join(__dirname, 'visual-c4-editor-stable.css') } : {}),
+    });
 });
 
 test('15. remove button: stage 2 edits, remove 1, Save applies only the remaining edit', async ({ page }) => {

@@ -4,7 +4,7 @@
  */
 
 import * as vscode from 'vscode';
-import { ThemeManager } from '../themes/ThemeManager';
+import { ThemeManager, ThemeNotEffectiveError } from '../themes/ThemeManager';
 import { ThemeName } from '../themes/Theme';
 
 export async function changeThemeCommand(): Promise<void> {
@@ -30,7 +30,19 @@ export async function changeThemeCommand(): Promise<void> {
 
     // Apply selected theme
     const themeManager = ThemeManager.getInstance();
-    const success = await themeManager.setCurrentTheme(selected.themeName);
+    let success: boolean;
+    try {
+        success = await themeManager.setCurrentTheme(selected.themeName);
+    } catch (error) {
+        if (error instanceof ThemeNotEffectiveError) {
+            vscode.window.showWarningMessage(error.message);
+            vscode.commands.executeCommand('c4x.refreshPreview');
+            return;
+        }
+        const reason = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(`Could not save the C4X theme: ${reason}`);
+        return;
+    }
 
     if (success) {
         vscode.window.showInformationMessage(`C4X theme changed to ${selected.label}`);

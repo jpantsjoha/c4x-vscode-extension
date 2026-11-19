@@ -1,5 +1,7 @@
 import * as assert from 'assert';
 import { C4ModelBuilder, c4ModelBuilder } from '../../model/C4ModelBuilder';
+import { C4XParser } from '../../parser/C4XParser';
+import { C4_ACCEPTED_ELEMENT_TYPES } from '../../model/c4Legality';
 import { C4XParseError, ParseResult, RawElement, RawRelationship, RawBoundary, RelationshipArrow } from '../../parser/types';
 
 describe('C4ModelBuilder', () => {
@@ -704,4 +706,17 @@ describe('C4ModelBuilder', () => {
             assert.strictEqual(model.views[0].elements[0].type, 'SoftwareSystem');
         });
     });
+});
+
+describe('element catalogue agrees with the model builder (#449)', () => {
+    const parser = new C4XParser();
+
+    for (const type of C4_ACCEPTED_ELEMENT_TYPES) {
+        it(`builds ${type}`, () => {
+            const source = /_Boundary$/.test(type)
+                ? `graph TB\n${type}(a, "A") {\n  Container(c, "C", "Node.js", "d")\n}`
+                : `graph TB\n${type}(a, "A", "d")`;
+            assert.doesNotThrow(() => c4ModelBuilder.build(parser.parse(source), 'ws'), `${type} is listed but rejected`);
+        });
+    }
 });

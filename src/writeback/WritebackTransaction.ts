@@ -17,10 +17,15 @@ import {
     NativeElementSourceRef,
     NativeBoundarySourceRef,
 } from './NativeMutationPlanner';
-import { C4Model, C4Element } from '../model/C4Model';
+import { C4Model, C4Element, C4View } from '../model/C4Model';
 import { isRelationshipLegal } from '../model/c4Legality';
 import { SourceRange, BoundedTextEdit, sourcePositionAt, validateEditsForOverlap } from './SourceRange';
-import { resetSidecarLayout, saveSidecarLayout } from './SidecarPersistence';
+import {
+    resetSidecarLayout,
+    SidecarLayoutEntry,
+    SidecarPersistenceError,
+    writeSidecarLayoutEntries,
+} from './SidecarPersistence';
 import { parseStructurizrDSL } from '../parser/structurizr';
 import { parsePlantUMLtoC4Model } from '../parser/plantuml';
 import {
@@ -47,7 +52,13 @@ import {
 export class WritebackTransactionError extends Error {
     constructor(
         public readonly code: 'stale_revision' | 'validation_failed' | 'document_not_found' | 'invalid_payload' | 'missing_element' | SaveAnchorRejectionReason,
-        message: string
+        message: string,
+        /**
+         * True when the source text edit of a Save was applied and kept, and
+         * only its sidecar half was refused or failed (#443). A Save spanning
+         * the source and the sidecar cannot be atomic; the source wins.
+         */
+        public readonly sourceSaved: boolean = false,
     ) {
         super(message);
         this.name = 'WritebackTransactionError';
@@ -282,6 +293,10 @@ export async function executeWritebackTransaction(
     // element's `$x`/`$y`), and that one has to be written first. Within the
     // list they keep staging order, which the equivalence check expects.
     const addEdits: BoundedTextEdit[] = [];
+    // Sidecar coordinates are collected while planning and written once, after
+    // every staged edit has planned, so a later refusal cannot leave an earlier
+    // coordinate behind (#443).
+    const sidecarEntries: SidecarLayoutEntry[] = [];
     const persistenceMode = boundary.getLayoutPersistenceMode();
     const useSidecar = persistenceMode === 'sidecar' || isStructurizrDsl || isPlantUML;
 
@@ -636,7 +651,8 @@ export async function executeWritebackTransaction(
             }
             if (useSidecar) {
                 if (stagedEdit.x !== undefined && stagedEdit.y !== undefined) {
-                    await saveSidecarLayout(document.uri, stagedEdit.id, stagedEdit.x, stagedEdit.y, boundary);
+                    // Written after planning, behind the source checks (#443).
+                    sidecarEntries.push({ id: stagedEdit.id, x: stagedEdit.x, y: stagedEdit.y });
                 }
                 // locked flag is not stored in the sidecar; it requires native C4X source
             } else {
@@ -661,28 +677,66 @@ export async function executeWritebackTransaction(
 
     edits.push(...addEdits);
 
-    if (edits.length === 0) {
+    if (edits.length === 0 && sidecarEntries.length === 0) {
         return true;
     }
 
     const coalescedEdits = coalesceSameOffsetInsertions(edits);
     validateWritebackEdits(coalescedEdits);
 
-    if (document.version !== observedVersion) {
-        throw new WritebackTransactionError(
-            'stale_revision',
-            `Document changed during writeback: expected version ${observedVersion}, got ${document.version}`
-        );
+    // Rule (#443): check, then write last; a shared sidecar is never rolled
+    // back. Each write is preceded by a check of the source with no await
+    // between the check and the write call. The sidecar is written at most
+    // once and is the last persistent step.
+    const assertSourceIs = (expectedVersion: number, expectedText: string, checkAnchor: boolean): void => {
+        if (document.version !== expectedVersion) {
+            throw new WritebackTransactionError(
+                'stale_revision',
+                `Document changed during writeback: expected version ${expectedVersion}, got ${document.version}`
+            );
+        }
+        if (document.getText() !== expectedText) {
+            throw new WritebackTransactionError(
+                'stale_revision',
+                'Document text changed during writeback.'
+            );
+        }
+        if (checkAnchor) {
+            assertAnchorResolves(document, anchor);
+        }
+    };
+
+    if (coalescedEdits.length === 0) {
+        // Sidecar-only Save. The commit point is the writeFile call, made
+        // against source checked with no await in between. A change that lands
+        // while writeFile is pending is a later source event.
+        try {
+            await writeSidecarLayoutEntries(document.uri, sidecarEntries, boundary,
+                () => assertSourceIs(observedVersion, originalText, true));
+        } catch (error) {
+            throw sidecarFailure(error, false);
+        }
+        return true;
     }
 
-    assertAnchorResolves(document, anchor);
+    // Native text edit first, exactly as before #443.
+    assertSourceIs(observedVersion, originalText, true);
 
-    const editApplied = await boundary.applyBoundedEdits(document, coalescedEdits);
+    let editApplied: boolean;
+    try {
+        editApplied = await boundary.applyBoundedEdits(document, coalescedEdits);
+    } catch (error) {
+        throw new WritebackTransactionError(
+            'validation_failed',
+            `Failed to apply workspace edit: ${error instanceof Error ? error.message : String(error)}`
+        );
+    }
     if (!editApplied) {
         throw new WritebackTransactionError('validation_failed', 'Failed to apply workspace edit');
     }
 
     const updatedText = document.getText();
+    const updatedVersion = document.version;
     try {
         const originalAST = parser.parse(originalText);
         const updatedAST = parser.parse(updatedText);
@@ -691,7 +745,6 @@ export async function executeWritebackTransaction(
         const updatedModel = builder.build(updatedAST, 'Updated');
 
         assertStructuralEquivalence(originalModel, updatedModel, targetIds, allowedDescriptionChanges, allowedSemanticChanges, allowedRelationshipChanges, allowedBoundaryChanges, allowedRelationshipAdds);
-        return true;
     } catch (err) {
         await restoreDocument(
             document,
@@ -704,6 +757,53 @@ export async function executeWritebackTransaction(
             `Structural validation failed, rolled back changes. Reason: ${err instanceof Error ? err.message : String(err)}`
         );
     }
+
+    if (sidecarEntries.length === 0) {
+        return true;
+    }
+
+    // Mixed Save: the accepted text edit stands. The sidecar is written only
+    // against the source as it was right after that edit; if that step refuses
+    // or fails, the Save reports it with `sourceSaved` and the text stays.
+    try {
+        await writeSidecarLayoutEntries(document.uri, sidecarEntries, boundary,
+            () => assertSourceIs(updatedVersion, updatedText, false));
+    } catch (error) {
+        throw sidecarFailure(error, true);
+    }
+    return true;
+}
+
+/**
+ * Maps a sidecar-step failure to a transaction refusal (#443).
+ *
+ * When the text edit of the same Save was kept (`sourceSaved`), the code is
+ * `stale_revision`: the document has moved past the revision the webview
+ * holds, so a second Save of the same draft is refused too. The client keeps
+ * the draft and shows the reason followed by its own hint to Discard (or use
+ * the conflict banner), which reloads the saved text. The message says which
+ * half landed. A dedicated code would need a webview change (REJECTION_CODES in
+ * previewClientScript.ts and MoveRejectionCode in visualLayoutProtocol.ts).
+ */
+function sidecarFailure(error: unknown, sourceSaved: boolean): WritebackTransactionError {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (!sourceSaved) {
+        if (error instanceof WritebackTransactionError) {
+            return error;
+        }
+        return new WritebackTransactionError('validation_failed', reason);
+    }
+    // Say only what is known: a writeFile that rejected may still have
+    // stored the bytes; a refusal before the write wrote nothing.
+    // The client follows a refusal with its own way out ("Your edits are
+    // kept. Discard to reload from source." or the conflict banner), so the
+    // message says what happened and what reloading is for, without naming
+    // Discard itself.
+    const detail = /[.!?]$/.test(reason) ? reason : `${reason}.`;
+    const message = error instanceof SidecarPersistenceError && error.kind === 'write_failed'
+        ? `The text edit was saved. ${detail} Reload the saved text before moving the elements again.`
+        : `The text edit was saved; the layout coordinates were not written. ${detail} Reload the saved text, then move the elements again.`;
+    return new WritebackTransactionError('stale_revision', message, true);
 }
 
 function normalizeMessage(message: VisualLayoutMessage): ApplySemanticEditsMessage {
@@ -759,6 +859,11 @@ function normalizeMessage(message: VisualLayoutMessage): ApplySemanticEditsMessa
     };
 }
 
+/** A view's `elementStyle` rules as tag, keys, values and order, without source ranges. */
+function elementStyleSignature(view: C4View): string {
+    return JSON.stringify((view.elementStyles ?? []).map(rule => [rule.tag, rule.properties.map(property => [property.key, property.value])]));
+}
+
 export function assertStructuralEquivalence(
     original: C4Model,
     updated: C4Model,
@@ -807,6 +912,13 @@ export function assertStructuralEquivalence(
             throw new Error(`View layout direction changed at index ${vIdx}`);
         }
 
+        // Element styles are source-authoritative and the visual editor never
+        // edits them (notation decision #320, Decision 3): tag, keys, values and order must
+        // survive every Save. Ranges are excluded; edits above a statement move it.
+        if (elementStyleSignature(origView) !== elementStyleSignature(updView)) {
+            throw new Error(`Element style declarations (elementStyle) changed in view ${vIdx}`);
+        }
+
         const origElMap = getFlatElements(origView.elements);
         const updElMap = getFlatElements(updView.elements);
 
@@ -834,6 +946,10 @@ export function assertStructuralEquivalence(
                 (JSON.stringify(origEl.tags) !== JSON.stringify(updEl.tags) && !allowance?.tags) ||
                 ((origEl.sprite ?? '') !== (updEl.sprite ?? '') && !allowance?.sprite)) {
                 throw new Error(`Structural property mismatch on element ${id}`);
+            }
+            // $shape has no inspector field yet (notation decision #320): no staged edit may change it.
+            if ((origEl.shape ?? null) !== (updEl.shape ?? null)) {
+                throw new Error(`Shape ($shape) changed on element ${id}`);
             }
             // The $code mapping has no visual editor: no staged edit may change it.
             if (JSON.stringify(origEl.codePaths ?? null) !== JSON.stringify(updEl.codePaths ?? null)) {

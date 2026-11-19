@@ -1,6 +1,8 @@
 import * as assert from 'assert';
 import {
     applyEdgeGeometry,
+    rememberEdgeGeometry,
+    restoreEdgeGeometry,
     computeOptimalConnectionPoints,
     formatEdgePathD,
     type AttributeTarget,
@@ -139,5 +141,89 @@ describe('computeOptimalConnectionPoints parity with the host EdgeRouter', () =>
             }
         }
         assert.ok(compared >= 10000, `grid too small to mean anything: ${compared} pairs`);
+    });
+});
+
+describe('rememberEdgeGeometry / restoreEdgeGeometry (#419)', () => {
+    class Node {
+        public readonly attributes: Record<string, string> = {};
+        constructor(initial: Record<string, string> = {}) { Object.assign(this.attributes, initial); }
+        getAttribute(name: string): string | null { return name in this.attributes ? this.attributes[name] : null; }
+        setAttribute(name: string, value: string): void { this.attributes[name] = value; }
+        removeAttribute(name: string): void { delete this.attributes[name]; }
+    }
+    const ROUTED = 'M300.00,100.00 L324.00,100.00 L324.00,20.00 L500.00,20.00';
+    function group(withLabel = true) {
+        const paths = [new Node({ d: ROUTED }), new Node({ d: ROUTED })];
+        const label = withLabel ? new Node({ x: '400', y: '14' }) : null;
+        const g = Object.assign(new Node(), {
+            querySelectorAll: () => paths,
+            querySelector: () => label,
+        });
+        return { g, paths, label };
+    }
+
+    it('puts the rendered route and label back after a straight live repaint', () => {
+        const { g, paths, label } = group();
+        rememberEdgeGeometry(g);
+        applyEdgeGeometry(g, { from: { x: 0, y: 0 }, to: { x: 10, y: 10 } });
+        assert.notStrictEqual(paths[1].attributes.d, ROUTED);
+        restoreEdgeGeometry(g);
+        assert.deepStrictEqual(paths.map(p => p.attributes.d), [ROUTED, ROUTED]);
+        assert.deepStrictEqual(label!.attributes, { x: '400', y: '14' });
+        assert.strictEqual(g.getAttribute('data-rendered-d'), null, 'saved geometry is cleared once restored');
+    });
+
+    it('remembers only the first, rendered geometry across repeated repaints', () => {
+        const { g, paths } = group(false);
+        rememberEdgeGeometry(g);
+        applyEdgeGeometry(g, { from: { x: 0, y: 0 }, to: { x: 10, y: 10 } });
+        rememberEdgeGeometry(g);
+        restoreEdgeGeometry(g);
+        assert.strictEqual(paths[0].attributes.d, ROUTED);
+    });
+
+    it('does nothing when nothing was remembered', () => {
+        const { g, paths } = group();
+        restoreEdgeGeometry(g);
+        assert.strictEqual(paths[0].attributes.d, ROUTED);
+    });
+});
+
+describe('edge technology line follows a repaint (#421)', () => {
+    function makeTechEdge() {
+        const attrs: Record<string, string> = {};
+        const mk = (x: string, y: string) => {
+            const a: Record<string, string> = { x, y };
+            return { a, getAttribute: (n: string) => a[n] ?? null, setAttribute: (n: string, v: string) => { a[n] = v; } };
+        };
+        const path = mk('', '');
+        path.a['d'] = 'M0,0 L1,1';
+        const label = mk('50', '40');
+        const tech = mk('50', '53');
+        const g = {
+            getAttribute: (n: string) => attrs[n] ?? null,
+            setAttribute: (n: string, v: string) => { attrs[n] = v; },
+            removeAttribute: (n: string) => { delete attrs[n]; },
+            querySelectorAll: (s: string) => (s === 'path' ? [path, path] : []),
+            querySelector: (s: string) => (s === 'text' ? label : s === 'text[data-field="relationship-technology"]' ? tech : null),
+        };
+        return { g, label, tech };
+    }
+
+    it('moves the technology with the label, one line below it', () => {
+        const { g, label, tech } = makeTechEdge();
+        applyEdgeGeometry(g, { from: { x: 10, y: 20 }, to: { x: 210, y: 120 } });
+        assert.strictEqual(tech.a['x'], '110.00');
+        assert.strictEqual(label.a['y'], '60.50');
+        assert.strictEqual(tech.a['y'], '73.50');
+    });
+
+    it('puts the technology back with the label on restore', () => {
+        const { g, tech } = makeTechEdge();
+        rememberEdgeGeometry(g);
+        applyEdgeGeometry(g, { from: { x: 10, y: 20 }, to: { x: 210, y: 120 } });
+        restoreEdgeGeometry(g);
+        assert.deepStrictEqual([tech.a['x'], tech.a['y']], ['50', '53']);
     });
 });

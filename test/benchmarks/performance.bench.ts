@@ -4,6 +4,10 @@
  * - Parser: < 50ms
  * - Total pipeline: < 200ms
  * - Notation lint of a 200-element model: < 5ms (#214)
+ * - Headless render (render_c4x, c4x render): each Internet Banking System
+ *   fixture < 250ms; every adversarial shape at the render bounds within the
+ *   render time budget; 2,000 elements measured to show why the render
+ *   bounds are lower than the parser-side limit (#353)
  */
 
 import '../../scripts/mock-vscode';
@@ -15,6 +19,11 @@ import { svgBuilder } from '../../src/render/SvgBuilder';
 import { ClassicTheme } from '../../src/themes/ClassicTheme';
 import { lintModel } from '../../src/model/lint';
 import { generateLintModel } from '../../src/__tests__/model/lint-fixtures';
+import { MAX_RENDER_ELEMENTS, MAX_RENDER_RELATIONSHIPS, RENDER_TIME_BUDGET_MS, checkC4xSource } from '../../src/cli/renderSource';
+import { normalizeLintOptions } from '../../src/model/lint';
+import { RENDER_SHAPES, adversarialSource } from '../../src/__tests__/cli/renderCorpus';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Sample C4X diagram for benchmarking
@@ -206,7 +215,42 @@ export function runBenchmarks(): void {
     });
     console.log(lintBench.report());
 
-    // 7. Performance Targets Validation
+    // 7. Headless render (#353)
+    console.log('\n--- HEADLESS RENDER PERFORMANCE (render_c4x, c4x render) ---\n');
+
+    const renderLint = normalizeLintOptions(true, undefined);
+    const ibsDir = path.join(__dirname, '..', '..', 'src', '__tests__', 'snapshots', 'fixtures', 'ibs');
+    let ibsWorst = { name: '', p95: 0 };
+    for (const file of fs.readdirSync(ibsDir).filter(name => name.endsWith('.c4x')).sort()) {
+        const source = fs.readFileSync(path.join(ibsDir, file), 'utf8');
+        const bench = new PerformanceMeasure(`render ${file} (c4-model)`, 20);
+        bench.measure(() => { checkC4xSource(source, { lint: renderLint, theme: 'c4-model' }); });
+        const results = bench.getResults();
+        console.log(`  ${file.padEnd(34)} avg ${results.avg.toFixed(2)}ms  P95 ${results.p95.toFixed(2)}ms`);
+        if (results.p95 > ibsWorst.p95) { ibsWorst = { name: file, p95: results.p95 }; }
+    }
+    let shapeWorst = { name: '', ms: 0 };
+    for (const shape of RENDER_SHAPES) {
+        const source = adversarialSource(shape, MAX_RENDER_ELEMENTS, MAX_RENDER_RELATIONSHIPS);
+        const times: number[] = [];
+        for (let run = 0; run < 3; run++) {
+            const started = performance.now();
+            checkC4xSource(source, { lint: renderLint });
+            times.push(performance.now() - started);
+        }
+        const median = [...times].sort((a, b) => a - b)[1];
+        console.log(`  ${`${shape} at the bounds (${MAX_RENDER_ELEMENTS} elements, ${MAX_RENDER_RELATIONSHIPS} relationships)`.padEnd(62)} median ${median.toFixed(0)}ms`);
+        if (median > shapeWorst.ms) { shapeWorst = { name: shape, ms: median }; }
+    }
+    // Informational: the parser-side element limit, laid out once without the render bound.
+    {
+        const built = c4ModelBuilder.build(c4xParser.parse(adversarialSource('flat', 2000, 3000)), 'benchmark');
+        const started = performance.now();
+        dagreLayoutEngine.layoutSync(built.views[0], { theme: ClassicTheme });
+        console.log(`  2,000 elements, 3,000 relationships (flat), layout alone: ${(performance.now() - started).toFixed(0)}ms (informational; above the ${RENDER_TIME_BUDGET_MS}ms budget is why the render bounds are lower)`);
+    }
+
+    // 8. Performance Targets Validation
     console.log('\n--- PERFORMANCE TARGETS ---\n');
 
     const c4xResults = c4xParserBench.getResults();
@@ -232,7 +276,18 @@ export function runBenchmarks(): void {
     const lintPassed = lintResults.p95 < lintTarget;
     console.log(`Status: ${lintPassed ? '✅ PASS' : '❌ FAIL'}`);
 
-    // 8. Comparison Table
+    const renderIbsTarget = 250; // ms, #352
+    console.log(`\nTarget: render of each IBS fixture < ${renderIbsTarget}ms`);
+    console.log(`Actual: worst P95 ${ibsWorst.p95.toFixed(2)}ms (${ibsWorst.name})`);
+    const renderIbsPassed = ibsWorst.p95 < renderIbsTarget;
+    console.log(`Status: ${renderIbsPassed ? '✅ PASS' : '❌ FAIL'}`);
+
+    console.log(`\nTarget: render at the bounds < ${RENDER_TIME_BUDGET_MS}ms for every adversarial shape`);
+    console.log(`Actual: worst median ${shapeWorst.ms.toFixed(0)}ms (${shapeWorst.name})`);
+    const renderShapesPassed = shapeWorst.ms < RENDER_TIME_BUDGET_MS;
+    console.log(`Status: ${renderShapesPassed ? '✅ PASS' : '❌ FAIL'}`);
+
+    // 9. Comparison Table
     console.log('\n--- COMPARATIVE PERFORMANCE ---\n');
     console.log('Component                     | Avg (ms) | P95 (ms) | % of Pipeline');
     console.log('------------------------------|----------|----------|---------------');
@@ -247,7 +302,7 @@ export function runBenchmarks(): void {
 
     console.log('\n========================================\n');
 
-    if (!parsePassed || !pipelinePassed || !lintPassed) {
+    if (!parsePassed || !pipelinePassed || !lintPassed || !renderIbsPassed || !renderShapesPassed) {
         throw new Error('Performance regression: one or more P95 targets were exceeded');
     }
 }

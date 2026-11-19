@@ -4,7 +4,7 @@
  */
 
 import * as assert from 'assert';
-import { parseStructurizrDSL } from '../../../src/parser/structurizr';
+import { parseStructurizrDSL, StructurizrParserError } from '../../../src/parser/structurizr';
 import { C4Model } from '../../../src/model/C4Model';
 
 describe('Structurizr DSL Integration', () => {
@@ -398,8 +398,8 @@ systemContext sys "diagram" { include * }
                 }
             }`;
 
-            const model = parseStructurizrDSL(source);
-            assert.strictEqual(model.workspace, 'Test');
+            assert.throws(() => parseStructurizrDSL(source), (e: unknown) =>
+                e instanceof StructurizrParserError && /defines no elements/.test(e.message) && e.location?.line === 2);
         });
 
         it('should handle empty views block', () => {
@@ -411,8 +411,8 @@ systemContext sys "diagram" { include * }
                 }
             }`;
 
-            const model = parseStructurizrDSL(source);
-            assert.strictEqual(model.views.length, 0);
+            assert.throws(() => parseStructurizrDSL(source), (e: unknown) =>
+                e instanceof StructurizrParserError && /No views found/.test(e.message) && e.location?.line === 5);
         });
 
         it('should handle view with no include directive', () => {

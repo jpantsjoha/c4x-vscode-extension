@@ -1,0 +1,14 @@
+%%{ c4: container }%%
+graph TB
+    Container(arabic, "نظام إدارة المدفوعات", "Java", "يعالج النظام جميع المدفوعات الواردة من العملاء ويرسل الإيصالات ويحفظ سجلاً كاملاً لكل عملية دفع وتحويل")
+    Container(hebrew, "מערכת תשלומים", "Java", "המערכת מעבדת את כל התשלומים הנכנסים מהלקוחות, שולחת קבלות ושומרת תיעוד מלא של כל תשלום והעברה")
+    Container(thai, "ระบบชำระเงิน", "Java", "ระบบนี้ประมวลผลการชำระเงินทั้งหมดจากลูกค้าส่งใบเสร็จและเก็บบันทึกการชำระเงินและการโอนเงินทุกรายการอย่างครบถ้วน")
+    Container(devanagari, "भुगतान प्रणाली", "Java", "यह प्रणाली ग्राहकों से आने वाले सभी भुगतानों को संसाधित करती है, रसीदें भेजती है और हर भुगतान और हस्तांतरण का पूरा रिकॉर्ड रखती है")
+    Container(cjk, "支付系统", "Java", "该系统处理客户的所有付款发送收据并完整记录每一笔付款和转账以便日后审计和对账")
+    Container(hangul, "결제 시스템", "Java", "이 시스템은 고객의 모든 결제를 처리하고 영수증을 보내며 모든 결제와 이체에 대한 전체 기록을 보관합니다")
+    arabic -->|Calls| hebrew
+    thai -->|Calls| devanagari
+    Container(emoji, "Payments 👨‍👩‍👧‍👦 team", "Java", "👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦 🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧🇬🇧")
+    Container(symbols, "Checks ✓ ♠ ⚙", "Java", "✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐ ✓ ♠ ♣ ♥ ♦ ⚙ ★ ☐")
+    Container(mixed, "Payments API that sends receipts 支付 to every customer", "Java", "Records every payment and every refund for every customer 支付 and keeps a full audit trail")
+    cjk -->|Calls| hangul

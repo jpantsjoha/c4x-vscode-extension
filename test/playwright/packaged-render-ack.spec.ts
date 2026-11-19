@@ -15,9 +15,10 @@ test.beforeAll(() => {
     directory = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-render-ack-'));
     healthy = path.join(directory, 'healthy.html');
     broken = path.join(directory, 'broken.html');
-    execFileSync(process.execPath, [path.join(root, 'test/visual-layout/generate-boundary-harness.js'), healthy], { cwd: root });
+    execFileSync(process.execPath, [path.join(root, 'test/visual-layout/generate-boundary-harness.js'), healthy],
+        { cwd: root, env: { ...process.env, C4X_HARNESS_SMOKE_SESSION: 'ack-session' } });
     const html = fs.readFileSync(healthy, 'utf8');
-    const renderCall = 'showSvg(message.payload.svg, message.payload.metrics, message.payload.visualLayout, message.payload.settings, message.payload.presentElementTypes, message.payload.legendSwatchColors);';
+    const renderCall = 'showSvg(message.payload.svg, message.payload.metrics, message.payload.visualLayout, message.payload.settings, message.payload.presentElementTypes, message.payload.legendSwatchColors, message.payload.legendEntries, message.payload.legendKeyTheme);';
     expect(html).toContain(renderCall);
     fs.writeFileSync(broken, html.replace(renderCall, 'throw new Error("Deliberately broken render path");'));
 });
@@ -52,7 +53,13 @@ for (const fault of [false, true]) {
             expect(acknowledgements).toEqual([]);
         } else {
             expect(acknowledgements).toHaveLength(1);
-            expect(acknowledgements[0]).toMatchObject({ token: 'fresh-probe', nodeCount: 4 });
+            // Derived from the fixture the page was given, so a fixture that grows (as
+            // the nested-boundary fixture did in #339) cannot make this stale (#401).
+            const fixtureNodes = await page.evaluate(() =>
+                (window as Window & { __visualLayoutRenderPayload?: { visualLayout: { nodes: unknown[] } } })
+                    .__visualLayoutRenderPayload!.visualLayout.nodes.length);
+            expect(fixtureNodes).toBeGreaterThan(0);
+            expect(acknowledgements[0]).toMatchObject({ token: 'fresh-probe', nodeCount: fixtureNodes });
             expect(acknowledgements[0].text).toContain('Worker');
         }
     });

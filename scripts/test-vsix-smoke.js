@@ -17,7 +17,47 @@ const vsce = require('@vscode/vsce');
 
 const projectRoot = path.resolve(__dirname, '..');
 const packageJson = require(path.join(projectRoot, 'package.json'));
-const expectedVsix = path.join(projectRoot, `${packageJson.name}-${packageJson.version}.vsix`);
+// C4X_SMOKE_VSIX points the whole smoke at another package: the bite tests use
+// it to prove a deliberately broken VSIX fails. It is not a user feature.
+const expectedVsix = process.env.C4X_SMOKE_VSIX
+  ? path.resolve(process.env.C4X_SMOKE_VSIX)
+  : path.join(projectRoot, `${packageJson.name}-${packageJson.version}.vsix`);
+
+// Every journey step the host must have proven, in order. A step missing from the
+// receipt fails the run: a launch that exits 0 without running a step proves nothing.
+const EXPECTED_STEPS = [
+  'activation',
+  'mcp-server',
+  'render-system-context',
+  'render-container',
+  'render-component',
+  'render-markdown',
+  'cloud-icons',
+  'theme-switch',
+  'theme-setting-live',
+  'edit-save-reopen',
+  'edit-discard',
+  'export-svg',
+  'export-png',
+  'export-html',
+];
+
+function readJourneyReceipt(receiptPath, token) {
+  if (!fs.existsSync(receiptPath)) {
+    throw new Error('VS Code exited without an installed-journey receipt; the smoke did not complete.');
+  }
+  const lines = fs.readFileSync(receiptPath, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  const forged = lines.filter((entry) => entry.token !== token);
+  if (forged.length > 0) {
+    throw new Error(`Journey receipt carries ${forged.length} line(s) with the wrong token.`);
+  }
+  const seen = lines.map((entry) => entry.step);
+  if (JSON.stringify(seen) !== JSON.stringify(EXPECTED_STEPS)) {
+    const absent = EXPECTED_STEPS.filter((step) => !seen.includes(step));
+    throw new Error(`Journey receipt does not match the expected steps in order; missing: ${absent.join(', ') || 'none'}; seen: ${seen.join(', ')}.`);
+  }
+  return lines;
+}
 const { VSIX_BUDGET_BYTES, vsixFindings } = require('./vsix-budget');
 const { bundleRuntimeFindings, installedBundlePath } = require('./bundle-runtime');
 const { NOTICES_FILE, bundledPackageDirectories, listedPackages } = require('./third-party-notices');
@@ -37,9 +77,13 @@ const EXPECTED_PACKAGED_FILES = [
   'assets/scripts/preview.js',
   'assets/styles/markdown.css',
   'CHANGELOG.md',
+  'data/cloud-icons.json',
   'dist/extension.js',
+  'dist/layoutWorker.js',
   'language-configuration.json',
   'LICENSE',
+  'mcp/c4x-mcp-server.bundle.cjs',
+  'mcp/THIRD_PARTY_NOTICES.txt',
   'NOTICE.md',
   'package.json',
   'README.md',
@@ -183,11 +227,21 @@ async function main() {
   const extensionsDir = path.join(tempRoot, 'extensions');
   const userDataDir = path.join(tempRoot, 'user-data');
   const workspaceDir = path.join(tempRoot, 'workspace');
-  const receiptPath = path.join(tempRoot, 'render-receipt.json');
+  const receiptPath = path.join(tempRoot, 'journey-receipt.jsonl');
   const receiptToken = randomUUID();
   fs.mkdirSync(extensionsDir, { recursive: true });
   fs.mkdirSync(userDataDir, { recursive: true });
   fs.mkdirSync(workspaceDir, { recursive: true });
+  // A file dialog the host can drive: the native one blocks a headless host.
+  fs.mkdirSync(path.join(userDataDir, 'User'), { recursive: true });
+  fs.writeFileSync(path.join(userDataDir, 'User', 'settings.json'), JSON.stringify({
+    'files.simpleDialog.enable': true,
+    'workbench.startupEditor': 'none',
+    'security.workspace.trust.enabled': false,
+    'telemetry.telemetryLevel': 'off',
+    'update.mode': 'none',
+    'extensions.autoUpdate': false,
+  }, null, 2));
 
   try {
     console.log(`Pinned VS Code test version: ${vscodeVersion}`);
@@ -246,17 +300,16 @@ async function main() {
         C4X_SMOKE_RECEIPT_TOKEN: receiptToken,
         C4X_EXPECTED_EXTENSION_ROOT: extensionsDir,
         C4X_EXPECTED_VERSION: packageJson.version,
+        C4X_SAMPLES_DIR: path.join(projectRoot, 'samples'),
       },
     });
 
-    if (!fs.existsSync(receiptPath)) {
-      throw new Error('VS Code exited without a packaged webview render receipt; the smoke did not complete.');
+    const receipt = readJourneyReceipt(receiptPath, receiptToken);
+    console.log(`Installed-package journeys passed: ${receipt.map((entry) => entry.step).join(', ')}.`);
+    for (const entry of receipt.filter((line) => line.step.startsWith('export-'))) {
+      console.log(`Exported file (${entry.step}): ${entry.path}`);
     }
-    const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
-    if (receipt.token !== receiptToken || receipt.version !== packageJson.version || receipt.nodeCount !== 2) {
-      throw new Error('Invalid packaged webview render receipt');
-    }
-    console.log('Clean VSIX install, activation, commands, and rendered webview nodes/labels passed.');
+    console.log('Clean VSIX install, activation, commands, render (C1/C2/C3/Markdown), theme switch, edit/save/reopen/discard and SVG, PNG and HTML export passed.');
   } finally {
     if (process.env.C4X_KEEP_VSIX_SMOKE !== '1') {
       fs.rmSync(tempRoot, { recursive: true, force: true });

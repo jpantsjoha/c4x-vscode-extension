@@ -17,7 +17,7 @@
             "graph TB",
             "    User[${1:User}<br/>Person]",
             "    ",
-            "    subgraph ${2:SystemName}",
+            "    subgraph ${2:SystemName} {",
             "        WebApp[${3:Web App}<br/>Container]",
             "        DB[${4:Database}<br/>Container]",
             "    }",
@@ -68,5 +68,101 @@
             "${1:From} -.->|${2:Label}| ${3:To}"
         ],
         "description": "C4 Relationship (Async)"
+    },
+    "C4X Container: database (Cylinder)": {
+        "prefix": "container-database",
+        "body": [
+            "Container(${1:db}, \"${2:Database}\", \"${3:PostgreSQL}\", \"${4:Stores orders}\", \\$shape=\"Cylinder\")"
+        ],
+        "description": "Container drawn as a cylinder, the C4 database shape"
+    },
+    "C4X Container: object store (Bucket)": {
+        "prefix": "container-bucket",
+        "body": [
+            "Container(${1:store}, \"${2:Object Store}\", \"${3:Amazon S3}\", \"${4:Holds documents}\", \\$shape=\"Bucket\")"
+        ],
+        "description": "Container drawn as a bucket"
+    },
+    "C4X Container: files (Folder)": {
+        "prefix": "container-folder",
+        "body": [
+            "Container(${1:files}, \"${2:File System}\", \"${3:NFS}\", \"${4:Holds files}\", \\$shape=\"Folder\")"
+        ],
+        "description": "Container drawn as a folder"
+    },
+    "C4X Container: web app (WebBrowser)": {
+        "prefix": "container-browser",
+        "body": [
+            "Container(${1:web}, \"${2:Web Application}\", \"${3:React}\", \"${4:Shows pages to the user}\", \\$shape=\"WebBrowser\")"
+        ],
+        "description": "Container drawn as a web browser window"
+    },
+    "C4X Container: command line (Terminal)": {
+        "prefix": "container-terminal",
+        "body": [
+            "Container(${1:cli}, \"${2:Command-Line Tool}\", \"${3:Node.js}\", \"${4:Runs from a shell}\", \\$shape=\"Terminal\")"
+        ],
+        "description": "Container drawn as a terminal window"
+    },
+    "C4X Container: rounded box (RoundedBox)": {
+        "prefix": "container-rounded",
+        "body": [
+            "Container(${1:api}, \"${2:API}\", \"${3:Java}\", \"${4:Serves requests}\", \\$shape=\"RoundedBox\")"
+        ],
+        "description": "Container drawn as a rounded box"
+    },
+    "C4X Container: plain box (Box)": {
+        "prefix": "container-box",
+        "body": [
+            "Container(${1:api}, \"${2:API}\", \"${3:Java}\", \"${4:Serves requests}\", \\$shape=\"Box\")"
+        ],
+        "description": "Container drawn as a plain box"
+    },
+    "C4X Person shape": {
+        "prefix": "person-shape",
+        "body": [
+            "Person(${1:user}, \"${2:User}\", \"${3:Uses the system}\", \\$shape=\"Person\")"
+        ],
+        "description": "Person drawn as a head over a rounded body in every theme"
+    },
+    "C4X Shape (any)": {
+        "prefix": "shape",
+        "body": [
+            "Container(${1:id}, \"${2:Name}\", \"${3:Technology}\", \"${4:Description}\", \\$shape=\"${5|Cylinder,Bucket,Folder,WebBrowser,Terminal,Person,RoundedBox,Box|}\")"
+        ],
+        "description": "Container with a $shape you pick from the drawn shapes"
+    },
+    "C4X elementStyle": {
+        "prefix": "element-style",
+        "body": [
+            "elementStyle ${1:Tag} \\$stroke=\"${2:#BF101D}\", \\$shape=\"${3|Cylinder,Bucket,Folder,WebBrowser,Terminal,Person,RoundedBox,Box|}\", \\$legend=\"${4:Meaning}\""
+        ],
+        "description": "Style every element that carries a tag"
+    },
+    "C4X System boundary": {
+        "prefix": "system-boundary",
+        "body": [
+            "System_Boundary(${1:sys}, \"${2:System Name}\") {",
+            "    Container(${3:web}, \"${4:Web App}\", \"${5:React}\", \"${6:Shows pages}\", \\$shape=\"WebBrowser\")",
+            "    Container(${7:db}, \"${8:Database}\", \"${9:PostgreSQL}\", \"${10:Stores data}\", \\$shape=\"Cylinder\")",
+            "}"
+        ],
+        "description": "Boundary around the containers of one software system; c4-model prints [Software System] on it"
+    },
+    "C4X Relationship with technology": {
+        "prefix": "rel-tech",
+        "body": [
+            "${1:from} -->|${2:Label}| \"${3:HTTPS}\" ${4:to}"
+        ],
+        "description": "Relationship with its technology, drawn as [technology] under the label"
+    },
+    "C4X Deployment node": {
+        "prefix": "deployment-node",
+        "body": [
+            "Node(${1:aws}, \"${2:Amazon Web Services}\", \"${3:Cloud}\") {",
+            "    Container(${4:web}, \"${5:Web Server}\", \"${6:Nginx}\")",
+            "}"
+        ],
+        "description": "Deployment node holding containers"
     }
 }

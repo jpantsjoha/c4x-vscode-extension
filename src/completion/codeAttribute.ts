@@ -4,6 +4,7 @@
  */
 
 import { splitCodePaths } from '../model/codePaths';
+import { ELEMENT_ATTRIBUTES } from './styleAttributes';
 
 /** A `$code="..."` attribute found on one line. */
 export interface CodeAttributeSpan {
@@ -95,7 +96,8 @@ export function codeValueContext(linePrefix: string): CodeValueContext | undefin
 
 /**
  * True when the cursor follows a `$` (optionally with part of a name) in
- * attribute position, so offering `$code="..."` makes sense.
+ * attribute position, so offering an element attribute (`$code`, `$shape`, `$sprite`,
+ * `$tags`) whose name starts with what was typed makes sense.
  */
 export function attributeNameContext(linePrefix: string): { readonly typed: string } | undefined {
     const match = /\$([A-Za-z]*)$/.exec(linePrefix);
@@ -113,7 +115,7 @@ export function attributeNameContext(linePrefix: string): { readonly typed: stri
     if (!inCall && !afterBracket) {
         return undefined;
     }
-    if (!'code'.startsWith(match[1])) {
+    if (!ELEMENT_ATTRIBUTES.some(attribute => attribute.name.startsWith(match[1]))) {
         return undefined;
     }
     return { typed: match[0] };

@@ -7,8 +7,8 @@ how to prove a change, and what a good pull request looks like.
 
 ## Code of Conduct
 
-Treat others with respect and professionalism. Report unacceptable behaviour by opening a
-GitHub issue.
+Everyone taking part follows the [Code of Conduct](./CODE_OF_CONDUCT.md). Report unacceptable
+behaviour privately by email to **<jpantsjoha@gmail.com>**, not in a public issue.
 
 ---
 
@@ -38,7 +38,9 @@ nvm use                                    # Node 20.20.2
 corepack enable
 corepack prepare pnpm@10.18.3 --activate
 
+make doctor                                # lists required and optional tools, and gates that skip without one
 make setup                                 # install, build, compile tests
+make help                                  # every target, grouped
 ```
 
 ### Running the extension
@@ -46,13 +48,30 @@ make setup                                 # install, build, compile tests
 Start the watcher, then press `F5` to launch the Extension Development Host:
 
 ```bash
-pnpm run watch
+make dev        # same as: pnpm run watch
 ```
 
-`.vscode/launch.json` is gitignored, so create one the first time with a single
-`extensionHost` configuration passing
-`--extensionDevelopmentPath=${workspaceFolder}`. Open a diagram from `samples/` or
-`examples/` in the new window and run **C4X: Open Preview**.
+`.vscode/launch.json` is gitignored, so create it the first time, with this single
+`extensionHost` configuration:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run C4X Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    }
+  ]
+}
+```
+
+Open a diagram from `samples/` or `examples/` in the new window and run
+**C4X: Open Preview**. `make demo` builds and opens a sample for you when the `code`
+command is on your `PATH`; no cloud account or API key is needed.
 
 ---
 
@@ -63,6 +82,7 @@ Run the gate that matches the size of your change; each one includes the ones ab
 ```bash
 make quick-check     # typecheck, lint, unit tests, MCP and toolchain checks — the fast loop
 make check           # quick-check + documentation + build — what a pull request must pass
+make validate        # alias for make check
 ```
 
 Individual tiers, when you want to iterate on one:

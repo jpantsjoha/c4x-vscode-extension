@@ -46,6 +46,13 @@ if (expectedNode) {
   assert(actualNode === expectedNode, `Node.js mismatch: expected ${expectedNode}, received ${actualNode}`);
 }
 
+// The editor API typings must describe the oldest host the extension claims to support:
+// @types/vscode older than engines.vscode types an API surface the code is not held to, and
+// newer than engines.vscode makes vsce refuse to package.
+const rangeFloor = (range) => String(range || '').replace(/^[\^~>=\s]+/, '').split('.').slice(0, 2).join('.');
+assert(rangeFloor(packageJson.devDependencies?.['@types/vscode']) === rangeFloor(packageJson.engines?.vscode),
+  `@types/vscode (${packageJson.devDependencies?.['@types/vscode']}) must have the same major.minor floor as engines.vscode (${packageJson.engines?.vscode})`);
+
 const forbiddenFloatingValues = ['20.x', '26.x', 'ubuntu-latest', 'macos-latest', 'windows-latest', '@latest', "'stable'", 'insiders'];
 // Partial versions follow a moving channel as surely as `latest` does.
 const forbiddenFloatingPatterns = [

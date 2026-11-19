@@ -34,6 +34,16 @@ graph TB
   ContainerDb(DB, "Storage", "S3", $sprite="c4xicons.aws.simple-storage-service-bucket")
 ```
 
+### An icon inside a shape (1.9.0)
+
+`$shape` sets the outline and `$sprite` the icon; together the icon sits inside the shape's text area. See [Icons and shapes](./ICONS.md#icons-and-shapes) and the [shape list](./C4X-ELEMENT-TYPES.md#shapes).
+
+```c4x
+%%{ c4: container }%%
+graph TB
+  Container(store, "Receipt Store", "Amazon S3", "PDF receipts", $shape="Bucket", $sprite="c4xicons.aws.simple-storage-service-bucket")
+```
+
 ---
 
 ## 2. AI Generation Scenarios

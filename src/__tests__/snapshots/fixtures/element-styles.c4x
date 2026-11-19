@@ -1,0 +1,24 @@
+%%{ c4: container }%%
+graph TB
+    elementStyle Mainframe $stroke="#BF101D", $color="#BF101D", $legend="Mainframe"
+    elementStyle "E-mail" $stroke="#ED8609", $color="#B35F00", $border="dashed"
+    elementStyle Queue $background="#F5F5F5", $strokeWidth="3", $shape="Box"
+    Person(Customer, "Customer")
+    System_Boundary(banking, "Internet Banking System") {
+        Container(WebApp, "Web Application", "Java and Spring MVC", $shape="RoundedBox")
+        Container(API, "API Application", "Java and Spring Boot", $shape="Box")
+        Container(Broker, "Message Broker", "RabbitMQ", $tags="Queue")
+        Container(Store, "Document Store", "S3", $shape="Cylinder")
+        ContainerDb(DB, "Database", "PostgreSQL")
+        Container(Admin, "Admin Console", "React", $sprite="react", $shape="Box")
+    }
+    System_Ext(MainframeSystem, "Mainframe Banking System", $tags="Mainframe")
+    System_Ext(MailSystem, "E-Mail System", $tags="E-mail")
+    Customer -->|Uses| WebApp
+    WebApp -->|Calls| API
+    API -->|Publishes to| Broker
+    API -->|Stores files in| Store
+    API -->|Reads from and writes to| DB
+    Admin -->|Manages| API
+    API -->|Reads accounts from| MainframeSystem
+    API -->|Sends e-mails using| MailSystem

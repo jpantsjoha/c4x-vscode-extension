@@ -10,7 +10,8 @@
  */
 
 import * as assert from 'assert';
-import { spawnSync } from 'child_process';
+import { isDirtyStateChangedMessage } from '../../webview/visualLayoutProtocol';
+import { spawnSync, SpawnSyncReturns } from 'child_process';
 import {
     dropInvalidPersistedAdds,
     dropUnmovableBoundaryEdits,
@@ -19,13 +20,17 @@ import {
     isPersistedDraftState,
     type PersistedDraftState,
 } from '../../webview/draftState';
-import { serializeDraftState, deserializeDraftState, PREVIEW_CLIENT_SCRIPT } from '../../webview/previewClientScript';
+import { serializeDraftState, deserializeDraftState, formatDraftRestoreStatus, isDraftStateForCurrentScope, CAMERA_PERSIST_DEBOUNCE_MS, PREVIEW_CLIENT_SCRIPT } from '../../webview/previewClientScript';
+
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+const SCOPE_A = 'file:///diagram-a.c4x';
+
 function makeValidState(overrides?: Partial<PersistedDraftState>): PersistedDraftState {
     return {
-        schemaVersion: 1,
+        schemaVersion: 2,
+        scope: SCOPE_A,
         editMode: false,
         selectedNodeId: null,
         stagedEdits: [],
@@ -66,7 +71,17 @@ describe('isPersistedDraftState — schema guard', () => {
     });
 
     it('rejects when schemaVersion is wrong', () => {
-        assert.strictEqual(isPersistedDraftState({ ...makeValidState(), schemaVersion: 2 }), false);
+        // v1 states predate the scope field and are discarded, not migrated.
+        assert.strictEqual(isPersistedDraftState({ ...makeValidState(), schemaVersion: 1 }), false);
+    });
+
+    it('rejects when scope is missing, empty, or not a string', () => {
+        const noScope = {
+            schemaVersion: 2, editMode: false, selectedNodeId: null, stagedEdits: [],
+        };
+        assert.strictEqual(isPersistedDraftState(noScope), false);
+        assert.strictEqual(isPersistedDraftState({ ...makeValidState(), scope: '' }), false);
+        assert.strictEqual(isPersistedDraftState({ ...makeValidState(), scope: 42 }), false);
     });
 
     it('rejects when editMode is not boolean', () => {
@@ -167,8 +182,8 @@ describe('isPersistedDraftState — schema guard', () => {
 describe('serializeDraftState / deserializeDraftState — round-trip', () => {
     it('round-trips an empty edits map', () => {
         const original: Record<string, Record<string, unknown>> = {};
-        const state = serializeDraftState(original, null, false);
-        assert.strictEqual(state.schemaVersion, 1);
+        const state = serializeDraftState(original, null, false, SCOPE_A);
+        assert.strictEqual(state.schemaVersion, 2);
         assert.strictEqual(state.stagedEdits.length, 0);
         const restored = deserializeDraftState(state);
         assert.deepStrictEqual(Object.keys(restored), []);
@@ -178,7 +193,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
         const original: Record<string, Record<string, unknown>> = {
             api: { x: 150, y: 300 },
         };
-        const state = serializeDraftState(original, 'api', true);
+        const state = serializeDraftState(original, 'api', true, SCOPE_A);
         assert.strictEqual(state.editMode, true);
         assert.strictEqual(state.selectedNodeId, 'api');
 
@@ -190,7 +205,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
         const original: Record<string, Record<string, unknown>> = {
             web: { label: 'Web Client' },
         };
-        const state = serializeDraftState(original, null, false);
+        const state = serializeDraftState(original, null, false, SCOPE_A);
         const restored = deserializeDraftState(state);
         assert.deepStrictEqual(restored['web'], { label: 'Web Client' });
     });
@@ -199,7 +214,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
         const original: Record<string, Record<string, unknown>> = {
             db: { description: null },
         };
-        const state = serializeDraftState(original, null, false);
+        const state = serializeDraftState(original, null, false, SCOPE_A);
         const restored = deserializeDraftState(state);
         assert.strictEqual(restored['db']['description'], null);
     });
@@ -208,7 +223,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
         const original: Record<string, Record<string, unknown>> = {
             svc: { tags: ['backend', 'prod'] },
         };
-        const state = serializeDraftState(original, null, false);
+        const state = serializeDraftState(original, null, false, SCOPE_A);
         const restored = deserializeDraftState(state);
         assert.deepStrictEqual(restored['svc']['tags'], ['backend', 'prod']);
     });
@@ -217,7 +232,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
         const original: Record<string, Record<string, unknown>> = {
             api: { newId: 'apiGateway' },
         };
-        const state = serializeDraftState(original, null, false);
+        const state = serializeDraftState(original, null, false, SCOPE_A);
         const restored = deserializeDraftState(state);
         assert.deepStrictEqual(restored['api'], { newId: 'apiGateway' });
     });
@@ -227,7 +242,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
             api: { x: 100, y: 200, label: 'Gateway' },
             db: { description: 'Main store', technology: null },
         };
-        const state = serializeDraftState(original, 'api', true);
+        const state = serializeDraftState(original, 'api', true, SCOPE_A);
         assert.strictEqual(isPersistedDraftState(state), true);
 
         const restored = deserializeDraftState(state);
@@ -240,7 +255,7 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
         const original: Record<string, Record<string, unknown>> = {
             api: { x: 10, y: 20 },
         };
-        serializeDraftState(original, null, false);
+        serializeDraftState(original, null, false, SCOPE_A);
         assert.ok('api' in original, 'original should be unchanged');
         assert.strictEqual(original['api']['x'], 10);
     });
@@ -250,12 +265,202 @@ describe('serializeDraftState / deserializeDraftState — round-trip', () => {
             customer: { label: 'Customer', x: 50, y: 80 },
             payments: { technology: 'Stripe', tags: ['external'] },
         };
-        const state = serializeDraftState(original, 'customer', true);
+        const state = serializeDraftState(original, 'customer', true, SCOPE_A);
         assert.strictEqual(isPersistedDraftState(state), true);
     });
 });
 
+// ── Camera round-trip (#167) ─────────────────────────────────────────────────
+
+describe('camera persistence (#167)', () => {
+    it('round-trips zoom and pan with no staged edits at all', () => {
+        // The camera is now written on pan, wheel, Fit, Reset and the zoom
+        // buttons, so it must survive a state with nothing else in it.
+        const state = serializeDraftState({}, null, false, SCOPE_A, { zoom: 2.4, panX: -120, panY: 66 });
+        assert.strictEqual(isPersistedDraftState(state), true);
+        assert.strictEqual(state.zoom, 2.4);
+        assert.strictEqual(state.panX, -120);
+        assert.strictEqual(state.panY, 66);
+        assert.deepStrictEqual(Object.keys(deserializeDraftState(state)), []);
+    });
+
+    it('round-trips the camera alongside staged edits', () => {
+        const state = serializeDraftState(
+            { api: { x: 100, y: 200 } },
+            'api',
+            true,
+            SCOPE_A,
+            { zoom: 0.8, panX: 12.5, panY: -3.25 },
+        );
+        assert.strictEqual(isPersistedDraftState(state), true);
+        assert.deepStrictEqual(
+            { zoom: state.zoom, panX: state.panX, panY: state.panY },
+            { zoom: 0.8, panX: 12.5, panY: -3.25 },
+        );
+        assert.deepStrictEqual(deserializeDraftState(state)['api'], { x: 100, y: 200 });
+    });
+
+    it('omits the camera entirely when it was never set', () => {
+        const state = serializeDraftState({}, null, false, SCOPE_A);
+        assert.ok(!('zoom' in state));
+        assert.ok(!('panX' in state));
+        assert.ok(!('panY' in state));
+        assert.strictEqual(isPersistedDraftState(state), true);
+    });
+
+    it('keeps a pan of exactly zero, which is a real camera position', () => {
+        const state = serializeDraftState({}, null, false, SCOPE_A, { zoom: 1, panX: 0, panY: 0 });
+        assert.strictEqual(state.panX, 0);
+        assert.strictEqual(state.panY, 0);
+    });
+
+    it('debounces the wheel by a value the client can act on', () => {
+        assert.ok(CAMERA_PERSIST_DEBOUNCE_MS > 0 && CAMERA_PERSIST_DEBOUNCE_MS <= 500);
+    });
+
+    it('persists at pan end independently of staged edits', () => {
+        const handler = PREVIEW_CLIENT_SCRIPT.match(
+            /function onSvgPointerUp\(event\) \{([\s\S]*?)\n {4}\}\n\n {4}function onSvgWheel/,
+        );
+        assert.ok(handler, 'onSvgPointerUp handler is present in the assembled client script');
+        assert.match(handler[1], /\bpersistState\(\);/);
+    });
+});
+
+// ── Draft scope guard (#167 review) ──────────────────────────────────────────
+
+describe('isDraftStateForCurrentScope — diagram identity guard (#167 review)', () => {
+    it('restores a state persisted under the scope now on screen', () => {
+        assert.strictEqual(isDraftStateForCurrentScope(makeValidState(), SCOPE_A), true);
+    });
+
+    it('rejects a camera-only state persisted under a different scope', () => {
+        const cameraOnly = makeValidState({ zoom: 2.4, panX: -120, panY: 66 });
+        assert.strictEqual(isDraftStateForCurrentScope(cameraOnly, 'file:///diagram-b.c4x'), false);
+    });
+
+    it('rejects a different-scope state even when every edit id exists in both diagrams', () => {
+        // `api` and `db` are exactly the ids two diagrams tend to share; the
+        // per-id filter would keep these edits, so the scope must be what
+        // rejects them.
+        const sharedIds = makeValidState({
+            stagedEdits: [
+                { id: 'api', x: 100, y: 200 },
+                { id: 'db', label: 'Database' },
+            ],
+        });
+        assert.strictEqual(isDraftStateForCurrentScope(sharedIds, 'file:///diagram-b.c4x'), false);
+    });
+
+    it('rejects when the current render carries no scope at all', () => {
+        assert.strictEqual(isDraftStateForCurrentScope(makeValidState(), undefined), false);
+    });
+
+    it('guards the restore block in the assembled client script', () => {
+        const showSvg = PREVIEW_CLIENT_SCRIPT.match(
+            /function showSvg\(svg, metrics[\s\S]*?\n {4}\}\n/,
+        );
+        assert.ok(showSvg, 'showSvg is present in the assembled client script');
+        assert.match(
+            showSvg[0],
+            /isValidPersistedDraftState\(restore\) && isDraftStateForCurrentScope\(restore, currentScope\)/,
+        );
+    });
+});
+
+// ── Persist suspension during render (#167 review) ───────────────────────────
+
+describe('render persist suspension (#167 review)', () => {
+    function showSvgBody(): string {
+        const showSvg = PREVIEW_CLIENT_SCRIPT.match(
+            /function showSvg\(svg, metrics[\s\S]*?\n {4}\}\n/,
+        );
+        assert.ok(showSvg, 'showSvg is present in the assembled client script');
+        return showSvg[0];
+    }
+
+    it('persistState is a no-op while a render is in flight', () => {
+        const persist = PREVIEW_CLIENT_SCRIPT.match(
+            /function persistState\(\) \{([\s\S]*?)\n {4}\}/,
+        );
+        assert.ok(persist, 'persistState is present in the assembled client script');
+        assert.match(persist[1], /if \(renderInFlight\) \{\s*return;\s*\}/);
+    });
+
+    it('suspends persistence before staging is cleared, and persists once after the restore decision', () => {
+        const body = showSvgBody();
+        const suspendAt = body.indexOf('renderInFlight = true;');
+        const clearAt = body.indexOf('stagedEdits = {};');
+        const restoreAt = body.indexOf('pendingRestoreState = null;');
+        const resumeAt = body.lastIndexOf('renderInFlight = false;');
+        const finalPersistAt = body.lastIndexOf('persistState();');
+        assert.ok(suspendAt !== -1 && clearAt !== -1 && restoreAt !== -1, 'showSvg wires the suspension flag');
+        assert.ok(suspendAt < clearAt, 'persistence is suspended before the render clears staging');
+        assert.ok(resumeAt > restoreAt, 'the suspension outlasts the restore/prune decision');
+        assert.ok(finalPersistAt > resumeAt, 'exactly one persist runs after the render has settled');
+    });
+
+    it('does not persist a provisional camera from the restore block itself', () => {
+        const body = showSvgBody();
+        const restoreAt = body.indexOf('pendingRestoreState = null;');
+        const finalPersistAt = body.lastIndexOf('persistState();');
+        assert.ok(
+            body.slice(restoreAt, finalPersistAt).indexOf('persistState();') === -1,
+            'no persist runs between the restore decision and the settled end-of-render persist',
+        );
+    });
+});
+
+// ── Draft restore status (#167) ──────────────────────────────────────────────
+
+describe('formatDraftRestoreStatus — pruning is no longer silent (#167)', () => {
+    it('says nothing when there was no draft', () => {
+        assert.strictEqual(formatDraftRestoreStatus(0, 0), null);
+    });
+
+    it('reports a clean restore', () => {
+        assert.deepStrictEqual(formatDraftRestoreStatus(3, 0), {
+            text: 'Draft restored — 3 staged changes.',
+            tone: 'info',
+            state: 'dirty',
+        });
+    });
+
+    it('uses the singular for one change', () => {
+        assert.strictEqual(formatDraftRestoreStatus(1, 0)?.text, 'Draft restored — 1 staged change.');
+    });
+
+    it('names what it dropped when only part of the draft still applies', () => {
+        assert.strictEqual(
+            formatDraftRestoreStatus(2, 3)?.text,
+            'Draft restored — 2 staged changes; 3 no longer apply and were dropped.',
+        );
+        assert.strictEqual(
+            formatDraftRestoreStatus(2, 1)?.text,
+            'Draft restored — 2 staged changes; 1 no longer applies and was dropped.',
+        );
+    });
+
+    it('explains a draft that could not be restored at all, and stays clean', () => {
+        assert.deepStrictEqual(formatDraftRestoreStatus(0, 4), {
+            text: 'Draft not restored: its 4 changes refer to elements no longer in the diagram.',
+            tone: 'info',
+            state: 'clean',
+        });
+        assert.strictEqual(
+            formatDraftRestoreStatus(0, 1)?.text,
+            'Draft not restored: its 1 change refers to elements no longer in the diagram.',
+        );
+    });
+});
+
+// ── Dirty-close host-side guard ───────────────────────────────────────────────
+// The `isDirtyStateChangedMessage` private method is verified indirectly by
+// testing the message shape that the webview emits. We exercise the guard by
+// importing PreviewPanel and testing via the public integration surface.
+
 // ── addRelationship (connect mode, #260) ────────────────────────────────────
+
 
 describe('staged relationship additions survive a draft round trip (#260)', () => {
     const ADD = { targetId: 'api', label: 'Calls', relType: 'sync', technology: 'HTTPS' };
@@ -264,7 +469,7 @@ describe('staged relationship additions survive a draft round trip (#260)', () =
         const original: Record<string, Record<string, unknown>> = {
             web: { addRelationship: [ADD] },
         };
-        const state = serializeDraftState(original, null, true);
+        const state = serializeDraftState(original, null, true, SCOPE_A);
         assert.deepStrictEqual(state.stagedEdits, [{ id: 'web', addRelationship: [ADD] }]);
         assert.strictEqual(isPersistedDraftState(state), true);
         assert.deepStrictEqual(deserializeDraftState(state), original);
@@ -274,7 +479,7 @@ describe('staged relationship additions survive a draft round trip (#260)', () =
         const original: Record<string, Record<string, unknown>> = {
             web: { addRelationship: [ADD, { targetId: 'db', label: 'Reads', relType: 'uses' }] },
         };
-        const stored: unknown = JSON.parse(JSON.stringify(serializeDraftState(original, null, true)));
+        const stored: unknown = JSON.parse(JSON.stringify(serializeDraftState(original, null, true, SCOPE_A)));
         assert.strictEqual(isPersistedDraftState(stored), true);
         assert.deepStrictEqual(deserializeDraftState(stored as PersistedDraftState), original);
     });
@@ -283,7 +488,7 @@ describe('staged relationship additions survive a draft round trip (#260)', () =
         const original: Record<string, Record<string, unknown>> = {
             web: { x: 40, y: 60, addRelationship: [ADD] },
         };
-        const state = serializeDraftState(original, 'web', true);
+        const state = serializeDraftState(original, 'web', true, SCOPE_A);
         assert.deepStrictEqual(state.stagedEdits, [{ id: 'web', x: 40, y: 60, addRelationship: [ADD] }]);
         assert.deepStrictEqual(deserializeDraftState(state), original);
     });
@@ -291,13 +496,13 @@ describe('staged relationship additions survive a draft round trip (#260)', () =
     it('persists only the allowlisted fields of each add', () => {
         const state = serializeDraftState({
             web: { addRelationship: [{ ...ADD, injected: '<script>', sourceId: 'x' }] },
-        }, null, true);
+        }, null, true, SCOPE_A);
         assert.deepStrictEqual(state.stagedEdits[0].addRelationship, [ADD]);
     });
 
-    it('is additive: the schema version stays 1 so an older reader ignores the field', () => {
-        const state = serializeDraftState({ web: { addRelationship: [ADD] } }, null, true);
-        assert.strictEqual(state.schemaVersion, 1);
+    it('retains the additive relationship field in the scoped v2 draft', () => {
+        const state = serializeDraftState({ web: { addRelationship: [ADD] } }, null, true, SCOPE_A);
+        assert.strictEqual(state.schemaVersion, 2);
     });
 
     describe('restore validation (exact allowlist)', () => {
@@ -347,7 +552,7 @@ describe('a bad staged relationship never discards the rest of the draft (#260)'
 
     it('round-trips a target id with a hyphen, which the grammar allows', () => {
         const original = { web: { x: 5, y: 6, addRelationship: [{ ...GOOD, targetId: 'api-gw' }] } };
-        const stored: unknown = JSON.parse(JSON.stringify(serializeDraftState(original, null, true)));
+        const stored: unknown = JSON.parse(JSON.stringify(serializeDraftState(original, null, true, SCOPE_A)));
         assert.strictEqual(isPersistedDraftState(stored), true);
         assert.deepStrictEqual(deserializeDraftState(stored as PersistedDraftState), original);
     });
@@ -412,55 +617,66 @@ describe('a bad staged relationship never discards the rest of the draft (#260)'
 });
 
 // Exercise the real host callbacks in a separate process so the VS Code mock
-// cannot pollute modules shared with other unit suites.
+// cannot pollute modules shared with other unit suites. The child transpiles
+// PreviewPanel once (the slow step, much slower under coverage) and runs every
+// scenario against it, so the cost does not multiply by the case count and the
+// cases do not depend on wall-clock headroom per case (#239).
 const DIRTY_CLOSE_HOST = String.raw`
 const assert = require('node:assert/strict');
 const Module = require('node:module');
-const scenario = JSON.parse(process.argv[2]);
-const warnings = [];
-const commands = [];
-let receive;
-let didDispose;
-let closed = false;
-const disposable = () => ({ dispose() {} });
-const vscode = {
-    workspace: {
-        getConfiguration: () => ({ get: (_key, fallback) => fallback }),
-        onDidSaveTextDocument: disposable,
-        onDidChangeTextDocument: disposable,
-    },
-    window: {
-        createOutputChannel: () => ({ appendLine() {}, dispose() {} }),
-        onDidChangeActiveTextEditor: disposable,
-        showInformationMessage: async () => undefined,
-        showWarningMessage: async (...args) => {
-            warnings.push(args);
-            return scenario.reopen ? 'Reopen Editor' : undefined;
-        },
-    },
-    commands: { executeCommand: async command => { commands.push(command); } },
-};
+const scenarios = JSON.parse(process.argv[2]);
+let vscode;
 const originalLoad = Module._load;
 Module._load = function(request, ...args) {
     return request === 'vscode' ? vscode : originalLoad.call(this, request, ...args);
 };
-const { PreviewPanel } = require(process.argv[1]);
-const panel = {
-    webview: {
-        options: {}, html: '', postMessage: async () => true,
-        onDidReceiveMessage(callback) { receive = callback; return disposable(); },
-    },
-    onDidDispose(callback) { didDispose = callback; return disposable(); },
-    dispose() {
-        if (closed) return;
-        closed = true;
-        didDispose();
-    },
-};
-const context = {
-    workspaceState: { get: () => undefined, update: async () => undefined },
-};
-(async () => {
+const disposable = () => ({ dispose() {} });
+// The module captures the vscode object at load, so one object is shared and
+// its sinks are re-pointed per scenario.
+let current = { scenario: {}, warnings: [], commands: [] };
+function makeVscode() {
+    return {
+        workspace: {
+            getConfiguration: () => ({ get: (_key, fallback) => fallback }),
+            onDidSaveTextDocument: disposable,
+            onDidChangeConfiguration: disposable,
+            onDidChangeTextDocument: disposable,
+        },
+        window: {
+            createOutputChannel: () => ({ appendLine() {}, dispose() {} }),
+            onDidChangeActiveTextEditor: disposable,
+            onDidChangeActiveColorTheme: disposable,
+            showInformationMessage: async () => undefined,
+            showWarningMessage: async (...args) => {
+                current.warnings.push(args);
+                return current.scenario.reopen ? 'Reopen Editor' : undefined;
+            },
+        },
+        commands: { executeCommand: async command => { current.commands.push(command); } },
+    };
+}
+async function run(PreviewPanel, scenario) {
+    const warnings = [];
+    const commands = [];
+    let receive;
+    let didDispose;
+    let closed = false;
+    current = { scenario, warnings, commands };
+    const panel = {
+        webview: {
+            options: {}, html: '', postMessage: async () => true,
+            onDidReceiveMessage(callback) { receive = callback; return disposable(); },
+        },
+        onDidDispose(callback) { didDispose = callback; return disposable(); },
+        dispose() {
+            if (closed) return;
+            closed = true;
+            didDispose();
+        },
+    };
+    const context = {
+        workspaceState: { get: () => undefined, update: async () => undefined },
+    };
     await PreviewPanel.createSerializer(context).deserializeWebviewPanel(panel, undefined);
     assert.equal(typeof receive, 'function', 'production message callback was registered');
     assert.equal(typeof didDispose, 'function', 'production disposal callback was registered');
@@ -474,50 +690,151 @@ const context = {
         assert.equal(warnings[0][1], 'Reopen Editor');
     }
     assert.deepEqual(commands, scenario.reopen ? ['c4x.openPreview'] : []);
+}
+(async () => {
+    vscode = makeVscode();
+    const { PreviewPanel } = require(process.argv[1]);
+    const results = [];
+    for (const scenario of scenarios) {
+        try { await run(PreviewPanel, scenario); results.push({ ok: true }); }
+        catch (error) { results.push({ ok: false, error: String(error && error.stack || error) }); }
+    }
+    process.stdout.write('RESULTS:' + JSON.stringify(results));
 })().catch(error => { console.error(error); process.exitCode = 1; });
 `;
 
-function verifyDirtyClose(messages: unknown[], warnings: number, reopen = false): void {
-    const result = spawnSync(process.execPath, [
-        '-r', require.resolve('ts-node/register/transpile-only'),
-        '-e', DIRTY_CLOSE_HOST,
-        require.resolve('../../webview/PreviewPanel'),
-        JSON.stringify({ messages, warnings, reopen }),
-    ], { encoding: 'utf8', timeout: 10000 });
-    assert.ifError(result.error);
-    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+interface DirtyCloseScenario { messages: unknown[]; warnings: number; reopen: boolean }
+const DIRTY_CLOSE_SCENARIOS: Record<string, DirtyCloseScenario> = {
+    warnsOnce: { messages: [{ type: 'dirtyStateChanged', dirty: true }], warnings: 1, reopen: false },
+    clearedNoWarn: {
+        messages: [{ type: 'dirtyStateChanged', dirty: true }, { type: 'dirtyStateChanged', dirty: false }],
+        warnings: 0, reopen: false,
+    },
+    malformedIgnored: {
+        messages: [null, {}, { type: 'dirtyStateChanged', dirty: 'yes' },
+            { type: 'dirtyStateChanged' }, { type: 'other', dirty: true }],
+        warnings: 0, reopen: false,
+    },
+    malformedClearKeepsDirty: {
+        messages: [{ type: 'dirtyStateChanged', dirty: true }, { type: 'dirtyStateChanged', dirty: 0 }],
+        warnings: 1, reopen: false,
+    },
+    untouchedNoWarn: { messages: [], warnings: 0, reopen: false },
+    reopenAction: { messages: [{ type: 'dirtyStateChanged', dirty: true }], warnings: 1, reopen: true },
+};
+
+type DirtyCloseOutcome = { ok: boolean; error?: string };
+type DirtyCloseLoad = { results: DirtyCloseOutcome[] } | { failure: string };
+
+// Turns the child's raw result into per-scenario outcomes, or one failure
+// message. Any infrastructure fault (spawn error, timeout, non-zero exit,
+// unparseable or short output) is a failure, never a pass.
+function parseDirtyCloseChild(
+    result: Pick<SpawnSyncReturns<string>, 'error' | 'status' | 'signal' | 'stdout' | 'stderr'>,
+    expected: number,
+): DirtyCloseLoad {
+    const detail = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+    if (result.error) { return { failure: `host child failed to run: ${result.error.message}` }; }
+    if (result.status !== 0) {
+        return { failure: `host child exited with status ${result.status} (signal ${result.signal}): ${detail}` };
+    }
+    const match = /RESULTS:(.*)$/s.exec(result.stdout ?? '');
+    if (!match) { return { failure: `host child produced no results: ${detail}` }; }
+    try {
+        const results = JSON.parse(match[1]);
+        if (!Array.isArray(results) || results.length !== expected) {
+            return { failure: `host child returned the wrong number of results: ${match[1]}` };
+        }
+        return { results };
+    } catch (error) {
+        return { failure: `host child results were not valid JSON: ${(error as Error).message}` };
+    }
 }
 
-describe('dirty-close warning — real PreviewPanel callbacks', () => {
+// One child for the whole suite, started on first use; success and failure are
+// both cached so every dependent case reports the same message.
+let dirtyCloseLoad: DirtyCloseLoad | undefined;
+function dirtyCloseResult(name: string): DirtyCloseOutcome {
+    if (!dirtyCloseLoad) {
+        dirtyCloseLoad = parseDirtyCloseChild(spawnSync(process.execPath, [
+            '-r', require.resolve('ts-node/register/transpile-only'),
+            '-e', DIRTY_CLOSE_HOST,
+            require.resolve('../../webview/PreviewPanel'),
+            JSON.stringify(Object.values(DIRTY_CLOSE_SCENARIOS)),
+        ], { encoding: 'utf8', timeout: 120000 }), Object.keys(DIRTY_CLOSE_SCENARIOS).length);
+    }
+    if ('failure' in dirtyCloseLoad) { return { ok: false, error: dirtyCloseLoad.failure }; }
+    return dirtyCloseLoad.results[Object.keys(DIRTY_CLOSE_SCENARIOS).indexOf(name)];
+}
+
+function verifyDirtyClose(name: keyof typeof DIRTY_CLOSE_SCENARIOS): void {
+    const outcome = dirtyCloseResult(name);
+    assert.ok(outcome.ok, outcome.error);
+}
+
+describe('isDirtyStateChangedMessage — the host guard (#174)', () => {
+    it('accepts a dirty and a clean report', () => {
+        assert.strictEqual(isDirtyStateChangedMessage({ type: 'dirtyStateChanged', dirty: true }), true);
+        assert.strictEqual(isDirtyStateChangedMessage({ type: 'dirtyStateChanged', dirty: false }), true);
+    });
+    it('rejects non-objects and other message types', () => {
+        for (const bad of [null, undefined, 'dirtyStateChanged', 1, [], {}, { type: 'other', dirty: true }]) {
+            assert.strictEqual(isDirtyStateChangedMessage(bad), false, JSON.stringify(bad));
+        }
+    });
+    it('rejects a dirty value that is not a boolean', () => {
+        for (const dirty of ['yes', 'true', 1, 0, null, undefined, {}]) {
+            assert.strictEqual(isDirtyStateChangedMessage({ type: 'dirtyStateChanged', dirty }), false, String(dirty));
+        }
+        assert.strictEqual(isDirtyStateChangedMessage({ type: 'dirtyStateChanged' }), false);
+    });
+});
+
+describe('dirty-close child result validation', () => {
+    const okRecords = JSON.stringify(Object.keys(DIRTY_CLOSE_SCENARIOS).map(() => ({ ok: true })));
+    const base = { error: undefined, status: 0, signal: null, stdout: 'RESULTS:' + okRecords, stderr: '' };
+    const n = Object.keys(DIRTY_CLOSE_SCENARIOS).length;
+
+    it('accepts a clean exit with one record per scenario', () => {
+        assert.ok('results' in parseDirtyCloseChild(base, n));
+    });
+    it('fails on a non-zero exit even when the results look successful', () => {
+        const load = parseDirtyCloseChild({ ...base, status: 1, stderr: 'boom' }, n);
+        assert.ok('failure' in load && /status 1/.test(load.failure));
+    });
+    it('fails on a spawn error, a timeout signal, bad JSON and a short result list', () => {
+        assert.ok('failure' in parseDirtyCloseChild({ ...base, error: new Error('ETIMEDOUT') }, n));
+        assert.ok('failure' in parseDirtyCloseChild({ ...base, status: null, signal: 'SIGTERM' }, n));
+        assert.ok('failure' in parseDirtyCloseChild({ ...base, stdout: 'RESULTS:{' }, n));
+        assert.ok('failure' in parseDirtyCloseChild({ ...base, stdout: 'RESULTS:[{"ok":true}]' }, n));
+    });
+});
+
+describe('dirty-close warning — real PreviewPanel callbacks', function () {
+    this.timeout(150000);
+
     it('warns once when an actual dirty message precedes disposal', () => {
-        verifyDirtyClose([{ type: 'dirtyStateChanged', dirty: true }], 1);
+        verifyDirtyClose('warnsOnce');
     });
 
     it('does not warn after the client clears its dirty state', () => {
-        verifyDirtyClose([
-            { type: 'dirtyStateChanged', dirty: true },
-            { type: 'dirtyStateChanged', dirty: false },
-        ], 0);
+        verifyDirtyClose('clearedNoWarn');
     });
 
     it('rejects malformed and unrelated messages without making the panel dirty', () => {
-        verifyDirtyClose([null, {}, { type: 'dirtyStateChanged', dirty: 'yes' },
-            { type: 'dirtyStateChanged' }, { type: 'other', dirty: true }], 0);
+        verifyDirtyClose('malformedIgnored');
     });
 
     it('does not let a malformed clear message erase an existing dirty state', () => {
-        verifyDirtyClose([
-            { type: 'dirtyStateChanged', dirty: true },
-            { type: 'dirtyStateChanged', dirty: 0 },
-        ], 1);
+        verifyDirtyClose('malformedClearKeepsDirty');
     });
 
     it('does not warn when an untouched panel closes', () => {
-        verifyDirtyClose([], 0);
+        verifyDirtyClose('untouchedNoWarn');
     });
 
     it('reopens the native editor through the warning action', () => {
-        verifyDirtyClose([{ type: 'dirtyStateChanged', dirty: true }], 1, true);
+        verifyDirtyClose('reopenAction');
     });
 });
 

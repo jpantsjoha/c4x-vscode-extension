@@ -1,0 +1,39 @@
+{
+  "name": "c4x",
+  "description": "C4X for assistants and CI: the C4X MCP server (validate_c4x, lint_c4x, render_c4x), the c4x render CLI and the c4x-lint CLI. Self-contained bundles with no runtime dependencies.",
+  "keywords": ["c4", "c4model", "architecture", "diagrams", "diagrams-as-code", "mcp", "cli"],
+  "license": "MIT",
+  "author": {
+    "name": "Jaroslav Pantsjoha",
+    "email": "jpantsjoha@gmail.com"
+  },
+  "homepage": "https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpantsjoha/c4x-vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/jpantsjoha/c4x-vscode-extension/issues"
+  },
+  "bin": {
+    "c4x": "cli/c4x.cjs",
+    "c4x-lint": "cli/c4x-lint.cjs",
+    "c4x-mcp": "mcp/c4x-mcp-server.bundle.cjs"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "cli/THIRD_PARTY_NOTICES.txt",
+    "cli/c4x-lint.cjs",
+    "cli/c4x.cjs",
+    "data/cloud-icons.json",
+    "mcp/THIRD_PARTY_NOTICES.txt",
+    "mcp/c4x-mcp-server.bundle.cjs"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

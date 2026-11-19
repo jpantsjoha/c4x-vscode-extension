@@ -1,0 +1,21 @@
+%%{ c4: container }%%
+graph TB
+    Person(customer, "Personal Banking Customer", "A customer of the bank with one or more personal bank accounts.")
+    System_Boundary(ibs, "Internet Banking System") {
+        Container(static, "Static Content", "Directory", "HTML, CSS, JavaScript, etc.", $tags="Folder", $shape="Folder")
+        Container(ui, "UI", "JavaScript and Angular", "Single-page app that provides Internet banking functionality to customers via their web browser.", $tags="WebBrowser", $shape="WebBrowser")
+        Container(backend, "Backend", "Java and Spring Boot", "Provides Internet banking functionality via a JSON/HTTPS API.", $tags="Terminal", $shape="Terminal")
+        ContainerDb(statements, "Statement Store", "Amazon Web Services S3 Bucket", "Bank account statements rendered as PDF files.", $tags="Bucket", $shape="Bucket")
+        ContainerDb(db, "Database", "MySQL Database Schema", "User account information, access logs, etc.", $shape="Cylinder")
+    }
+    System_Ext(core, "Core Banking System", "Handles core banking functions including customer information, bank account management, transactions, etc.", $tags="Core Banking")
+    System_Ext(email, "Amazon Web Services Simple Email Service", "Cloud-based email service provider.", $tags="External Email")
+    customer -->|Loads the UI from| static
+    customer -->|Views account balances and makes payments using| ui
+    static -->|Delivers the UI to| "HTTPS" ui
+    ui -->|Makes API calls to| "JSON/HTTPS" backend
+    backend -->|Reads from and writes to| "AWS S3 API/HTTPS" statements
+    backend -->|Reads from and writes to| "MySQL protocol/TLS" db
+    backend -->|Makes API calls to| "XML/HTTPS" core
+    backend -->|Sends e-mails to customers using| "JSON/HTTPS" email
+    email -->|Sends e-mails to| customer

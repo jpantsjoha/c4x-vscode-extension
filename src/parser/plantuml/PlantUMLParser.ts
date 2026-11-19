@@ -12,7 +12,9 @@ import {
     ElementMacroType,
     RelationshipMacroType,
     BoundaryMacroType,
+    PlantUMLParserError,
 } from './macros';
+import { MAX_NESTING_DEPTH, nestingDepthMessage } from '../nestingDepth';
 
 /**
  * PlantUML C4 Parser
@@ -22,6 +24,8 @@ export class PlantUMLParser {
     private lines: string[];
     private currentLine: number = 0;
     private currentColumn: number = 0;
+    /** Boundaries currently open; capped at MAX_NESTING_DEPTH so recursion cannot overflow (#362). */
+    private boundaryDepth = 0;
 
     constructor(source: string) {
         this.lines = source.split(/\r?\n/);
@@ -193,7 +197,20 @@ export class PlantUMLParser {
         }
 
         // Parse children until closing brace
-        const children = this.parseBoundaryChildren();
+        // The one behaviour this PR adds here (#362): each level recurses, so past
+        // MAX_NESTING_DEPTH the parse stops with a located error instead of
+        // overflowing the stack. Everything else is origin/main's behaviour.
+        if (this.boundaryDepth >= MAX_NESTING_DEPTH) {
+            const raw = this.lines[this.currentLine - 1] ?? '';
+            throw new PlantUMLParserError(nestingDepthMessage(), this.currentLine, Math.max(1, raw.indexOf(macroType) + 1));
+        }
+        this.boundaryDepth++;
+        let children: Array<ElementMacro | RelationshipMacro | BoundaryMacro>;
+        try {
+            children = this.parseBoundaryChildren();
+        } finally {
+            this.boundaryDepth--;
+        }
 
         return {
             type: 'boundary',
@@ -308,29 +325,41 @@ export class PlantUMLParser {
         return trimmed;
     }
 
-    private needsContinuation(line: string): boolean {
-        const openParens = (line.match(/\(/g) ?? []).length;
-        const closeParens = (line.match(/\)/g) ?? []).length;
-        const quoteCount = (line.match(/"/g) ?? []).length;
-
-        const hasUnclosedParens = openParens > closeParens;
-        const hasUnclosedQuotes = quoteCount % 2 !== 0;
-
-        return hasUnclosedParens || hasUnclosedQuotes;
-    }
-
+    /**
+     * Join a macro that spans several lines. The rule is origin/main's, quirks
+     * included: a line continues while the text joined so far has more `(`
+     * than `)` or an odd number of `"`, counted anywhere (inside quotes too,
+     * with no escapes), and an open call at the end of the source takes the
+     * rest of it. What changed (#362) is only the cost: main recounted the
+     * whole growing string with three regular expressions for every line it
+     * added, which was quadratic (900 KB took over 5.5 s); here each line is
+     * counted once and the parts are joined once.
+     */
     private collectMultiline(line: string): string {
-        let combined = line;
+        let open = 0;
+        let close = 0;
+        let quotes = 0;
+        const count = (text: string) => {
+            for (let index = 0; index < text.length; index++) {
+                const code = text.charCodeAt(index);
+                if (code === 40) { open++; } else if (code === 41) { close++; } else if (code === 34) { quotes++; }
+            }
+        };
+        const needsContinuation = () => open > close || quotes % 2 !== 0;
 
-        while (this.needsContinuation(combined) && this.currentLine < this.lines.length) {
+        count(line);
+        const parts = [line];
+        while (needsContinuation() && this.currentLine < this.lines.length) {
             this.currentLine++;
             if (this.currentLine > this.lines.length) {
                 break;
             }
-            combined += '\n' + this.lines[this.currentLine - 1].trim();
+            const next = this.lines[this.currentLine - 1].trim();
+            parts.push(next);
+            count(next);
         }
 
-        return combined;
+        return parts.join('\n');
     }
 }
 

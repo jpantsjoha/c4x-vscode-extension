@@ -10,6 +10,7 @@
  */
 import { expect, Page, test } from '@playwright/test';
 import { execFileSync } from 'child_process';
+import { writeFileSync } from 'fs';
 import * as path from 'path';
 import * as url from 'url';
 
@@ -129,8 +130,11 @@ for (const includeValid of [false, true]) {
             };
         }, includeValid);
         await loadHarness(page);
+        await page.getByRole('button', { name: 'Restore legacy draft here', exact: true }).click();
         await expect(page.locator('#layout-status')).toContainText(
-            `Draft restored: ${includeValid ? 1 : 0} staged changes; 1 could not be restored because its target is no longer present.`
+            includeValid
+                ? 'Draft restored — 1 staged change; 1 no longer applies and was dropped.'
+                : 'Draft not restored: its 1 change refers to elements no longer in the diagram.'
         );
         if (includeValid) {
             await expect(page.locator('#save-staged-changes')).toBeEnabled();
@@ -369,6 +373,7 @@ test('[#271] a restored draft leaves out a move of a boundary the source cannot 
         };
     });
     await loadHarness(page);
+    await page.getByRole('button', { name: 'Restore legacy draft here', exact: true }).click();
 
     await expect(page.locator('#layout-status')).toContainText(
         '1 staged boundary change could not be restored: "Shop" cannot be moved or resized'
@@ -466,3 +471,194 @@ test('a keyboard nudge after a child drag stages a move from the authored origin
     const boundaryEdit = saveMsg?.edits?.find(edit => edit.boundaryId === 'pinned-boundary');
     expect(boundaryEdit).toMatchObject({ id: 'pinned-boundary', x: 70, y: 230 });
 });
+
+/**
+ * #339: a boundary nested in another moves inside it. The editor re-wraps
+ * every enclosing frame after a boundary move, exactly as the host re-wraps
+ * on save, so the parent never shows its child hanging outside mid-drag.
+ */
+async function expectContains(page: Page, parentId: string, childId: string): Promise<void> {
+    const parent = await paintedFrame(page, parentId);
+    const child = await paintedFrame(page, childId);
+    expect(parent.x).toBeLessThanOrEqual(child.x);
+    // The parent's label band (BoundaryRenderer draws it at y + 20) stays clear.
+    expect(parent.y + 40).toBeLessThanOrEqual(child.y);
+    expect(parent.x + parent.width).toBeGreaterThanOrEqual(child.x + child.width);
+    expect(parent.y + parent.height).toBeGreaterThanOrEqual(child.y + child.height);
+}
+
+test('[#339] a keyboard move of a nested boundary re-wraps its parent around it', async ({ page }) => {
+    await loadHarness(page);
+    await page.locator('#toggle-layout').click();
+
+    expect(await paintedFrame(page, 'outer-boundary')).toEqual({ x: 600, y: 340, width: 260, height: 240 });
+    await expectContains(page, 'outer-boundary', 'inner-boundary');
+
+    const inner = page.locator('g.boundary[data-id="inner-boundary"]');
+    await inner.focus();
+    await page.keyboard.press('Enter');
+    for (let i = 0; i < 5; i++) {
+        await page.keyboard.press('ArrowDown');
+    }
+    for (let i = 0; i < 3; i++) {
+        await page.keyboard.press('ArrowRight');
+    }
+
+    expect(await paintedFrame(page, 'inner-boundary')).toEqual({ x: 670, y: 450, width: 180, height: 140 });
+    // Outer is auto-positioned, so the host wraps it to its child on save:
+    // origin = inner - (40, 60), size = inner + 40/60/40 padding.
+    expect(await paintedFrame(page, 'outer-boundary')).toEqual({ x: 630, y: 390, width: 260, height: 240 });
+    expect(await labelPosition(page, 'outer-boundary')).toEqual({ x: 640, y: 410 });
+    await expectContains(page, 'outer-boundary', 'inner-boundary');
+});
+
+test('[#339] a pointer drag of a nested boundary keeps it inside its parent', async ({ page }) => {
+    await loadHarness(page);
+    await page.locator('#toggle-layout').click();
+
+    const inner = page.locator('g.boundary[data-id="inner-boundary"]');
+    const box = await inner.boundingBox();
+    if (!box) {
+        throw new Error('Could not get the inner boundary bounding box.');
+    }
+    // Grab the label band, clear of the child node drawn on top.
+    const startX = box.x + 20;
+    const startY = box.y + 15;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 60, startY + 50, { steps: 5 });
+    await page.mouse.up();
+
+    const innerX = await boundaryCoordinate(page, 'inner-boundary', 'x');
+    const innerY = await boundaryCoordinate(page, 'inner-boundary', 'y');
+    expect(innerY).toBeGreaterThan(400);
+    await expectContains(page, 'outer-boundary', 'inner-boundary');
+    expect(await paintedFrame(page, 'outer-boundary')).toEqual({
+        x: innerX - 40, y: innerY - 60, width: 260, height: 240,
+    });
+
+    // The staged edit names the inner boundary only; the host re-wraps the parent.
+    await page.locator('#save-staged-changes').click();
+    const messages = await getMessages(page);
+    const saveMsg = messages.find(message => message.type === 'visualLayout.applySemanticEdits');
+    expect(saveMsg?.edits?.find(edit => edit.boundaryId === 'inner-boundary'))
+        .toMatchObject({ id: 'inner-boundary', x: innerX, y: innerY });
+    expect(saveMsg?.edits?.find(edit => edit.boundaryId === 'outer-boundary')).toBeUndefined();
+});
+
+test('[#339] moving a frame leaves a pinned nested frame and its contents where the host keeps them', async ({ page }) => {
+    await loadHarness(page);
+    await page.locator('#toggle-layout').click();
+
+    const host = page.locator('g.boundary[data-id="host-boundary"]');
+    await host.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+
+    expect(await boundaryCoordinate(page, 'host-boundary', 'x')).toBe(70);
+    expect(await boundaryCoordinate(page, 'host-boundary', 'y')).toBe(610);
+    // anchored-boundary carries $x/$y: the host leaves it, and queue inside it, alone.
+    expect(await paintedFrame(page, 'anchored-boundary')).toEqual({ x: 100, y: 660, width: 180, height: 140 });
+    expect(await boundaryCoordinate(page, 'anchored-boundary', 'x')).toBe(100);
+    expect(await boundaryCoordinate(page, 'anchored-boundary', 'y')).toBe(660);
+    expect(Number(await page.locator('g.node[data-id="queue"]').getAttribute('data-current-x') ?? 140)).toBe(140);
+    // The moved frame keeps its new authored origin and spans its pinned child,
+    // as adjustBoundariesToContainChildren sizes it on save.
+    expect(await paintedFrame(page, 'host-boundary')).toEqual({ x: 70, y: 610, width: 250, height: 230 });
+    await expectContains(page, 'host-boundary', 'anchored-boundary');
+});
+
+test('[#339] a staged nested move survives a later move of its parent', async ({ page }) => {
+    await loadHarness(page);
+    await page.locator('#toggle-layout').click();
+
+    const queueX = async (): Promise<number> =>
+        Number(await page.locator('g.node[data-id="queue"]').getAttribute('data-current-x') ?? 140);
+
+    // Move the pinned inner frame first: queue follows it and the move is staged.
+    const anchored = page.locator('g.boundary[data-id="anchored-boundary"]');
+    await anchored.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    expect(await boundaryCoordinate(page, 'anchored-boundary', 'x')).toBe(110);
+    expect(await queueX()).toBe(150);
+
+    // Then move the outer frame before saving. Save writes $x for both frames,
+    // and the host keeps queue inside the staged inner frame, at 150.
+    const host = page.locator('g.boundary[data-id="host-boundary"]');
+    await host.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    expect(await boundaryCoordinate(page, 'host-boundary', 'x')).toBe(70);
+    expect(await boundaryCoordinate(page, 'anchored-boundary', 'x')).toBe(110);
+    expect(await queueX()).toBe(150);
+    await expectContains(page, 'host-boundary', 'anchored-boundary');
+});
+
+/**
+ * The first drag of a frame the source never positioned (#346). The payload
+ * comes from the real host pipeline, and after the drag the host lays out the
+ * source Save writes: the child must land where the editor painted it.
+ */
+for (const shape of ['single', 'nested'] as const) {
+    test(`[#346] the first drag of an unpinned frame keeps its contents where the editor painted them (${shape})`, async ({ page }, testInfo) => {
+        const generator = path.join(ROOT, 'test/visual-layout/generate-host-layout-harness.js');
+        const source = (outer: string): string => shape === 'single'
+            ? `graph TB\n    subgraph Outer${outer} {\n        A[Alpha<br/>Container]\n    }\n`
+            : `graph TB\n    subgraph Outer${outer} {\n        A[Alpha<br/>Container]\n        subgraph Inner {\n            B[Beta<br/>Container]\n        }\n    }\n    A --> B\n`;
+        const beforePath = testInfo.outputPath('before.c4x');
+        const harnessPath = testInfo.outputPath('harness.html');
+        writeFileSync(beforePath, source(''));
+        execFileSync(process.execPath, [generator, 'harness', beforePath, harnessPath], { cwd: ROOT });
+
+        await page.goto(url.pathToFileURL(harnessPath).href);
+        await page.waitForFunction(() => document.querySelector('#content svg') !== null, undefined, { timeout: 5000 });
+        await page.locator('#toggle-layout').click();
+
+        const outerId = await page.locator('g.boundary').filter({ hasText: 'Outer' }).last().getAttribute('data-id');
+        if (!outerId) {
+            throw new Error('no Outer boundary in the host payload');
+        }
+        const startX = await boundaryCoordinate(page, outerId, 'x');
+        const startY = await boundaryCoordinate(page, outerId, 'y');
+        // Grab the frame by its label, clear of the children painted on top.
+        const box = await page.locator(`g.boundary[data-id="${outerId}"] > text`).boundingBox();
+        if (!box) {
+            throw new Error('Could not get the boundary label bounding box.');
+        }
+        const grab = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+        await page.mouse.move(grab.x, grab.y);
+        await page.mouse.down();
+        await page.mouse.move(grab.x + 80, grab.y + 80, { steps: 5 });
+        await page.mouse.up();
+
+        const endX = await boundaryCoordinate(page, outerId, 'x');
+        const endY = await boundaryCoordinate(page, outerId, 'y');
+        expect(endX).toBeGreaterThan(startX);
+        expect(endY).toBeGreaterThan(startY);
+        const painted = async (id: string): Promise<{ x: number; y: number }> => ({
+            x: Number(await page.locator(`g.node[data-id="${id}"]`).getAttribute('data-current-x')),
+            y: Number(await page.locator(`g.node[data-id="${id}"]`).getAttribute('data-current-y')),
+        });
+        const children = shape === 'single' ? ['A'] : ['A', 'B'];
+        const paintedChildren = Object.fromEntries(await Promise.all(children.map(async id => [id, await painted(id)])));
+
+        await page.locator('#save-staged-changes').click();
+        const messages = await getMessages(page);
+        const saveMsg = messages.find(message => message.type === 'visualLayout.applySemanticEdits');
+        const edit = saveMsg?.edits?.find(e => e.boundaryId === outerId);
+        expect(edit).toMatchObject({ x: endX, y: endY });
+
+        const afterPath = testInfo.outputPath('after.c4x');
+        writeFileSync(afterPath, source(` $x="${edit?.x}", $y="${edit?.y}"`));
+        const host = JSON.parse(execFileSync(process.execPath, [generator, 'layout', afterPath], { cwd: ROOT }).toString()) as {
+            boundaries: Record<string, { x: number; y: number }>;
+            elements: Record<string, { x: number; y: number }>;
+        };
+        expect(host.boundaries.Outer).toEqual({ x: endX, y: endY });
+        for (const id of children) {
+            expect(host.elements[id], `${id} after Save`).toEqual(paintedChildren[id]);
+        }
+    });
+}

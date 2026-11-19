@@ -1,0 +1,21 @@
+%%{ c4: container }%%
+graph TB
+    Person(short_person, "User", "Pays bills")
+    Person_Ext(long_person, "Personal Banking Customer With A Very Long Name", "A customer of the bank with one or more personal bank accounts, who also uses the mobile app, the website and the branch network to manage savings, loans and card payments every single day, and who calls the contact centre when a payment fails, a card is lost or a standing order needs changing before the end of the month")
+    System(medium_system, "Internet Banking System", "Allows customers to view information about their bank accounts and make payments")
+    System_Ext(short_system, "Mail", "Sends e-mail")
+    SystemDb(id_system, "MainframeBankingSystemFacadeImplementation", "Stores all of the core banking information")
+    Container(medium_container, "API Application", "Java and Spring Boot", "Provides Internet banking functionality via a JSON/HTTPS API")
+    Container(url_container, "Gateway", "https://api.example.com/v2/accounts/{accountId}/transactions?limit=50", "Routes requests")
+    ContainerDb(long_db, "Database", "Relational Database Schema on PostgreSQL 16 with logical replication", "Stores user registration information, hashed authentication credentials, access logs, audit trails, consent records and every statement ever produced for every account")
+    Component(cjk_component, "Контроллер входа", "Spring MVC Rest Controller", "Позволяет пользователям входить в систему интернет-банкинга и просматривать сведения о счетах")
+    Component(sprite_component, "Accounts Summary Controller", "Spring MVC Rest Controller", "Provides customers with a summary of their bank accounts", $sprite="server")
+    ComponentDb(short_component_db, "Cache", "Redis", "Sessions")
+    short_person -->|Uses| medium_system
+    long_person -->|Uses| medium_container
+    medium_container -->|Reads| long_db
+    medium_container -->|Calls| cjk_component
+    url_container -->|Routes to| sprite_component
+    sprite_component -->|Caches in| short_component_db
+    medium_system -->|Sends with| short_system
+    medium_system -->|Reads| id_system

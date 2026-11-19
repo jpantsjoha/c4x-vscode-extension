@@ -367,7 +367,7 @@ test('55. [#260] a staged relationship survives a webview reload and still saves
         return JSON.parse(JSON.stringify(host.__visualLayoutSavedState ?? null)) as unknown;
     });
     expect(saved).toMatchObject({
-        schemaVersion: 1,
+        schemaVersion: 2,
         stagedEdits: [{
             id: 'web',
             addRelationship: [{ targetId: 'api', label: 'Calls', relType: 'async', technology: 'HTTPS' }],
@@ -438,6 +438,7 @@ test('57. [#260] one corrupted staged relationship drops only that add, with a n
         };
     });
     await loadHarness(page);
+    await page.getByRole('button', { name: 'Restore legacy draft here', exact: true }).click();
     await expect(page.locator('#layout-status')).toContainText('1 staged relationship was invalid and could not be restored');
     await expect(page.locator('#staged-changes-list')).toContainText('Added relationship web → api: Calls');
     await expect(page.locator('#staged-changes-list')).toContainText('Label updated');

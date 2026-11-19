@@ -182,6 +182,8 @@ graph TB
 
 A label that is itself the protocol, such as `-->|JSON/HTTPS|`, is still reported: the protocol belongs in the technology slot and the label should say what the call is for.
 
+The rule checks the model, not the picture: it reads the relationship's technology from the model and reports when there is none. The renderer draws the technology under the label as a second line in brackets and italics, for example `[HTTPS]` (#421).
+
 ## C4X-L005
 
 **Software system outside the scope is marked external.** Checklist: *Do you understand what the diagram scope is?*

@@ -2,6 +2,165 @@
 
 All notable changes to the "c4x" extension will be documented in this file.
 
+## [Unreleased]
+
+## [1.9.2] - 2026-11-19
+
+The first release since 1.8.0 to be published. It carries everything in 1.8.1 to 1.9.0, which were tagged and not published (see those sections), and the changes below.
+
+### Fixed
+
+- **Large diagrams no longer freeze the editor.** A view too large to lay out at once is arranged in a background worker with a 2 second limit. The Markdown preview and Markdown export share one 2 second budget for each render, and when it runs out you get a timeout message instead of a frozen window (#454).
+- **A deployment node no longer drops content silently.** A `subgraph`, a boundary block or a `direction` statement inside a deployment node now raises the warning `C4X-L116`, and the rest of the diagram still renders (#472).
+
+### Changed
+
+- The run guide covers an isolated VSIX install, offline use versus a key, troubleshooting and cleanup, and tells you to clone the repository you received (#539, #540, #543).
+- The README package-size statement matches the measured package, 1.94 MB.
+
+### Maintenance
+
+- One dated exception covers the advisory GHSA-fc5q-39xc-vjpf in `picomatch`, a build-time dependency with no patched version; it expires on 2026-12-18. The package, the MCP server bundle and the npm package do not contain it (#537).
+- OVERVIEW.md, DEPENDENCIES.md and the README state of publication were brought up to date (#548).
+
+### Known limitations
+
+- Nested deployment nodes can be drawn outside their parent when a relationship crosses between nodes (#418).
+- The folder-generation check for files that may hold credentials can miss an unquoted secret value inside a long multi-line string (#509). Review the file list shown before generation sends it.
+- Routed arrows avoid boxes but not each other, so several can share a channel (#486). A routed arrow still attaches to the bounding box of a curved shape instead of its outline (#493). During a drag in the Visual C4 Editor, connected arrows stay straight until Save.
+- With Gemini, **Diagram from Selection** sends the selected text once, to suggest a diagram type, before the confirmation; the VS Code model route skips that step (#392).
+
+## [1.9.0] - 2026-11-17
+
+C4 notation refresh and agent-ready core. Work on `main` since 1.8.1.
+
+### Added
+
+- **One generated C4X reference.** `docs/reference/c4x-reference.json`, its Markdown form and a JSON Schema are built from the grammar, the model builder, the style resolver and the lint catalogue, and a drift test in the pull-request gate fails when they disagree. The Component, Node, Person and System signatures, comment syntax, text limit and lint-severity guidance pages now match it (#354, #422).
+- **C4 shape set.** `$shape` draws person, cylinder, bucket, folder, web browser, terminal, box and rounded box. Name, `[technology]` and description wrap inside each shape's own text area, and the `c4-model` theme draws a Person as a head over a rounded body unless it has its own `$sprite`. Other themes draw a Person as before. A Person with a description grows taller in `c4-model` because its text area is narrower; saved positions and sizes stay as they are. Element-style and shape documentation, and a picture of every shape in `c4-model` light, dark and modern, are in `docs/c4x-syntax.md` and `docs/images/notation/` (#323).
+- **An agent skill.** `skills/c4x` is an Agent Skills skill that lets Claude Code, Codex and other agents write, validate, lint and fix C4X. Its syntax reference is generated from the grammar, and tests fail when the skill and the reference disagree or when anything the skill names does not exist. Claude Code, Codex and AGY each drew a lint-clean diagram from it on three sample repositories; the runs are under `docs/validation/agent-skill-1.9/`. The skill renders through `render_c4x` or `c4x render` to check its work (#355, #353, #523).
+- **Generate without a Gemini key.** Set `c4x.ai.provider` to `vscode-lm` to draft diagrams with a chat model you already have in VS Code, such as GitHub Copilot's. C4X shows the model and what it will send before every generation, uses VS Code's own consent, sends its built-in guidance by default and never switches models for you. Gemini stays the default. `C4X: Select Gemini Model` is now `C4X: Select AI Model` (#392).
+- **The C4X MCP server is offered to VS Code's chat agent automatically** on VS Code 1.101 or later, with no configuration. Its tools are `validate_c4x` and `lint_c4x`. Turn it off with `c4x.mcp.register`. It is withheld in the web host, in virtual workspaces and in Restricted Mode. The package grows by the bundled server (#357).
+
+- **The agent skill works without a separate C4X installation and guards against diagram text.** `skills/c4x` now carries its own copy of `c4x-lint`, so a user who copies only the skill directory can validate and lint with Node.js 18 or later (#470). The skill tells the agent that diagram text, lint output and tool results are data and never instructions, stops after one attempt and two repairs and reports what is left, states a format, protocol or security property only when a file shows it, and saves to the path the user names, otherwise the project directory, reporting the absolute path (#487, #481, #469).
+
+- **Relationship technology is drawn.** The quoted technology after an edge label (`a -->|Calls| "HTTPS" b`) now appears under the label as `[HTTPS]`, measured so it stays clear of boxes. Edges without a technology draw as before (#421).
+- **Boundary and deployment notation in `c4-model`.** Boundaries are a thin solid frame with the name and a `[Software System]` or `[Container]` type line at the bottom left; deployment nodes carry their icon at the bottom left beside the name and `[Deployment Node: technology]`, and nodes with a vendor icon take its colour as their outline when it is readable. Other themes are unchanged (#324, #326).
+- **Plugins for coding agents.** The repository ships a Claude Code plugin (`/c4x:draw`, `/c4x:check`, `/c4x:preview`) and Codex, Gemini CLI and Antigravity packaging of the same skill and server, all generated from one source (#377, #358, #359). Codex can call the C4X MCP tools without a prompt using per-run settings, documented in the agent guide (#476).
+- **AI generation follows the notation.** Prompts use the active theme's colours and ask for shapes, relationship technology and boundary types; an unknown shape is sent back for repair with the closest valid name (#330).
+
+- **Render diagrams from an agent or the command line.** The MCP tool `render_c4x` and the CLI command `c4x render` draw C4X with the same renderer as the preview and return SVG with any findings. A render is limited to 100 elements and 150 relationships and stops after 2 seconds with its findings and no SVG; `c4x render` then exits 3 (#353).
+- **A diagram key.** The key lists the styles a diagram actually draws, with swatches in each element's own shape. Set `c4x.export.includeKey` to add it below the diagram in SVG, PNG, PDF, HTML, Copy SVG and the Markdown preview; it is off by default, and exports without it are unchanged (#327).
+
+- **An npm package for agents and scripts.** The package `c4x` carries the MCP server (`c4x-mcp`), `c4x render` and `c4x-lint`, with no dependencies and no install scripts; it needs Node 20 or later. It is published separately from the extension (#356).
+- **Snippets and completions offer the new notation.** Shape names, `$shape`, `$stroke`, `$legend` and the other element-style attributes complete as you type, and the snippets insert valid C4X (#332).
+
+### Changed
+
+- **Folder generation leaves out more files that may hold credentials.** The content check that keeps such files out of what is sent to the AI provider now covers more key formats and errs on the side of leaving a file out (#485).
+- **Person and system descriptions render as plain text (#420).** The third argument of `Person`, `System` and their `_Ext` and `Db` variants is the description, and every theme now draws it as plain text under the name. Before, it was drawn as `[description]` in the italic technology style. Existing diagrams change with no source edit. Containers and components keep their `[technology]` line; a person or system written with two text arguments, `System(id, "Name", "Technology", "Description")`, keeps its technology. Editing the description in the Visual C4 Editor saves it back to the same argument.
+- **Long element text wraps inside its shape (#340).** A label, `[technology]` or description wider than its box now breaks onto more lines inside the element, and the box grows taller to fit. This applies in every theme, in the preview, in the Visual C4 Editor and in SVG, PNG, HTML and PDF exports. Before, such text ran past the box and over neighbouring elements. Widths do not change, and text that fits is drawn as before. An element shows at most 3 lines of label, 2 of technology and 6 of description; text past that ends in an ellipsis, with the full text on hover. In a diagram with saved positions or frame geometry (for example one arranged in the Visual C4 Editor), and in edit mode, no box grows and the layout stays as before; long text there is shortened. Entering edit mode on a diagram whose boxes grew redraws it at the standard sizes first, and edit mode now stays on when the same diagram redraws. Only Latin, Greek and Cyrillic text wraps; text in other scripts is drawn as before (#459).
+- **Exported SVG text matches the preview (#340).** The Export SVG file's stylesheet no longer overrides the drawn text, so element names and boundary labels are bold, technology and descriptions are 12 px (11 px under an icon), edge labels are 12 px and the diagram title is 20 px bold, as in the preview. Before, every text in an exported SVG was drawn at the theme's base size (14 px; 13 px in `muted`, 16 px in `high-contrast`) and regular weight. Every exported SVG changes; PNG, HTML and PDF exports were not affected.
+- **Element type line in `c4-model` (#348).** The `c4-model` theme prints each element's C4 type under its name, `[Person]`, `[Software System]`, `[Container: technology]`, `[Component: technology]`, `[Deployment Node: technology]`, in the preview, the editor and exports. The line replaces the bare `[technology]` line. Other themes are unchanged, so the line is visible only in `c4-model` until the default theme changes (#475).
+- The build reports the bundle against one 3.5 MB planning target, as information only. The stale 1 MB and 1.5 MB thresholds are gone (#234). The bundle now meets the target, at about 2.8 MB (#464).
+- **A smaller package.** The AWS and Azure icons ship once, as one data file the extension, the MCP server and `c4x render` share, checked against a SHA-256 fingerprint built into each; a missing or altered file is reported, not drawn. The VSIX fell from 2.6 MB to 1.8 MB (#534).
+- **Folder generation shows what it will send.** Generating from a folder skips guidance documents and files that commonly hold credentials, and shows the files it will send, and those it left out, before it sends them. This applies to Gemini and to the VS Code model route. Gemini users see one new confirmation per generation. `docs/GEMINI_GUIDE.md` lists what is sent (#392).
+
+### Fixed
+
+- **Relationship arrows no longer pass through unrelated elements.** An arrow whose straight line would cross another box is routed around it with horizontal and vertical segments, and the drawn line follows the routed points. The label of a rerouted arrow moves to the middle of its longest segment. Arrows that cross nothing are unchanged. Some existing diagrams change in every theme: 44 of the 234 diagrams in the compatibility corpus draw at least one rerouted arrow (#419).
+- The element catalogue no longer lists `DeploymentNode` or `SoftwareSystem_Ext`, which the model builder rejects (#449).
+
+### Security
+
+- The MCP server and `c4x-lint` enforce documented input limits (nesting 32 levels, 2,000 elements, 5,000 relationships, 4,096 characters per text field, 256 entries per attribute list; finding `C4X-LIMIT`), escape control characters in quoted diagram text and answer malformed requests with JSON-RPC errors. Diagram identifiers are escaped in SVG output, and SVG stays well-formed when a label holds a control character. `SECURITY.md` states the contract (#362).
+
+### Maintenance
+
+- The release gate refuses a tag when a requirement recorded for the release is neither Covered in the traceability matrix nor deferred with an issue (`make verify-release-requirements`, part of `make check-full`), and a release checklist covers both published releases and private baselines (#370).
+- The npm staging directory is left out of the VSIX (#532), and the skill's render step uses `render_c4x` or `c4x render` (#523).
+- A release tag on a maintenance branch (`release/MAJOR.MINOR.x`) passes the release-ref check when its commit is on that branch (#455, #456).
+- Generation runs through one provider-neutral repair loop, one attempt plus two repairs per model. No user-visible change (#393).
+- Screenshot tests stay strict. The editor-chrome screenshot no longer depends on the native resize grip of a text area, which Chrome Canary draws differently from the stored baseline on macOS, and `playwright.config.ts` no longer carries a tolerance setting Playwright ignored (#477).
+- The README package-size statement matches the measured package (#489). The exact-match check will fail again at each size change until #490 is done.
+- The dogfood run that wrote C4 views of this repository with an assistant, with no Gemini key, is recorded under `docs/validation/dogfood-2026-11-14/` (#424, #351).
+
+### Known limitations
+
+- Routed arrows avoid boxes but not each other, so several can share a channel (#486). Where a routed arrow bends or is offset, it still attaches to the bounding box of a curved shape instead of its outline (#493). During a drag in the Visual C4 Editor, connected arrows stay straight until Save.
+- The agent evaluation suite, which scores Claude Code, Codex and Antigravity on C4X tasks as a release gate, is planned (#360).
+- With Gemini, **Diagram from Selection** sends the selected text once, to suggest a diagram type, before the confirmation; the VS Code model route skips that step (#392).
+
+## [1.8.3] - 2026-11-15
+
+Tagged `v1.8.3` at `8f9c2e4` on `release/1.8.x`. Not yet published; the published version is still 1.8.0.
+
+### Fixed
+
+- Folder generation no longer reads credential files, and shows what it will send before sending.
+
+## [1.8.2] - 2026-11-15
+
+Security hardening for diagram rendering and the MCP server. Tagged as a private baseline; not published. Details will be published with v1.9.0.
+
+## [1.8.1] - 2026-11-15
+
+Tagged `v1.8.1` at `6914d43`, not published (private baseline). The published version is still 1.8.0. These entries reach users with 1.9.0.
+
+### Added
+
+- **Preview: the notation items in this section.** The `c4-model` theme, tag styles with `elementStyle`, `$shape`, the dark variant and the style diagnostics `C4X-L107` to `C4X-L115` are a preview. They are on `main` ahead of the C4 notation refresh planned for 1.9.0, `classic` stays the default theme, and diagrams that use none of them render as before. More shapes and a generated key come with 1.9.0 (#319).
+- **`c4-model` theme (preview).** A seventh diagram theme follows the examples c4model.com publishes: white boxes with coloured outlines and text, green for people, blue for the systems, containers and components in scope, red for external systems, dark grey dashed relationships and a thin solid boundary. The theme also carries orange, teal and purple accents, with darker text tones for orange and teal so text keeps at least 4.5:1 contrast on white; each external element takes the next accent in declaration order (see below). Select it with `c4x.theme` or **C4X: Change Theme**; the default stays `classic`. More shapes and a generated key follow in later 1.9.0 work (#321, #319).
+
+- **Element styles and shapes (preview).** A top-level `elementStyle <Tag> $key="value", …` statement styles every element carrying that tag, and `$shape="<Name>"` gives one element its own shape. Keys are `$stroke`, `$background`, `$color`, `$shape`, `$sprite`, `$border`, `$strokeWidth` and `$legend`; values are quoted. Styles apply over the theme in a fixed order (theme, then tag styles, then the element's own settings), live in the source and survive visual-editor Save, which refuses to write a change that would drop them. An unknown key, a bad value, a repeated key or a shape C4X cannot draw yet is reported in the editor, in `c4x-lint` and in the MCP `lint_c4x` tool (`C4X-L107` to `C4X-L115`), and the element still renders, as a rectangle where its shape is unknown. Shapes beyond box, rounded box and cylinder arrive in later 1.9.0 work. Existing diagrams that use none of this render as before (#322).
+- In the `c4-model` theme (preview), each external system, external container, external component and external deployment node takes the next accent colour (red, orange, teal, purple) in the order it is declared (#322).
+- When VS Code uses a dark or high-contrast colour theme, the `c4-model` theme (preview) switches to a dark variant in the preview, with every label at least 6:1 against its background. Exported SVG, PNG, HTML and PDF files and **Copy SVG** keep the light variant, because they are read outside the editor. An open preview redraws when you change VS Code's colour theme, keeping staged edits (#329).
+
+### Changed
+
+- **A refused Save keeps your edits on screen.** Before, a refused Save (for example when the source changed under the draft) discarded the staged edits and reloaded from source, and some refusals left the preview stuck on "Saving…". Now the edits stay staged, Save is available again where it can work, the reason is shown, and **Discard** reloads from source. While the conflict banner shows, the banner's actions apply (#442).
+- The `c4x.theme` setting now lists all seven themes, including `c4-standard`, which the extension already offered in **C4X: Change Theme** but the setting did not, and each description says what the theme looks like. `classic` was described as the official C4 colours; c4model.com prescribes no colours. When the setting holds a value C4X does not know, the extension now falls back to `classic`, the setting's default, instead of `c4-standard` (#321).
+- Changing the `c4x.theme` setting now restyles an open preview without a reload. It used to apply only through **C4X: Change Theme** or after a reload (#390).
+- The model list carries Google's current retirement dates. Gemini 2.5 Pro and 2.5 Flash now read 2026-12-01 instead of 2026-10-16, and 2.5 Flash Image reads 2027-03-15. `gemini-omni-1.2-flash` is listed and `gemini-omni-1.1-flash` is listed with its 2026-12-03 sunset. The defaults do not change (#290, #425).
+- When a file changes on disk while you are editing, the editor now says plainly that the staged edits cannot be saved onto the new version and tells you to close and reopen the editor. Rebase offers no way to keep the draft yet; that follow-up is #417. A Save that is refused now keeps your edits (below) (#293, #406).
+
+### Fixed
+
+- **Structurizr files with positional strings now keep their braces in step, and some broken files now report the line.** The parser did not read the positional strings after an element name (`softwareSystem "Name" "Description" "Tags"`), so the braces that followed fell out of step and a `views` block could vanish with no error. It now reads the description, technology and tags in the Structurizr order (`person` and `softwareSystem`: description, tags; `container` and `component`: description, technology, tags), and a `description` or `technology` line in a body sets its own field. A missing closing brace, a `views` block after the workspace's closing brace, a model with no elements and a workspace with no views report the line and the cause instead of drawing nothing. Other irregular files still render best-effort: an extra closing brace at the end, `views` inside an element body and `styles` inside the model are recovered, and a view of an element that is not defined still draws. Surplus positional strings, unknown identifiers and `theme` lines are skipped without an error. A file that rendered before only because the braces miscounted can now report an error. Not yet handled: relationship identifiers, `#` comments and dotted or hyphenated identifiers (#436) (#242, #426).
+- **A workspace that would draw nothing shows a message instead of a blank preview.** A Structurizr workspace with no views, or a model with no elements, says which it is and where (#426).
+- **Unsaved edits survive a theme change and Refresh Preview.** While the preview holds staged edits, changing `c4x.theme`, switching VS Code between a light and a dark colour theme, or running **C4X: Refresh Preview** no longer discards them. The preview keeps the edits, shows "Theme change or refresh will apply after you save or discard.", and applies the change once you Save or Discard. With no unsaved edits, a source change still re-renders at once; with unsaved edits, a real change to the diagram source raises the conflict banner (#408, #432, #439).
+- **Saving the text editor no longer discards unsaved visual edits.** A text save, an autosave, or an edit to a Markdown file outside the diagram's fence used to clear staged edits. The preview now keeps them and catches up after you Save or Discard, and Save still works afterwards when the diagram itself is unchanged. A real change to the diagram source raises the conflict banner (Reload, View diff, Rebase) instead of discarding the draft. Switching the preview to another document still discards it (#439, #442).
+- **A Save that stores positions in the layout file checks the source first.** This applies when `layout.persistence` is `sidecar`, and always for Structurizr and PlantUML. The Save now checks that the source is unchanged immediately before it writes, and refuses and writes nothing if it changed. Before, a source change during the Save could go undetected and the Save reported success. A layout file that cannot be read, or is not valid JSON, now refuses the Save, names the file and leaves it untouched; before, it could be overwritten. When one Save changes both the text and the positions and the positions cannot be written, the text edit stands and the message says so (#443, #444).
+- **A keyboard move of a multi-selection keeps its shape at the canvas edge.** Moving a selection with the arrow keys into the left or top edge squashed the nodes together and staged the squashed positions. The group now stops at the edge as a unit, as it does when you drag it, and the positions staged are the positions shown (#423, #442).
+- **C4X: Refresh Preview reaches Markdown fence editors.** It refreshed only the standalone preview before (#429, #432).
+- **C4X: Change Theme works with no folder open.** It tried to save the setting at workspace scope, failed, and left the theme switched but unsaved. It now saves to your user settings when no folder is open, and restores the previous theme with an error message if the write is rejected (#399, #404).
+- **The export save dialog opens beside the source.** With a `.c4x` file active, **C4X: Export SVG** suggested a folder that does not exist, and **C4X: Export Diagram as PNG** suggested the workspace root. SVG, PNG and **C4X: Export Markdown to HTML** now share one rule and suggest the folder of the open source file with its base name (#435, #437).
+- **The first drag of an unpinned boundary no longer moves its children again on Save.** The editor showed the boundary where you dropped it, but the saved layout measured its position from a different origin, so its contents shifted after Save. The saved frame now matches what the editor showed (#346, #350).
+- **The MCP server reports the package version.** It announced `1.4.0` whatever the release; it now reports the version of the package it ships in (#427).
+
+- AI generation prompts no longer tell the model to write a dotted relationship as `..>`, which the parser rejects; they name the three arrows it accepts (`-->`, `-.->` for asynchronous, `==>` for synchronous). The built-in guidance example now parses, and the prompts list every element type C4X accepts instead of seven. A generation that followed the old prompt failed validation and used one of its three attempts on a correction (#387).
+- A `Container_Boundary` nested inside a `System_Boundary` is now drawn inside it. The parser had dropped which boundary contained which, so the inner boundary was laid out below its parent. Moving a nested boundary in the visual editor now keeps it inside its parent before Save, keeps boundaries and elements pinned with `$x`/`$y` where they are, and keeps an earlier staged move of an inner boundary when its parent moves. Rebase now refuses a staged boundary edit when two nested boundaries cannot be told apart (#339).
+
+- A Rebase after an external change no longer lets a staged relationship or boundary edit be saved onto a different statement. Relationship and boundary ids are positional, so Rebase now compares what each staged id named before and after the change and, when one moved or cannot be told apart from another, refuses with the reason and asks you to reload the draft (#261).
+- Pan, wheel zoom, Fit, Reset and zoom buttons now remember the camera across preview reloads. A restored camera takes precedence over auto-fit; a hidden viewport cannot replace it with zero-sized framing.
+- Drafts now belong to the exact source content of their native file or Markdown fence. Changed source, including whitespace, rejects the old scoped draft with a notice. Identical fences disable persistence and explain that changes must be saved before reload. An older draft without a source identity remains unchanged until the user explicitly restores it to the visible diagram or discards it; recovery retains staged connect relationships as well as moves and property edits.
+
+### Security
+
+- Dependencies are updated to clear the high-severity advisories open since 2026-10-09, among them `markdown-it` 14.3.3 inside the extension package. `pnpm audit --audit-level=high` reports none and `make cve-scan` passes; the remaining findings are low or moderate and in development tools (#292, #400).
+
+### Maintenance
+
+- The packaged-extension smoke test now installs the VSIX and checks every contributed command, C1, C2, C3 and Markdown rendering, all seven themes, edit with Save and reopen, Discard, and SVG, PNG and HTML export. It runs on every release gate (#368, #397).
+- Unit coverage is held per source directory as well as overall, and the draft-survival tests share one child process so they no longer time out under coverage (#367, #239, #403).
+- Tests now cover the real dirty-state guard, Save with generated styles and shapes, the Gemini model dates, the export default path and the Structurizr positional rules (#174, #369, #409, #425, #437, #438, #426).
+- A compatibility corpus of 234 published diagrams and an upgrade test for a 1.8.0 workspace run in the gate, and the Save transaction has property-based tests (#365, #366, #288, #384, #385, #300).
+- The architecture documents, developer guide and runbooks describe 1.8.0 and `main` (#305, #407). The Markdown lint reaches files at every depth (#236, #405).
+
+### Known limitations
+
+- An element's description is drawn as bracketed italic technology text for Person, System and External elements, and a relationship's technology is parsed and linted but never drawn (#420, #421). Both change in 1.9.0, for every theme, and the release notes will say so.
+
 ## [1.8.0] - 2026-10-15
 
 ### Added

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "editMode": true,
+  "selectedNodeId": "web",
+  "stagedEdits": [
+    {
+      "id": "web",
+      "x": 120,
+      "y": 80,
+      "label": "Web App",
+      "technology": "React",
+      "addRelationship": [
+        {
+          "targetId": "api",
+          "label": "Calls",
+          "relType": "async",
+          "technology": "HTTPS"
+        }
+      ]
+    },
+    {
+      "id": "db",
+      "description": "Primary store",
+      "tags": [
+        "storage"
+      ]
+    }
+  ],
+  "zoom": 1.5,
+  "panX": 24,
+  "panY": -16
+}

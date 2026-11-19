@@ -1,0 +1,3451 @@
+{
+ "schema": 2,
+ "note": "Each entry accepts one known difference between the 1.8.0 baseline and the current code for one item and facet. It pins the exact approved new value (model summaries, SVG hashes or parse outcome), so a later, different change to the same item fails. An entry that accepts nothing fails the test as stale. Every entry needs an issue or PR reference.",
+ "entries": [
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:24",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=component d=TB e=signin:Component,bank:SoftwareSystem r=1 b=internet-banking-system-boundary-0[api-application-boundary-1],api-application-boundary-1[signin]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:24",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #420, the person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "bbda1e31b18cbe4b"
+     ],
+     "modern": [
+      "c9329bca4c3f7fe1"
+     ],
+     "muted": [
+      "af2b75065c9e6e54"
+     ],
+     "high-contrast": [
+      "c438462d922ecc4a"
+     ],
+     "c4-standard": [
+      "3c86bcbea7db5547"
+     ],
+     "auto-light": [
+      "2546d395c354f9b8"
+     ],
+     "auto-dark": [
+      "36450982a1a9656f"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:25",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=component d=TB e=signin:Component,mainframe:SoftwareSystem r=1 b=internet-banking-system-boundary-0[api-application-boundary-1],api-application-boundary-1[signin]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:25",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #420, the person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "f4800c37812bb018"
+     ],
+     "modern": [
+      "89467220e865b000"
+     ],
+     "muted": [
+      "13126fbfd7bca787"
+     ],
+     "high-contrast": [
+      "560c424cacb8e45e"
+     ],
+     "c4-standard": [
+      "19778929d366b88a"
+     ],
+     "auto-light": [
+      "1d2253fcfc6f605c"
+     ],
+     "auto-dark": [
+      "be39d2a8eaf5a5d3"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-LAYOUT.md#c4x:2",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=User:Person,LB:Container,S1:Component,S2:Component,S3:Component,Note:Component r=4 b=cloud-boundary-0[LB,services-boundary-1],services-boundary-1[S1,S2,S3]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-LAYOUT.md#c4x:2",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves)",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "svg": {
+     "classic": [
+      "31ec7851f83b706e"
+     ],
+     "modern": [
+      "f09a8fc84e230bfc"
+     ],
+     "muted": [
+      "246552e2483f6ee8"
+     ],
+     "high-contrast": [
+      "3c9e830bec3c05df"
+     ],
+     "c4-standard": [
+      "ed976c272dacdc20"
+     ],
+     "auto-light": [
+      "655d436b0e74e41e"
+     ],
+     "auto-dark": [
+      "16aee177d106c6f3"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-LAYOUT.md#c4x:3",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=User:Person,Web:SoftwareSystem,Memory:Container,Trend:Container,Strategy:Container,Creative:Container,Report:Container r=10 b=agentsystem-boundary-0[Memory,agentloop-boundary-1,Report],agentloop-boundary-1[Trend,Strategy,Creative]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-LAYOUT.md#c4x:3",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "2e6c494dace23104"
+     ],
+     "modern": [
+      "bd33c2658ca5cbe3"
+     ],
+     "muted": [
+      "3a5f70cab0b663d1"
+     ],
+     "high-contrast": [
+      "4cf16026a5f8bc85"
+     ],
+     "c4-standard": [
+      "36410bf1322b90df"
+     ],
+     "auto-light": [
+      "fb2154f4380ee76c"
+     ],
+     "auto-dark": [
+      "1dc85fd21a0ab0ce"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:4",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=User:Person,Facade:Container,UserSvc:Container,OrderSvc:Container,CatalogSvc:Container,NewDB:Container,Monolith:Container,LegacyDB:Container r=9 b=migrationinprogress-boundary-0[Facade,newservices-boundary-1,Monolith,LegacyDB],newservices-boundary-1[UserSvc,OrderSvc,CatalogSvc,NewDB]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:4",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves)",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "svg": {
+     "classic": [
+      "e7cc797652c735d8"
+     ],
+     "modern": [
+      "413f790beaa9ac86"
+     ],
+     "muted": [
+      "e7e8cfc09ad96da8"
+     ],
+     "high-contrast": [
+      "ab66f8d2e7a65399"
+     ],
+     "c4-standard": [
+      "020f24f84e9f4d10"
+     ],
+     "auto-light": [
+      "eb3b9c617941613c"
+     ],
+     "auto-dark": [
+      "1ea64db7e4318d3e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:7",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=TenantA:Person,TenantB:Person,LB:Container,WebApp:Container,APITier:Container,TenantRouter:Container,AuthSvc:Container,JobQueue:Container,TenantADB:Container,TenantBDB:Container,SharedDB:Container,BlobStore:Container,Billing:SoftwareSystem r=12 b=saasplatform-boundary-0[LB,WebApp,APITier,TenantRouter,AuthSvc,JobQueue,tenantdataisolation-boundary-1,BlobStore],tenantdataisolation-boundary-1[TenantADB,TenantBDB,SharedDB]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:7",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "cf123c9de2b2d6f9"
+     ],
+     "modern": [
+      "72ac719596095712"
+     ],
+     "muted": [
+      "37da1f6b81d27d33"
+     ],
+     "high-contrast": [
+      "2b16ccf76ea45cce"
+     ],
+     "c4-standard": [
+      "4e37c53e14e47d4b"
+     ],
+     "auto-light": [
+      "e03337cb27eec0e8"
+     ],
+     "auto-dark": [
+      "a9f09edbf6b7327b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:9",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=Employee:Person,Contractor:Person,IdentityProxy:Container,PolicyEngine:Container,MeshGW:Container,AppSvc:Container,DataSvc:Container,AdminSvc:Container,SecretMgr:Container,AuditLog:Container,IdP:SoftwareSystem,SIEM:SoftwareSystem r=13 b=zerotrustperimeter-boundary-0[IdentityProxy,PolicyEngine,MeshGW,servicemesh-boundary-1,SecretMgr,AuditLog],servicemesh-boundary-1[AppSvc,DataSvc,AdminSvc]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:9",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "dab15578b8fcbaf4"
+     ],
+     "modern": [
+      "f2b541e8d4ef09d4"
+     ],
+     "muted": [
+      "d9517249c2a1f38c"
+     ],
+     "high-contrast": [
+      "9b10d393923563c8"
+     ],
+     "c4-standard": [
+      "bf1b0992a684a5dd"
+     ],
+     "auto-light": [
+      "f0857e5d810319e8"
+     ],
+     "auto-dark": [
+      "d3f1aab6ea57be02"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-VIEWS.md#c4x:3",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=deployment d=TB e=CDN:Container,WebApp:Container,APIGateway:Container,AppointmentSvc:Container,RecordsSvc:Container,PrimaryDB:Container,ReplicaDB:Container,Cache:Container,Kafka:Container r=9 b=production-boundary-0[cloudfrontedge-boundary-1,kubernetescluster-boundary-2,datatier-boundary-5,messaging-boundary-6],cloudfrontedge-boundary-1[CDN],kubernetescluster-boundary-2[frontendpods-boundary-3,backendpods-boundary-4],frontendpods-boundary-3[WebApp],backendpods-boundary-4[APIGateway,AppointmentSvc,RecordsSvc],datatier-boundary-5[PrimaryDB,ReplicaDB,Cache],messaging-boundary-6[Kafka]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-VIEWS.md#c4x:3",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "fa0258e99d0fe62d"
+     ],
+     "modern": [
+      "2c293618cf76cb92"
+     ],
+     "muted": [
+      "467abcb34c8a6e8e"
+     ],
+     "high-contrast": [
+      "8807aaeb48c59e40"
+     ],
+     "c4-standard": [
+      "75306ade486da486"
+     ],
+     "auto-light": [
+      "9539314107ddb925"
+     ],
+     "auto-dark": [
+      "1c1c518cce2526a0"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:1",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=EndUser:Person,DS:Person,Orchestrator:Container,ResAgent:Container,CodeAgent:Container,ReasonAgent:Container,VectorStore:Container,MetaDB:Container,GoogleVertex:SoftwareSystem r=12 b=platformscope-boundary-0[Orchestrator,agentlayer-boundary-1,datalayer-boundary-2],agentlayer-boundary-1[ResAgent,CodeAgent,ReasonAgent],datalayer-boundary-2[VectorStore,MetaDB]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:1",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #420, the person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "8838dfb4d9c55c25"
+     ],
+     "modern": [
+      "6dfccf3f05a367e7"
+     ],
+     "muted": [
+      "2cbcfce0711252e9"
+     ],
+     "high-contrast": [
+      "f4c2af443506834b"
+     ],
+     "c4-standard": [
+      "4f5f1a9bbdf4964b"
+     ],
+     "auto-light": [
+      "25b2aea76904f9f4"
+     ],
+     "auto-dark": [
+      "171399da38eea85b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:2",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=EndUser:Person,DS:Person,Orchestrator:Container,ResAgent:Container,CodeAgent:Container,ReasonAgent:Container,VectorStore:Container,MetaDB:Container,GoogleVertex:SoftwareSystem r=12 b=platformscope-boundary-0[Orchestrator,agentlayer-boundary-1,datalayer-boundary-2],agentlayer-boundary-1[ResAgent,CodeAgent,ReasonAgent],datalayer-boundary-2[VectorStore,MetaDB]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:2",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #420, the person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #362, the bundled gcp-cloudrun icon (inferred for the Cloud Run orchestrator) closes the group it left open, so the SVG is well-formed XML; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #362 (gcp-cloudrun sprite fixed: every bundled sprite must render as well-formed XML); svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "6325371fd66614da"
+     ],
+     "modern": [
+      "09910468360ccf54"
+     ],
+     "muted": [
+      "104cb1cf4ee6db7c"
+     ],
+     "high-contrast": [
+      "5a9e197fac9e5724"
+     ],
+     "c4-standard": [
+      "0e67719d144fe4da"
+     ],
+     "auto-light": [
+      "acc6df4bbc4ce41f"
+     ],
+     "auto-dark": [
+      "b356d0217f1b3cd9"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:4",
+   "facet": "model",
+   "kind": "nested boundary is listed in its parent boundary",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it",
+   "after": {
+    "summaries": [
+     "t=container d=TB e=Shopper:Person,DNS:Container,CloudFront:Container,ALB:Container,ShopUI:Container,MainDB:Container,Assets:Container r=6 b=awscloud-boundary-0[DNS,CloudFront,ALB,services-boundary-1,MainDB,Assets],services-boundary-1[ShopUI]"
+    ]
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:4",
+   "facet": "svg",
+   "kind": "nested boundary laid out and drawn inside its parent (diagram geometry moves); and, since #420, the person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#339, merged in #342; CHANGELOG.md Unreleased: a Container_Boundary nested inside a System_Boundary is drawn inside it; svg hash re-pinned by #420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "950ce7f8e4cbf255"
+     ],
+     "modern": [
+      "6f28ec92139645d1"
+     ],
+     "muted": [
+      "dc0a194f902ddd31"
+     ],
+     "high-contrast": [
+      "98c7cb55222f47e9"
+     ],
+     "c4-standard": [
+      "7b3cbd9cf4c3842c"
+     ],
+     "auto-light": [
+      "831c6a2c3222beca"
+     ],
+     "auto-dark": [
+      "ca988431343a173b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:samples/visual-layout/c1-refined-metadata.c4x",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "fa4a910eaa1f12b6"
+     ],
+     "modern": [
+      "67b7d67cc894f07d"
+     ],
+     "muted": [
+      "7c9b117c20d7bdba"
+     ],
+     "high-contrast": [
+      "48a5c2a0d0b4ae36"
+     ],
+     "c4-standard": [
+      "c57653c410581785"
+     ],
+     "auto-light": [
+      "a1e3e92eb08b9fab"
+     ],
+     "auto-dark": [
+      "9f93ddbd1cb0de34"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:samples/visual-layout/c2-nested-locked.c4x",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "074c76f1f7543dfe"
+     ],
+     "modern": [
+      "20ed4f6c37aba7d5"
+     ],
+     "muted": [
+      "4000ec5e2b4aac67"
+     ],
+     "high-contrast": [
+      "a0967d1caead779a"
+     ],
+     "c4-standard": [
+      "dea4ee79e1438ee3"
+     ],
+     "auto-light": [
+      "ffbf4d06404c0d3f"
+     ],
+     "auto-dark": [
+      "1006f9a1e9c2d3d6"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:test/fixtures/conformance/shop/shop.c3.c4x",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "53f2430c8e1a9d61"
+     ],
+     "modern": [
+      "2caefc5589720c1a"
+     ],
+     "muted": [
+      "3f29ab7bdea29bf3"
+     ],
+     "high-contrast": [
+      "cc53ccad3955ce55"
+     ],
+     "c4-standard": [
+      "2f5c9e0088ad33e5"
+     ],
+     "auto-light": [
+      "90f230cc151cb53f"
+     ],
+     "auto-dark": [
+      "292f00ac97a4e570"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-ELEMENT-TYPES.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "4062cf5dbe84f0cf"
+     ],
+     "modern": [
+      "0968de78de4d3b84"
+     ],
+     "muted": [
+      "16aa16e9dcac47e2"
+     ],
+     "high-contrast": [
+      "43e176b6bed0efbe"
+     ],
+     "c4-standard": [
+      "1b8fdf8a6c9704fb"
+     ],
+     "auto-light": [
+      "98a54d7ba931e767"
+     ],
+     "auto-dark": [
+      "b36a250238666b90"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-ELEMENT-TYPES.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "9bf0032149a1747a"
+     ],
+     "modern": [
+      "fc3d2694ff1de3f9"
+     ],
+     "muted": [
+      "b6ab4e18f3e7b39f"
+     ],
+     "high-contrast": [
+      "53990be243212572"
+     ],
+     "c4-standard": [
+      "588b03df68b80ea6"
+     ],
+     "auto-light": [
+      "ca331e794bfc8945"
+     ],
+     "auto-dark": [
+      "52257cee9098f7bc"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-ELEMENT-TYPES.md#c4x:4",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "7e0c6a01ed25030b"
+     ],
+     "modern": [
+      "bb3b9b22590a6633"
+     ],
+     "muted": [
+      "a8a0edfb39d4ab4e"
+     ],
+     "high-contrast": [
+      "1124f77e12386173"
+     ],
+     "c4-standard": [
+      "eb98d8c3b17a182e"
+     ],
+     "auto-light": [
+      "92676144041bac67"
+     ],
+     "auto-dark": [
+      "f1729a57d4895608"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-ELEMENT-TYPES.md#c4x:5",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "1079f7691bfb24bc"
+     ],
+     "modern": [
+      "163febb4f9d98521"
+     ],
+     "muted": [
+      "6378cda050a65945"
+     ],
+     "high-contrast": [
+      "54a491ea0c0ef940"
+     ],
+     "c4-standard": [
+      "adb0f8200ee5b41f"
+     ],
+     "auto-light": [
+      "29cd6066cda7e682"
+     ],
+     "auto-dark": [
+      "1e9f9f144c32d720"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-GENERATION-GUIDELINES.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "60af42c9436e4277"
+     ],
+     "modern": [
+      "bd48ed4ae6e84ddc"
+     ],
+     "muted": [
+      "0f7ee3d29164a4b1"
+     ],
+     "high-contrast": [
+      "23185a361a8a5535"
+     ],
+     "c4-standard": [
+      "fbf60e993d38d4b1"
+     ],
+     "auto-light": [
+      "56040d7169cd7eef"
+     ],
+     "auto-dark": [
+      "27e159d8d6d72cde"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-GENERATION-GUIDELINES.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "776dfd5f9bba3c80"
+     ],
+     "modern": [
+      "4356055bd53924bd"
+     ],
+     "muted": [
+      "dc584160ffcd311e"
+     ],
+     "high-contrast": [
+      "fadd3b9344a7992d"
+     ],
+     "c4-standard": [
+      "f4fe6f3722e11029"
+     ],
+     "auto-light": [
+      "3ce85a8e3fbdaa41"
+     ],
+     "auto-dark": [
+      "5fa740806151e004"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:10",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "565c7e3b92afcf35"
+     ],
+     "modern": [
+      "11aa53e12599828d"
+     ],
+     "muted": [
+      "1f949db4bed4eb22"
+     ],
+     "high-contrast": [
+      "98b0f91c15912547"
+     ],
+     "c4-standard": [
+      "49a345fa8ead0a5c"
+     ],
+     "auto-light": [
+      "283e50aaed7f41e5"
+     ],
+     "auto-dark": [
+      "a84fe9fe6cf1da30"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:22",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "6ff1020de620d836"
+     ],
+     "modern": [
+      "3ee43258a58b958a"
+     ],
+     "muted": [
+      "acbeac614312301e"
+     ],
+     "high-contrast": [
+      "dfe03cad1df97b8f"
+     ],
+     "c4-standard": [
+      "998e39b37d9e4e53"
+     ],
+     "auto-light": [
+      "a8a8370a315efb79"
+     ],
+     "auto-dark": [
+      "daab42f045dd9c95"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:23",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "6ff1020de620d836"
+     ],
+     "modern": [
+      "3ee43258a58b958a"
+     ],
+     "muted": [
+      "acbeac614312301e"
+     ],
+     "high-contrast": [
+      "dfe03cad1df97b8f"
+     ],
+     "c4-standard": [
+      "998e39b37d9e4e53"
+     ],
+     "auto-light": [
+      "a8a8370a315efb79"
+     ],
+     "auto-dark": [
+      "daab42f045dd9c95"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:8",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "45cc5bd936d847f4"
+     ],
+     "modern": [
+      "46f950ff4a8dabfb"
+     ],
+     "muted": [
+      "0b893ffa855f4589"
+     ],
+     "high-contrast": [
+      "4c43b03dd7817fcf"
+     ],
+     "c4-standard": [
+      "8810f075f30317db"
+     ],
+     "auto-light": [
+      "2547d60f51d571f5"
+     ],
+     "auto-dark": [
+      "00f7656b3c8550cd"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:9",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "3702959537b46960"
+     ],
+     "modern": [
+      "1e08309ebc24775e"
+     ],
+     "muted": [
+      "ff86ce1f64071479"
+     ],
+     "high-contrast": [
+      "23a533e74409a445"
+     ],
+     "c4-standard": [
+      "5a0a0f0d0e3a0e8c"
+     ],
+     "auto-light": [
+      "a637548fd15a09d4"
+     ],
+     "auto-dark": [
+      "7765d65795658f35"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-with-ICONS.md#c4x:3",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "c542936ef74259dc"
+     ],
+     "modern": [
+      "ef83f3d470fd019d"
+     ],
+     "muted": [
+      "8e512814a191a425"
+     ],
+     "high-contrast": [
+      "9671424d58d5b9dc"
+     ],
+     "c4-standard": [
+      "c872c718a83467b5"
+     ],
+     "auto-light": [
+      "e6fdfc6a2ed95369"
+     ],
+     "auto-dark": [
+      "1faf715d8c576b37"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/USER-GUIDE.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "743d252d24826d26"
+     ],
+     "modern": [
+      "0833250c43445601"
+     ],
+     "muted": [
+      "773bc1de813084dc"
+     ],
+     "high-contrast": [
+      "2f148d8d9e22672a"
+     ],
+     "c4-standard": [
+      "628d7fd3cfbff74c"
+     ],
+     "auto-light": [
+      "fe0cfcefb1daa27a"
+     ],
+     "auto-dark": [
+      "8d749a7a82f46134"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/testing.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #340, element text wider than its box now wraps inside it, and the box grows where the lines need it: Orchestrator.technology in every theme; VectorStore.technology in every theme; MetadataDB.technology in every theme; DataScientist.description in every theme; EndUser.description in every theme; VertexAI.description in every theme",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #340: long element text wraps inside its shape",
+   "after": {
+    "svg": {
+     "classic": [
+      "50fca3764648ae62"
+     ],
+     "modern": [
+      "dc5aaf363096b185"
+     ],
+     "muted": [
+      "a3e17c0c41d02fe2"
+     ],
+     "high-contrast": [
+      "035bae4d4f66f7f6"
+     ],
+     "c4-standard": [
+      "92803176781d64e2"
+     ],
+     "auto-light": [
+      "f8df93a1c07ddd20"
+     ],
+     "auto-dark": [
+      "9b14ee98b96c8c76"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/testing.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #340, element text wider than its box now wraps inside it, and the box grows where the lines need it: Backend.technology in auto-light, auto-dark; User.description in auto-light, auto-dark; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #340: long element text wraps inside its shape; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "baa50b24d3c23bff"
+     ],
+     "modern": [
+      "c522a9815f71c0bb"
+     ],
+     "muted": [
+      "183297d4da8cbb15"
+     ],
+     "high-contrast": [
+      "42c338dc5bc4f703"
+     ],
+     "c4-standard": [
+      "95efb59773ddfd3b"
+     ],
+     "auto-light": [
+      "9237fef0d0ca2424"
+     ],
+     "auto-dark": [
+      "eb09affef0d4c229"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/testing.md#c4x:2",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #340, element text wider than its box now wraps inside it, and the box grows where the lines need it: StorefrontApp.technology in auto-light, auto-dark",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #340: long element text wraps inside its shape",
+   "after": {
+    "svg": {
+     "classic": [
+      "7952644309a4c7a2"
+     ],
+     "modern": [
+      "2b6a4cab442a319f"
+     ],
+     "muted": [
+      "c91c970310fa998f"
+     ],
+     "high-contrast": [
+      "7b7d070502e74d5e"
+     ],
+     "c4-standard": [
+      "cd864444e0e6a45e"
+     ],
+     "auto-light": [
+      "7f3b3843ae40a07d"
+     ],
+     "auto-dark": [
+      "2efb4fd6a9c56685"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/prompts/c4x-default-guidelines.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "d8877f9bbf166350"
+     ],
+     "modern": [
+      "d8fbe9ed22fe26e9"
+     ],
+     "muted": [
+      "60e3f99904a12523"
+     ],
+     "high-contrast": [
+      "3f3fbb06acc9c2e6"
+     ],
+     "c4-standard": [
+      "bbdf6a713004168b"
+     ],
+     "auto-light": [
+      "78509f797721271a"
+     ],
+     "auto-dark": [
+      "674095e69c59f17d"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/README.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "ea6652b7457f299a"
+     ],
+     "modern": [
+      "fb68700dbb82e668"
+     ],
+     "muted": [
+      "628ea6c5034cf252"
+     ],
+     "high-contrast": [
+      "e30b21bd0053113b"
+     ],
+     "c4-standard": [
+      "ce21096a164f30da"
+     ],
+     "auto-light": [
+      "f9e3007e4201c20a"
+     ],
+     "auto-dark": [
+      "99e317ba6674d335"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/README.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "0fde5794be6ed043"
+     ],
+     "modern": [
+      "e1ca8a5998fe4a2c"
+     ],
+     "muted": [
+      "b341ffb676f8688e"
+     ],
+     "high-contrast": [
+      "4c49fb5f7ddcc4d0"
+     ],
+     "c4-standard": [
+      "f5b103ed11dc4e88"
+     ],
+     "auto-light": [
+      "c58f928d3d6b1d5a"
+     ],
+     "auto-dark": [
+      "5b57224df4ff24f1"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/README.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "42865f8bf022ea58"
+     ],
+     "modern": [
+      "8eaf03fb598fe415"
+     ],
+     "muted": [
+      "b6381a841b8ed6f3"
+     ],
+     "high-contrast": [
+      "5e04bc1a7f8547d0"
+     ],
+     "c4-standard": [
+      "c0b389b8fbdc3546"
+     ],
+     "auto-light": [
+      "794a9ebd79f83ddb"
+     ],
+     "auto-dark": [
+      "8000937a8262239a"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/README.md#c4x:4",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "7a57afdc7904fc00"
+     ],
+     "modern": [
+      "adab556cfe985bdd"
+     ],
+     "muted": [
+      "41f660f6f0275362"
+     ],
+     "high-contrast": [
+      "6c194187ed9dd72e"
+     ],
+     "c4-standard": [
+      "eb0340fb02582b7c"
+     ],
+     "auto-light": [
+      "59642c85a696c204"
+     ],
+     "auto-dark": [
+      "a6b6b9709cf907b2"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/architecture-documentation.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "8730d899a41a31b2"
+     ],
+     "modern": [
+      "59929bd1c490cdf0"
+     ],
+     "muted": [
+      "71f625c32dff8577"
+     ],
+     "high-contrast": [
+      "98cf654dfd8c8a4c"
+     ],
+     "c4-standard": [
+      "7262ee30494428e9"
+     ],
+     "auto-light": [
+      "ca3070dd262943a3"
+     ],
+     "auto-dark": [
+      "1215a6a2e4663889"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/event-driven-architecture.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "47d6ca73c1558401"
+     ],
+     "modern": [
+      "18774b9fc26257c5"
+     ],
+     "muted": [
+      "19b4bec2480758ea"
+     ],
+     "high-contrast": [
+      "8a397df647300eb2"
+     ],
+     "c4-standard": [
+      "d0cde716e787727e"
+     ],
+     "auto-light": [
+      "0d9a2302968f0a51"
+     ],
+     "auto-dark": [
+      "3ba55207f82d04a6"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/oauth2-authentication-flow.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "3848d4d312076090"
+     ],
+     "modern": [
+      "fea24afb0fa5dc9d"
+     ],
+     "muted": [
+      "520dc0fc896fcaff"
+     ],
+     "high-contrast": [
+      "1c6d09486402f4da"
+     ],
+     "c4-standard": [
+      "18fa2701dcad9446"
+     ],
+     "auto-light": [
+      "470d23713e54fab7"
+     ],
+     "auto-dark": [
+      "2bd42cdaf80f50fb"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/oauth2-authentication-flow.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "a465a85bd9e6d81b"
+     ],
+     "modern": [
+      "19b37433f4477942"
+     ],
+     "muted": [
+      "2c9ff991282fa461"
+     ],
+     "high-contrast": [
+      "2e434b1b5cc027e6"
+     ],
+     "c4-standard": [
+      "c54daf2ef5497626"
+     ],
+     "auto-light": [
+      "c4662b65d9fc9fcc"
+     ],
+     "auto-dark": [
+      "19346f187630f8c4"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/oauth2-authentication-flow.md#c4x:2",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "aa8837f4f6a48689"
+     ],
+     "modern": [
+      "faacd850185f5903"
+     ],
+     "muted": [
+      "40d587a89cfb9388"
+     ],
+     "high-contrast": [
+      "1a1cdc9adea99fcd"
+     ],
+     "c4-standard": [
+      "7cc9ff45b9ce2089"
+     ],
+     "auto-light": [
+      "18b6e67bfea9ad7e"
+     ],
+     "auto-dark": [
+      "00bcbf9d70d55bdb"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/oauth2-authentication-flow.md#c4x:4",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "bb4e2a2f00424b5e"
+     ],
+     "modern": [
+      "0a88dc2bf20dba52"
+     ],
+     "muted": [
+      "b3bd0a3eb2d09de4"
+     ],
+     "high-contrast": [
+      "6a98aeab5175a4e6"
+     ],
+     "c4-standard": [
+      "2e766c57b11d5de5"
+     ],
+     "auto-light": [
+      "bc199975ef7d04cf"
+     ],
+     "auto-dark": [
+      "d43e0ef6824283d3"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/serverless-data-pipeline.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "0e06ac1be1e40303"
+     ],
+     "modern": [
+      "c5e880f8134249fa"
+     ],
+     "muted": [
+      "b64bff2ed04f5489"
+     ],
+     "high-contrast": [
+      "303336d61ba22bed"
+     ],
+     "c4-standard": [
+      "0367defcca7bb573"
+     ],
+     "auto-light": [
+      "b9811c5712d62e6d"
+     ],
+     "auto-dark": [
+      "a621f155b18cd989"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/component/graphql-api-gateway.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "09a37aaba00828c4"
+     ],
+     "modern": [
+      "49494ea1554d45e4"
+     ],
+     "muted": [
+      "cf009f7d6ebd53c4"
+     ],
+     "high-contrast": [
+      "eded626a866c3987"
+     ],
+     "c4-standard": [
+      "2f7773d3d5c3cb2e"
+     ],
+     "auto-light": [
+      "402b42aaf1859efb"
+     ],
+     "auto-dark": [
+      "d4130db625774e7e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/component/graphql-api-gateway.md#c4x:2",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "1745628bea63e7a4"
+     ],
+     "modern": [
+      "540ee19b71458370"
+     ],
+     "muted": [
+      "4761c84fd2b31c62"
+     ],
+     "high-contrast": [
+      "430fb4fecbf2d9bb"
+     ],
+     "c4-standard": [
+      "4bb6c9295db03340"
+     ],
+     "auto-light": [
+      "8373412b6e0089ca"
+     ],
+     "auto-dark": [
+      "d1935163f100b576"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/container/grpc-microservices.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "3d385502e05c09c1"
+     ],
+     "modern": [
+      "cfc4e09fb76112f3"
+     ],
+     "muted": [
+      "c8cb8131d8301374"
+     ],
+     "high-contrast": [
+      "20bbc8e088c222fb"
+     ],
+     "c4-standard": [
+      "7d939d51d620215f"
+     ],
+     "auto-light": [
+      "043cfe386a3c1fd2"
+     ],
+     "auto-dark": [
+      "7d364a6f4d352d43"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/png-diagrams/sequence_sample.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #340, element text wider than its box now wraps inside it, and the box grows where the lines need it: WebApp.technology in every theme; AuthService.technology in every theme; AuthDB.technology in every theme",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #340: long element text wraps inside its shape",
+   "after": {
+    "svg": {
+     "classic": [
+      "f41109f882585d4f"
+     ],
+     "modern": [
+      "bf0515f54ba4506e"
+     ],
+     "muted": [
+      "8d4df32dc543838a"
+     ],
+     "high-contrast": [
+      "304d17b994a97d3a"
+     ],
+     "c4-standard": [
+      "1b43b6e7ffb585ee"
+     ],
+     "auto-light": [
+      "8085818bffcbf0d0"
+     ],
+     "auto-dark": [
+      "70e710303edabd0e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/real-world/README.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text; and, since #340, element text wider than its box now wraps inside it, and the box grows where the lines need it: customer.label in every theme; internet_banking.description in auto-light, auto-dark; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme; svg hash re-pinned by #340: long element text wraps inside its shape; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "888a37bee0a690a1"
+     ],
+     "modern": [
+      "fd7838c586d97fce"
+     ],
+     "muted": [
+      "4491ba0fc686768d"
+     ],
+     "high-contrast": [
+      "471fd064a15dba11"
+     ],
+     "c4-standard": [
+      "3846b5c768974d33"
+     ],
+     "auto-light": [
+      "85a73177e8dafd15"
+     ],
+     "auto-dark": [
+      "36e4d1d927be435b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/real-world/healthcare-patient-management.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "b8815cdaa75b3776"
+     ],
+     "modern": [
+      "7328e05dbcff5faa"
+     ],
+     "muted": [
+      "0acd441930f6f6fc"
+     ],
+     "high-contrast": [
+      "9b2f7918aedfdf41"
+     ],
+     "c4-standard": [
+      "d24e60267b28ee44"
+     ],
+     "auto-light": [
+      "6c565b924ae49d03"
+     ],
+     "auto-dark": [
+      "51fadad1c96ca252"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/real-world/healthcare-patient-management.md#c4x:1",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "4ebff38ed5b0b5f1"
+     ],
+     "modern": [
+      "507db72e7c69b51e"
+     ],
+     "muted": [
+      "f80d85b08734ba19"
+     ],
+     "high-contrast": [
+      "ea837a0c328bae19"
+     ],
+     "c4-standard": [
+      "2cd46c74efad08c8"
+     ],
+     "auto-light": [
+      "07dbd3aac59d8ced"
+     ],
+     "auto-dark": [
+      "87d6191cf3ac9e5c"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/visual-c4-editor/journey.md#c4x:0",
+   "facet": "svg",
+   "kind": "Person or System description (third argument) drawn as plain description text, not as bracketed italic technology text",
+   "reference": "#420; CHANGELOG.md Unreleased (drafted in the #420 PR): person and system descriptions render as plain text in every theme",
+   "after": {
+    "svg": {
+     "classic": [
+      "c027b937c7fad091"
+     ],
+     "modern": [
+      "16020d2e1a659848"
+     ],
+     "muted": [
+      "841d3c74b29bc061"
+     ],
+     "high-contrast": [
+      "fe193bdac94dcc6e"
+     ],
+     "c4-standard": [
+      "67bdc8a73712ca4f"
+     ],
+     "auto-light": [
+      "5810170df2c7dc18"
+     ],
+     "auto-dark": [
+      "bde4d5be9c235546"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:docs/archive/examples/banking-plantuml.puml",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: webApp.description in every theme; spa.description in every theme; mobileApp.description in every theme; database.description in every theme; customer.description in auto-light, auto-dark; mainframe.description in auto-light, auto-dark; api.description in auto-light, auto-dark; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "8236b48088589ec3"
+     ],
+     "modern": [
+      "332d755be9e05b95"
+     ],
+     "muted": [
+      "c549443e8d574add"
+     ],
+     "high-contrast": [
+      "2ac14ed841038330"
+     ],
+     "c4-standard": [
+      "46052ce2d8e3f173"
+     ],
+     "auto-light": [
+      "4a4b7a451f0ea300"
+     ],
+     "auto-dark": [
+      "f41d75d24ab034fd"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:docs/archive/examples/ecommerce.dsl",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: customer.description in every theme; admin.description in every theme; ecommerce.description in every theme; payment.description in every theme; shipping.description in auto-light, auto-dark; email.description in auto-light, auto-dark; web.description in every theme; api.description in every theme; catalog.description in every theme; orders.description in every theme; users.description in every theme; db.description in auto-light, auto-dark; cache.description in auto-light, auto-dark; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "878a6483d23619bf",
+      "07486ccb63c8fd75"
+     ],
+     "modern": [
+      "f31939fa8a3b0bee",
+      "b208229bb378d82f"
+     ],
+     "muted": [
+      "fcd8308448ff25ad",
+      "9a224afe84e83b7b"
+     ],
+     "high-contrast": [
+      "b298e0bfc5e75317",
+      "1ab00d59c5db9ff9"
+     ],
+     "c4-standard": [
+      "a6d75738319bc820",
+      "5c46023a84857d18"
+     ],
+     "auto-light": [
+      "fac6cc78e53d646c",
+      "a6b2b3f7517d2b5d"
+     ],
+     "auto-dark": [
+      "2018fb5382545fdb",
+      "f83266acd9ec0c71"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:src/__tests__/snapshots/fixtures/complex-component.c4x",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: Reset.label in auto-light, auto-dark",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "1ca0274d1103a6ed"
+     ],
+     "modern": [
+      "2c1bd340ee10103e"
+     ],
+     "muted": [
+      "a8d6415d8489812b"
+     ],
+     "high-contrast": [
+      "068c8a81ea208b18"
+     ],
+     "c4-standard": [
+      "6f3a77b0fabcfa87"
+     ],
+     "auto-light": [
+      "1261a8547884d22f"
+     ],
+     "auto-dark": [
+      "52aa882953aa11ce"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:1",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: api.description in every theme; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "2d9f18d0601b9b94"
+     ],
+     "modern": [
+      "18b22aa626170386"
+     ],
+     "muted": [
+      "328dcfc9a0f4e5fb"
+     ],
+     "high-contrast": [
+      "dace371d35833cb8"
+     ],
+     "c4-standard": [
+      "98b8a2ae39cdc2ee"
+     ],
+     "auto-light": [
+      "dbeabab59d106972"
+     ],
+     "auto-dark": [
+      "3963840cd332ec86"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:3",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: db.description in auto-light, auto-dark; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "fc6a4332d75c88a2"
+     ],
+     "modern": [
+      "44d728533e3fa7a5"
+     ],
+     "muted": [
+      "d6483d855f907fac"
+     ],
+     "high-contrast": [
+      "4794cff212564af7"
+     ],
+     "c4-standard": [
+      "3008ec844c4bc9fd"
+     ],
+     "auto-light": [
+      "bc97e7e4cac0d643"
+     ],
+     "auto-dark": [
+      "a5dd06e2558deb0b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PLANTUML.md#plantuml:1",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: customer.label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "712ff66957874780"
+     ],
+     "modern": [
+      "4a4f312dffad801c"
+     ],
+     "muted": [
+      "fcfd93ee98e62b23"
+     ],
+     "high-contrast": [
+      "cb988006c348eaae"
+     ],
+     "c4-standard": [
+      "d3ab41d0a3227429"
+     ],
+     "auto-light": [
+      "4b37d390bc222a32"
+     ],
+     "auto-dark": [
+      "3e3dccffbc52680d"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES.md#c4x:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: Customer.label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "833370f1c55186f3"
+     ],
+     "modern": [
+      "4d2654b48529c900"
+     ],
+     "muted": [
+      "f7296ba71b0dfe2e"
+     ],
+     "high-contrast": [
+      "fbd1aefd2c76353b"
+     ],
+     "c4-standard": [
+      "78cb03e3c218a693"
+     ],
+     "auto-light": [
+      "47e41abb06a80ba6"
+     ],
+     "auto-dark": [
+      "d3cc83a02ba8cc7b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES.md#c4x:1",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: Customer.label in every theme; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "1b38122367a587d8"
+     ],
+     "modern": [
+      "302ef54292325b68"
+     ],
+     "muted": [
+      "03303aa9f0a91ca6"
+     ],
+     "high-contrast": [
+      "8044c259b43f97bc"
+     ],
+     "c4-standard": [
+      "895a44a35ac0cee7"
+     ],
+     "auto-light": [
+      "3f374202649bee23"
+     ],
+     "auto-dark": [
+      "62548b0a4d7924dc"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES.md#plantuml:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: api.description in every theme; web_app.description in auto-light, auto-dark; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "18cc40903b420717"
+     ],
+     "modern": [
+      "3a3ced37497d0506"
+     ],
+     "muted": [
+      "784443fa148e69e6"
+     ],
+     "high-contrast": [
+      "1fe0af9dea2b200a"
+     ],
+     "c4-standard": [
+      "00a74efc689969fb"
+     ],
+     "auto-light": [
+      "4b6ccd2d45ad5b5b"
+     ],
+     "auto-dark": [
+      "a23ca2d09643e070"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/PLANTUML-C4-COMPATIBILITY.md#plantuml:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: web.label in every theme; api.label in muted, auto-light, auto-dark; web.technology in auto-light, auto-dark; web.description in auto-light, auto-dark",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "7c8cd71f92536fba"
+     ],
+     "modern": [
+      "f0eda1e3b4a07a3d"
+     ],
+     "muted": [
+      "9a0eb9378fe157ef"
+     ],
+     "high-contrast": [
+      "cb26d8327a1691fa"
+     ],
+     "c4-standard": [
+      "3cafe95f20d3d55c"
+     ],
+     "auto-light": [
+      "26c1b2dc694eae1c"
+     ],
+     "auto-dark": [
+      "116d456daa277242"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/analysis/PLANTUML-C4-COMPATIBILITY.md#plantuml:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: web.label in every theme; api.label in muted, auto-light, auto-dark; web.technology in auto-light, auto-dark; web.description in auto-light, auto-dark",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "7c8cd71f92536fba"
+     ],
+     "modern": [
+      "f0eda1e3b4a07a3d"
+     ],
+     "muted": [
+      "9a0eb9378fe157ef"
+     ],
+     "high-contrast": [
+      "cb26d8327a1691fa"
+     ],
+     "c4-standard": [
+      "3cafe95f20d3d55c"
+     ],
+     "auto-light": [
+      "26c1b2dc694eae1c"
+     ],
+     "auto-dark": [
+      "116d456daa277242"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/phases/phase-5-plantuml-c4/README.md#plantuml:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: banking.description in every theme; email.description in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "d8d33f4ba4e1fa41"
+     ],
+     "modern": [
+      "8f380709c550d23a"
+     ],
+     "muted": [
+      "577f926e45d52012"
+     ],
+     "high-contrast": [
+      "c3c0fa8dc6c0bd76"
+     ],
+     "c4-standard": [
+      "892c4387c33a3456"
+     ],
+     "auto-light": [
+      "04f589511b503c8a"
+     ],
+     "auto-dark": [
+      "8f4b09156cc7fc33"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/phases/phase-5-plantuml-c4/README.md#plantuml:1",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: api.description in auto-light, auto-dark; db.description in auto-light, auto-dark; and, since #421, relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #421",
+   "after": {
+    "svg": {
+     "classic": [
+      "43d11e51abb2e572"
+     ],
+     "modern": [
+      "40bae485569aebc2"
+     ],
+     "muted": [
+      "a3300fdcc6f1aaaf"
+     ],
+     "high-contrast": [
+      "d3153fa0126379c9"
+     ],
+     "c4-standard": [
+      "94a92cc881375ee7"
+     ],
+     "auto-light": [
+      "06af0a261e4ecab7"
+     ],
+     "auto-dark": [
+      "5ef6c9526109973f"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/validation/commercial-planning-draft.md#c4x:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: Sam.label in muted, auto-light, auto-dark; Alex.label in auto-light, auto-dark; Jordan.label in auto-light, auto-dark",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "11ef0bc6a27d03d5"
+     ],
+     "modern": [
+      "b9e3d948d31b09ca"
+     ],
+     "muted": [
+      "4f3cc4f02c4f7370"
+     ],
+     "high-contrast": [
+      "e58d4ef3eed222ce"
+     ],
+     "c4-standard": [
+      "ac0e238a81105cf4"
+     ],
+     "auto-light": [
+      "72f9591bd9f20479"
+     ],
+     "auto-dark": [
+      "6ea45dae3bc5d7bf"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/component/README.md#c4x:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: AuthMiddleware.label in auto-light, auto-dark; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "6c02290c3a599650"
+     ],
+     "modern": [
+      "356a289ab826221a"
+     ],
+     "muted": [
+      "f66a15d7dccd73de"
+     ],
+     "high-contrast": [
+      "25fa25769ac16add"
+     ],
+     "c4-standard": [
+      "e42455b783ccfee8"
+     ],
+     "auto-light": [
+      "c1d61333788b6aef"
+     ],
+     "auto-dark": [
+      "2438f3e0fbc76dfe"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/component/graphql-api-gateway.md#c4x:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: QueryComplexity.label in auto-light, auto-dark; and, since #419, relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows; svg hash re-pinned by #419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "66512232db9d8920"
+     ],
+     "modern": [
+      "f0e8b599f8b87c6a"
+     ],
+     "muted": [
+      "76afe08379622ae9"
+     ],
+     "high-contrast": [
+      "8eec8101de78a6e4"
+     ],
+     "c4-standard": [
+      "4111ffaafe4bb4a4"
+     ],
+     "auto-light": [
+      "14aa1f4c219455c6"
+     ],
+     "auto-dark": [
+      "1bcf850bb228c1a7"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/system-context/README.md#c4x:0",
+   "facet": "svg",
+   "kind": "element text wider than its box now wraps inside it, and the box grows where the lines need it: Customer.label in every theme",
+   "reference": "#340: element text that does not fit on one line wraps inside its shape and the box grows",
+   "after": {
+    "svg": {
+     "classic": [
+      "538099b62ab8a5b6"
+     ],
+     "modern": [
+      "917b4bf7ce91e9e8"
+     ],
+     "muted": [
+      "2841b8a863e0ceae"
+     ],
+     "high-contrast": [
+      "a6ce94a8b61f8b4a"
+     ],
+     "c4-standard": [
+      "bcfe3d3d2e3bc79d"
+     ],
+     "auto-light": [
+      "10af547e182cc7f4"
+     ],
+     "auto-dark": [
+      "9535a5c07566ba72"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:docs/validation/spike-assets/c4x-extension.c3.c4plantuml.puml",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "fba2ff8381406f78"
+     ],
+     "modern": [
+      "ffab3a600a09a422"
+     ],
+     "muted": [
+      "9252cdcb82b37164"
+     ],
+     "high-contrast": [
+      "d493377fbdd588be"
+     ],
+     "c4-standard": [
+      "c279f48d0a676254"
+     ],
+     "auto-light": [
+      "89dd61dcc8c37edf"
+     ],
+     "auto-dark": [
+      "a6c25fc30781ec50"
+     ]
+    }
+   }
+  },
+  {
+   "item": "file:src/__tests__/snapshots/fixtures/medium-container.c4x",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "6927a5abb27d97fe"
+     ],
+     "modern": [
+      "63319bcd295b31e9"
+     ],
+     "muted": [
+      "f5cc8afac80b9107"
+     ],
+     "high-contrast": [
+      "94c7cfeb97d0b490"
+     ],
+     "c4-standard": [
+      "73b1b67755062030"
+     ],
+     "auto-light": [
+      "95afb7bbc6b567fc"
+     ],
+     "auto-dark": [
+      "0ace615e12b039c7"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:1",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "ccf5fb9648de23a1"
+     ],
+     "modern": [
+      "32030cee0b3b9cd3"
+     ],
+     "muted": [
+      "b9e3b2dfe3005dad"
+     ],
+     "high-contrast": [
+      "346e1c58f1825760"
+     ],
+     "c4-standard": [
+      "992a152b7957c997"
+     ],
+     "auto-light": [
+      "ec15bfc4f3feb1f4"
+     ],
+     "auto-dark": [
+      "1e3b26f18ce8fe84"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:10",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "a625a2f26bbc387e"
+     ],
+     "modern": [
+      "4381ca64f6cc8281"
+     ],
+     "muted": [
+      "bc926daf9d942d7b"
+     ],
+     "high-contrast": [
+      "47e9f4a0ffe10e1c"
+     ],
+     "c4-standard": [
+      "dbd9467d746b5252"
+     ],
+     "auto-light": [
+      "9d4bc06684d3aeef"
+     ],
+     "auto-dark": [
+      "50134225337a119c"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:11",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "3fa8f2aacdb39d25"
+     ],
+     "modern": [
+      "f79c98624a777f31"
+     ],
+     "muted": [
+      "c55aad0b0b20cbbe"
+     ],
+     "high-contrast": [
+      "78c9b81fd408b885"
+     ],
+     "c4-standard": [
+      "261e31410cc4f7cc"
+     ],
+     "auto-light": [
+      "1c9bf3f3162a151d"
+     ],
+     "auto-dark": [
+      "5f4eabe85ab7d45c"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:13",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "812d1d699f03656f"
+     ],
+     "modern": [
+      "bbf2f0c8de028487"
+     ],
+     "muted": [
+      "5486b125f8f86efa"
+     ],
+     "high-contrast": [
+      "0504bc9f5438b462"
+     ],
+     "c4-standard": [
+      "0ea0ccd83cbf30fb"
+     ],
+     "auto-light": [
+      "2e23fde61e13212d"
+     ],
+     "auto-dark": [
+      "7bc19a7fc5714d97"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:14",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "e7d0ad2c0a7f0a7d"
+     ],
+     "modern": [
+      "7a77834245ced276"
+     ],
+     "muted": [
+      "46d10ab134994c1d"
+     ],
+     "high-contrast": [
+      "573359584db0dedc"
+     ],
+     "c4-standard": [
+      "2870de315122718b"
+     ],
+     "auto-light": [
+      "18ea1c0a33d29441"
+     ],
+     "auto-dark": [
+      "34e91a729fdcee40"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:15",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "060b438913266e48"
+     ],
+     "modern": [
+      "77c2208edc059ad3"
+     ],
+     "muted": [
+      "bbd74c120e19af24"
+     ],
+     "high-contrast": [
+      "ce5ebe18c648e2ae"
+     ],
+     "c4-standard": [
+      "661239a0f7726599"
+     ],
+     "auto-light": [
+      "330a5922a8420847"
+     ],
+     "auto-dark": [
+      "1cad3363897b109b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:5",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "c4cc6a248d8640de"
+     ],
+     "modern": [
+      "2a2a4fd3f00bc787"
+     ],
+     "muted": [
+      "554abe3e4811fade"
+     ],
+     "high-contrast": [
+      "a5b24083d1f36c5d"
+     ],
+     "c4-standard": [
+      "da973b5f0b3b27db"
+     ],
+     "auto-light": [
+      "b4b48ad7751e93ee"
+     ],
+     "auto-dark": [
+      "4f595590e8e31ae8"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PATTERNS.md#c4x:6",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "358528ab1f200fd9"
+     ],
+     "modern": [
+      "267e5d986211c010"
+     ],
+     "muted": [
+      "36a5820357199705"
+     ],
+     "high-contrast": [
+      "ae3460c0957dceff"
+     ],
+     "c4-standard": [
+      "4a5bc7a3b3ba3132"
+     ],
+     "auto-light": [
+      "c8e5b240b0be295a"
+     ],
+     "auto-dark": [
+      "cf617a2ab64d5e9b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-PLANTUML.md#plantuml:0",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "67102591ecea316a"
+     ],
+     "modern": [
+      "66e7b293f15536e3"
+     ],
+     "muted": [
+      "69c4a180b6a46557"
+     ],
+     "high-contrast": [
+      "3fd2d2f6ed6bf432"
+     ],
+     "c4-standard": [
+      "73a84c2267a6c8f6"
+     ],
+     "auto-light": [
+      "6e750c57d6016dfb"
+     ],
+     "auto-dark": [
+      "885b594a63009351"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-VIEWS.md#c4x:1",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "7d2357ad02188fd9"
+     ],
+     "modern": [
+      "193ac5571a6e318f"
+     ],
+     "muted": [
+      "90c78ed8d9c84d5d"
+     ],
+     "high-contrast": [
+      "df510a1eaf960b33"
+     ],
+     "c4-standard": [
+      "a0e8853c8ae76447"
+     ],
+     "auto-light": [
+      "ecda3e5f748b381f"
+     ],
+     "auto-dark": [
+      "2d1fe2ffe61bf18a"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-VIEWS.md#c4x:2",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "e7c593a984f2027c"
+     ],
+     "modern": [
+      "21ade8b3b69399d9"
+     ],
+     "muted": [
+      "9c2255d595d02ef8"
+     ],
+     "high-contrast": [
+      "06937f54ce93c7f4"
+     ],
+     "c4-standard": [
+      "f63617a3377462d1"
+     ],
+     "auto-light": [
+      "24d55bd41b5bb2dd"
+     ],
+     "auto-dark": [
+      "2ebeb429c1813e0c"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES-VIEWS.md#c4x:4",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "5117715604d0ade1"
+     ],
+     "modern": [
+      "b055f33ed0658a75"
+     ],
+     "muted": [
+      "20febc0c4f8f7b17"
+     ],
+     "high-contrast": [
+      "8e791dd94291d988"
+     ],
+     "c4-standard": [
+      "c90cf667ae7b0d9c"
+     ],
+     "auto-light": [
+      "957cb86bffdefe99"
+     ],
+     "auto-dark": [
+      "4156543a7514e3ca"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES.md#c4x:3",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "95f3a946a932f778"
+     ],
+     "modern": [
+      "f41bc37811b73666"
+     ],
+     "muted": [
+      "eea6e923f24ba424"
+     ],
+     "high-contrast": [
+      "a4f5d5d2f9ff2020"
+     ],
+     "c4-standard": [
+      "2aac444fd9d90178"
+     ],
+     "auto-light": [
+      "859cbd71de5914d4"
+     ],
+     "auto-dark": [
+      "a85b5a6b7ec9af7f"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES.md#c4x:5",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "1d95cd56dd33694b"
+     ],
+     "modern": [
+      "fbc9c6ae5f7b007a"
+     ],
+     "muted": [
+      "dfe8cf7c5dd633ae"
+     ],
+     "high-contrast": [
+      "1d7f2ca9c4c005a9"
+     ],
+     "c4-standard": [
+      "2c3a5581e463b355"
+     ],
+     "auto-light": [
+      "67d2856d46fef2d6"
+     ],
+     "auto-dark": [
+      "89fc3480f26523d7"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/EXAMPLES.md#c4x:7",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "0a20a9a8c3b92615"
+     ],
+     "modern": [
+      "70aba81f6d85d692"
+     ],
+     "muted": [
+      "f378b11d1688c4a0"
+     ],
+     "high-contrast": [
+      "4b8ce17c73e9a8a7"
+     ],
+     "c4-standard": [
+      "5ce99052fb3e7f81"
+     ],
+     "auto-light": [
+      "caff0c50b36077c4"
+     ],
+     "auto-dark": [
+      "eab9fb2e59359333"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/c4x-syntax.md#c4x:6",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "cf4bafff165e7398"
+     ],
+     "modern": [
+      "da277449138a7709"
+     ],
+     "muted": [
+      "6f4c4240c48f9de8"
+     ],
+     "high-contrast": [
+      "928db8823d92ea0e"
+     ],
+     "c4-standard": [
+      "d5d825f318e98042"
+     ],
+     "auto-light": [
+      "29975bb9befa0ad0"
+     ],
+     "auto-dark": [
+      "43b28b4a8f5c4459"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/README.md#c4x:3",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "82d9b6f8a0c264d0"
+     ],
+     "modern": [
+      "9eed9659eb171c52"
+     ],
+     "muted": [
+      "d3149ad8ae8ca25c"
+     ],
+     "high-contrast": [
+      "e07289021cf791fd"
+     ],
+     "c4-standard": [
+      "9a5b4d89695b3e72"
+     ],
+     "auto-light": [
+      "594a1a614d8c4360"
+     ],
+     "auto-dark": [
+      "cf8e42f8aeb6e46e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/oauth2-authentication-flow.md#c4x:3",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "3f4d99e9161333bc"
+     ],
+     "modern": [
+      "21af1f1dcf3d09e9"
+     ],
+     "muted": [
+      "9f3390afd9db5c34"
+     ],
+     "high-contrast": [
+      "5434d4874118e080"
+     ],
+     "c4-standard": [
+      "6a42f92c48f50525"
+     ],
+     "auto-light": [
+      "67a3dfdfeadf1a38"
+     ],
+     "auto-dark": [
+      "8055520ccc653ffb"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/advanced/serverless-data-pipeline.md#c4x:1",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "94a6b503e0d57971"
+     ],
+     "modern": [
+      "0d6b3de914301f8c"
+     ],
+     "muted": [
+      "115e613dade704fa"
+     ],
+     "high-contrast": [
+      "5cbc224c020738dd"
+     ],
+     "c4-standard": [
+      "c0bbfa24412ad7ce"
+     ],
+     "auto-light": [
+      "ef02b4a709e01528"
+     ],
+     "auto-dark": [
+      "50e2ccac2703754e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/component/README.md#c4x:1",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "6ed1a16682cd828b"
+     ],
+     "modern": [
+      "abb66aeda38e66d4"
+     ],
+     "muted": [
+      "66c9002a29937b77"
+     ],
+     "high-contrast": [
+      "15f70130c4f42d3d"
+     ],
+     "c4-standard": [
+      "4812ff7e8f1cfb5d"
+     ],
+     "auto-light": [
+      "d7a9dd9adbc4af5c"
+     ],
+     "auto-dark": [
+      "8d481259c40557b6"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/container/README.md#c4x:1",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "2090f7f46ab7a877"
+     ],
+     "modern": [
+      "3229b799f03e56ba"
+     ],
+     "muted": [
+      "3da211f9c4e2a510"
+     ],
+     "high-contrast": [
+      "80c7b83615a372f6"
+     ],
+     "c4-standard": [
+      "7e3b3066363a4549"
+     ],
+     "auto-light": [
+      "6766cf3a0d1a1a16"
+     ],
+     "auto-dark": [
+      "b880a4fcc35402c9"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/container/grpc-microservices.md#c4x:1",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "0a02c914599d583e"
+     ],
+     "modern": [
+      "61ddfaf0ed1c4b44"
+     ],
+     "muted": [
+      "54c2dcb2ea48f08e"
+     ],
+     "high-contrast": [
+      "3b66fd86e439b153"
+     ],
+     "c4-standard": [
+      "b432818b09ce348b"
+     ],
+     "auto-light": [
+      "1d067a49267187a7"
+     ],
+     "auto-dark": [
+      "aa52470445a1d02d"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:samples/real-world/healthcare-patient-management.md#c4x:2",
+   "facet": "svg",
+   "kind": "relationships that crossed an unrelated element are routed around it (orthogonal route from the layout engine, drawn as is); node positions and sizes unchanged",
+   "reference": "#419: edges are drawn along the routed points and no longer pass through unrelated boxes",
+   "after": {
+    "svg": {
+     "classic": [
+      "55f27e2595d8aecd"
+     ],
+     "modern": [
+      "99b09d46f19419bf"
+     ],
+     "muted": [
+      "8d195b065b39f1c8"
+     ],
+     "high-contrast": [
+      "a2191a3a44394c82"
+     ],
+     "c4-standard": [
+      "7f7fb983d87433c7"
+     ],
+     "auto-light": [
+      "d95704633be37bcb"
+     ],
+     "auto-dark": [
+      "c8786395cb4343ca"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:11",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "b0dd3f962a194f27"
+     ],
+     "modern": [
+      "75ec1c7ac12ba90d"
+     ],
+     "muted": [
+      "ab4695d211c75fd9"
+     ],
+     "high-contrast": [
+      "c5f3262accd4bed6"
+     ],
+     "c4-standard": [
+      "c0406960380bb513"
+     ],
+     "auto-light": [
+      "40105291f94d8916"
+     ],
+     "auto-dark": [
+      "8753da0e20c4e1ba"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:14",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "2d5eabbe0bf45c75"
+     ],
+     "modern": [
+      "36e2e9178c582407"
+     ],
+     "muted": [
+      "b68c45f272c11c4f"
+     ],
+     "high-contrast": [
+      "2c889527c01bc4c0"
+     ],
+     "c4-standard": [
+      "734e5e17ecc4a2b4"
+     ],
+     "auto-light": [
+      "7bde7898dfa166cf"
+     ],
+     "auto-dark": [
+      "07dc670f1da7ba4e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:15",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "09a30442fc58b25f"
+     ],
+     "modern": [
+      "6be47a8776ce60e6"
+     ],
+     "muted": [
+      "69c387792a4b94a5"
+     ],
+     "high-contrast": [
+      "b404e8f020ecef00"
+     ],
+     "c4-standard": [
+      "dcaa5f19b525e040"
+     ],
+     "auto-light": [
+      "7fd54e0fc85005eb"
+     ],
+     "auto-dark": [
+      "e929f84d3a251823"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:19",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "db5866107398b698"
+     ],
+     "modern": [
+      "af608264670791d8"
+     ],
+     "muted": [
+      "121866a496b0d945"
+     ],
+     "high-contrast": [
+      "1002c06a04c1b81d"
+     ],
+     "c4-standard": [
+      "64834c2fa13ca919"
+     ],
+     "auto-light": [
+      "d8b194f96777910e"
+     ],
+     "auto-dark": [
+      "cd7078c53abe65a8"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:20",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "b2022b3c8917f2fa"
+     ],
+     "modern": [
+      "e0a035a820e02073"
+     ],
+     "muted": [
+      "f4404dff46ff83e0"
+     ],
+     "high-contrast": [
+      "2a11f674d40e7a02"
+     ],
+     "c4-standard": [
+      "6143f58efb9570f2"
+     ],
+     "auto-light": [
+      "b9956c98eb3bf259"
+     ],
+     "auto-dark": [
+      "840d922dbd9c577a"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:21",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "6355387670272309"
+     ],
+     "modern": [
+      "f80048b338c05d91"
+     ],
+     "muted": [
+      "d3ad9c796527f5c1"
+     ],
+     "high-contrast": [
+      "4e9943d8a4da88e1"
+     ],
+     "c4-standard": [
+      "b0c0aca54f93baa3"
+     ],
+     "auto-light": [
+      "98c83ac20da50509"
+     ],
+     "auto-dark": [
+      "c200b12a78d3a18b"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:5",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "4946ac68e3722f1b"
+     ],
+     "modern": [
+      "69e01861c3bd4393"
+     ],
+     "muted": [
+      "8f0c4668b4b8ec10"
+     ],
+     "high-contrast": [
+      "ba699edf95500e3d"
+     ],
+     "c4-standard": [
+      "046881922fa4a3f2"
+     ],
+     "auto-light": [
+      "36d19aa13c6b9490"
+     ],
+     "auto-dark": [
+      "59e57210c326a523"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/C4X-LINT-RULES.md#c4x:7",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "0307f06ad7a0ff83"
+     ],
+     "modern": [
+      "edc1290d6d3aaaad"
+     ],
+     "muted": [
+      "36c75bfdfd50d90e"
+     ],
+     "high-contrast": [
+      "32cd978c6fe80657"
+     ],
+     "c4-standard": [
+      "f24c286b2a196a98"
+     ],
+     "auto-light": [
+      "74b5c62a1fdb5d68"
+     ],
+     "auto-dark": [
+      "07b77c49e20527c6"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/PLANTUML-C4-COMPATIBILITY.md#plantuml:7",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "882c386af120f961"
+     ],
+     "modern": [
+      "d32e320860f002e0"
+     ],
+     "muted": [
+      "6520eb9381507faf"
+     ],
+     "high-contrast": [
+      "c5b7a2f123a8b915"
+     ],
+     "c4-standard": [
+      "a0d09fa16018b7cf"
+     ],
+     "auto-light": [
+      "68f774e1c5fc8b70"
+     ],
+     "auto-dark": [
+      "4feb8fe96d91b31e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/analysis/PLANTUML-C4-COMPATIBILITY.md#plantuml:7",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "882c386af120f961"
+     ],
+     "modern": [
+      "d32e320860f002e0"
+     ],
+     "muted": [
+      "6520eb9381507faf"
+     ],
+     "high-contrast": [
+      "c5b7a2f123a8b915"
+     ],
+     "c4-standard": [
+      "a0d09fa16018b7cf"
+     ],
+     "auto-light": [
+      "68f774e1c5fc8b70"
+     ],
+     "auto-dark": [
+      "4feb8fe96d91b31e"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/AGENT.md#plantuml:0",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "12d62dfec92d2ea5"
+     ],
+     "modern": [
+      "981461aed328af22"
+     ],
+     "muted": [
+      "1423a9867f2ecc73"
+     ],
+     "high-contrast": [
+      "959ff30dcc2985dd"
+     ],
+     "c4-standard": [
+      "b07e5f2257e75e7a"
+     ],
+     "auto-light": [
+      "b2d82407e3574895"
+     ],
+     "auto-dark": [
+      "0c745ab7fd016725"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/AGENT.md#plantuml:1",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "a3d77aa163f439b1"
+     ],
+     "modern": [
+      "490897750c8a5c28"
+     ],
+     "muted": [
+      "f3dbec7463f931ab"
+     ],
+     "high-contrast": [
+      "fb042d8c2cd3f1bf"
+     ],
+     "c4-standard": [
+      "386b119e8f136394"
+     ],
+     "auto-light": [
+      "b12bf58761f52164"
+     ],
+     "auto-dark": [
+      "6342da3f938e1fb5"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/AGENT.md#plantuml:2",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "35987b5a09dc24a2"
+     ],
+     "modern": [
+      "3aa9177e7c9b918d"
+     ],
+     "muted": [
+      "676d44e8a265b1b1"
+     ],
+     "high-contrast": [
+      "d268ef70bc150c06"
+     ],
+     "c4-standard": [
+      "4a0dd9c92be3f3b9"
+     ],
+     "auto-light": [
+      "dab813e5b437466b"
+     ],
+     "auto-dark": [
+      "70dfdf397046fa91"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/archive/root-legacy/AGENT.md#plantuml:3",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "1a158ee9a1030987"
+     ],
+     "modern": [
+      "954f95beca65ede7"
+     ],
+     "muted": [
+      "7573ad4ac3ebd683"
+     ],
+     "high-contrast": [
+      "3c95cf5a9aaba4ab"
+     ],
+     "c4-standard": [
+      "e5740f55c348e4f4"
+     ],
+     "auto-light": [
+      "792422f27a48442d"
+     ],
+     "auto-dark": [
+      "6091b56bb55a763c"
+     ]
+    }
+   }
+  },
+  {
+   "item": "md:docs/validation/GALLERY.md#plantuml:0",
+   "facet": "svg",
+   "kind": "relationship technology drawn as a second line, [technology], under the edge label in every theme",
+   "reference": "#421: relationship technology is drawn under the edge label (v1.9.0, maintainer decision 2026-11-14)",
+   "after": {
+    "svg": {
+     "classic": [
+      "aee9bd1d0767b800"
+     ],
+     "modern": [
+      "b66adf12a089e4ba"
+     ],
+     "muted": [
+      "07e6f070bc63d07a"
+     ],
+     "high-contrast": [
+      "34c9275eb7f23041"
+     ],
+     "c4-standard": [
+      "4f4d6122b6c99d15"
+     ],
+     "auto-light": [
+      "046df8d36af2a277"
+     ],
+     "auto-dark": [
+      "874c85d099e1d5ac"
+     ]
+    }
+   }
+  }
+ ]
+}

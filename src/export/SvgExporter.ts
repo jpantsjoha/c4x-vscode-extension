@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { C4Theme } from '../themes/Theme';
+import { defaultExportUri } from './defaultExportUri';
 
 export class SvgExporter {
     /**
@@ -23,14 +24,13 @@ export class SvgExporter {
         const standaloneSvg = this.makeStandalone(svg, theme);
 
         // 2. Prompt user for save location
-        const defaultFileName = suggestedFileName ?? 'diagram.svg';
         const saveUri = await vscode.window.showSaveDialog({
             // eslint-disable-next-line @typescript-eslint/naming-convention
             filters: {
                 'SVG Files': ['svg'],
                 'All Files': ['*'],
             },
-            defaultUri: this.getDefaultUri(defaultFileName),
+            defaultUri: defaultExportUri('svg', { suggestedName: suggestedFileName }),
         });
 
         if (!saveUri) {
@@ -70,10 +70,17 @@ export class SvgExporter {
 <defs>
   <style type="text/css">
     <![CDATA[
-      /* System fonts only - no external dependencies */
-      text {
+      /* System fonts only - no external dependencies. Defaults only: the
+         renderer sets font-size, font-weight and font-family on every text it
+         draws, and element text is wrapped for exactly those (#340), so an
+         author rule here must not override them. */
+      text:not([font-family]) {
         font-family: ${fontFamily};
+      }
+      text:not([font-size]) {
         font-size: ${fontSize}px;
+      }
+      text:not([font-weight]) {
         font-weight: 400;
       }
 
@@ -94,25 +101,5 @@ export class SvgExporter {
         result = result.replace(/(<svg[^>]*>)/, `$1\n${styleBlock}`);
 
         return result;
-    }
-
-    /**
-     * Get default URI for save dialog
-     */
-    private getDefaultUri(fileName: string): vscode.Uri | undefined {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (workspaceFolders && workspaceFolders.length > 0) {
-            return vscode.Uri.joinPath(workspaceFolders[0].uri, fileName);
-        }
-
-        // Fallback to active document's directory
-        const activeEditor = vscode.window.activeTextEditor;
-        if (activeEditor) {
-            const activeFileUri = activeEditor.document.uri;
-            const activeDir = vscode.Uri.joinPath(activeFileUri, '..');
-            return vscode.Uri.joinPath(activeDir, fileName);
-        }
-
-        return undefined;
     }
 }

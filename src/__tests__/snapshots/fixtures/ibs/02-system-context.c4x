@@ -1,0 +1,10 @@
+%%{ c4: system-context }%%
+graph TB
+    Person(customer, "Personal Banking Customer", "A customer of the bank with one or more personal bank accounts.")
+    System(ibs, "Internet Banking System", "Allows customers to view information about their bank accounts and make payments via the web.")
+    System_Ext(core, "Core Banking System", "Handles core banking functions including customer information, bank account management, transactions, etc.", $tags="Core Banking")
+    System_Ext(email, "Amazon Web Services Simple Email Service", "Cloud-based email service provider.", $tags="External Email")
+    customer -->|Views account balances and makes payments using| ibs
+    email -->|Sends e-mails to| customer
+    ibs -->|Sends e-mails to customers using| email
+    ibs -->|Gets bank account information from and makes payments using| core

@@ -1,7 +1,8 @@
 'use strict';
 // The shipping artefact's ceiling: the package target is <= 2.5 MB as a VSIX —
 // decimal megabytes, the unit README uses, so 2,500,000 bytes.
-// It is a different measure from the raw-bundle figure esbuild.config.js alerts on.
+// It is a different measure from the raw-bundle planning target below, which
+// esbuild.config.js reports against.
 //
 // Asserted in the two places that hold the artefact: scripts/test-vsix-smoke.js
 // (the package job, on three operating systems) and
@@ -11,6 +12,9 @@
 const fs = require('fs');
 
 const VSIX_BUDGET_BYTES = 2_500_000;
+// The raw dist/extension.js planning target, decimal megabytes like the VSIX
+// ceiling. Informational: the build reports against it and never fails on it.
+const BUNDLE_PLANNING_TARGET_BYTES = 3_500_000;
 const README_PACKAGE_CLAIM = /^- \*\*No second runtime\.\*\* The package is about ([0-9]+\.[0-9]{2}) MB/m;
 
 function megabytes(bytes) {
@@ -34,4 +38,4 @@ function vsixFindings(vsixPath, readmePath) {
   return findings;
 }
 
-module.exports = { VSIX_BUDGET_BYTES, README_PACKAGE_CLAIM, megabytes, vsixFindings };
+module.exports = { VSIX_BUDGET_BYTES, BUNDLE_PLANNING_TARGET_BYTES, README_PACKAGE_CLAIM, megabytes, vsixFindings };

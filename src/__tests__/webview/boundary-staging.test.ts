@@ -51,7 +51,7 @@ describe('Boundary staging state (#137)', () => {
             'backend-boundary-0': { boundaryId: 'backend-boundary-0', x: 120, y: 240, w: 500, h: 400 },
         };
 
-        const state = serializeDraftState(staged, null, false);
+        const state = serializeDraftState(staged, null, false, 'file:///boundary-test.c4x');
         assert.strictEqual(isPersistedDraftState(state), true);
         const edit = state.stagedEdits[0];
         assert.strictEqual(edit.id, 'backend-boundary-0');
@@ -74,7 +74,7 @@ describe('Boundary staging state (#137)', () => {
     it('rejects persisted boundary edits with malformed geometry', () => {
         const valid = serializeDraftState({
             'backend-boundary-0': { boundaryId: 'backend-boundary-0', w: 100, h: 100 },
-        }, null, false);
+        }, null, false, 'file:///boundary-test.c4x');
         assert.strictEqual(isPersistedDraftState(valid), true);
 
         const badW = {

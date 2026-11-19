@@ -287,7 +287,8 @@ describe('#218 $code editor helpers', () => {
         assert.deepStrictEqual(attributeNameContext('p[Parser<br/>Component] $'), { typed: '$' });
         assert.deepStrictEqual(attributeNameContext('Component(p, "Parser (v2)", "Peggy", $'), { typed: '$' }, 'a ) inside a label');
         assert.deepStrictEqual(attributeNameContext('p[Parser<br/>Component] $x="1", $'), { typed: '$' });
-        assert.strictEqual(attributeNameContext('Component(a, "A", $sp'), undefined);
+        assert.deepStrictEqual(attributeNameContext('Component(a, "A", $sp'), { typed: '$sp' }, '#332: $sprite also starts with $s');
+        assert.strictEqual(attributeNameContext('Component(a, "A", $zz'), undefined);
         assert.strictEqual(attributeNameContext('Component(a, "costs $'), undefined);
         assert.strictEqual(attributeNameContext('The licence costs $'), undefined, 'prose');
         assert.strictEqual(attributeNameContext('Export the variable with $'), undefined, 'prose');

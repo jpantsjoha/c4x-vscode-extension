@@ -1,6 +1,9 @@
 import type { SourceRange, SourceId } from '../writeback/SourceRange';
 
-export type C4ViewType = 'system-context' | 'container' | 'component' | 'deployment' | 'dynamic';
+/** Every view a `%%{ c4: <view> }%%` line can declare. The type below is derived from this list, so the list cannot fall behind it. */
+export const C4_VIEW_TYPES = ['system-context', 'container', 'component', 'deployment', 'dynamic'] as const;
+
+export type C4ViewType = typeof C4_VIEW_TYPES[number];
 
 export type RelationshipArrow = '-->' | '-.->' | '==>';
 
@@ -30,12 +33,57 @@ export interface RawElement {
     technology?: string;
     description?: string;
     metadata?: Record<string, string>;
+    /** Raw `$shape` attribute value (last one written), unvalidated (notation decision #320). */
+    shape?: string;
+    /** Raw Peggy location of the last `$shape` pair; converted to `shapeRange` by C4XParser. */
+    shapeLoc?: PegLocation;
+    /** Source range of the last `$shape` pair, in original coordinates. Set by C4XParser. */
+    shapeRange?: SourceRange;
+    /**
+     * Attribute keys written more than once on this element, with the range of
+     * each repeat (notation decision #320, Decision 3). Only `$shape` repeats are reported.
+     */
+    duplicateKeys?: RawDuplicateKey[];
+    /** Constructs inside a deployment Node body that the parser discards (#472). */
+    droppedConstructs?: RawDroppedConstruct[];
     /** Raw Peggy location — populated by grammar actions, converted to sourceRange by C4XParser. */
     loc?: PegLocation;
     /** Stable source range in original (pre-injection) coordinates. Set by C4XParser. */
     sourceRange?: SourceRange;
     /** Stable identifier for this element's source site. Set by C4XParser. */
     sourceId?: SourceId;
+}
+
+/** A construct written inside a deployment `Node` body that is not drawn there (#472). */
+export interface RawDroppedConstruct {
+    /** `subgraph`, a `*_Boundary` keyword, or `direction`. */
+    kind: string;
+    loc?: PegLocation;
+    sourceRange?: SourceRange;
+}
+
+/** A repeated attribute key on an element. */
+export interface RawDuplicateKey {
+    key: string;
+    loc?: PegLocation;
+    sourceRange?: SourceRange;
+}
+
+/** One `$key="value"` pair of an `elementStyle` statement, in source order. */
+export interface RawStylePair {
+    key: string;
+    value: string;
+    loc?: PegLocation;
+    sourceRange?: SourceRange;
+}
+
+/** `elementStyle <Tag> $key="value", ...` (notation decision #320, Decision 3). */
+export interface RawElementStyle {
+    type: 'elementStyle';
+    tag: string;
+    properties: RawStylePair[];
+    loc?: PegLocation;
+    sourceRange?: SourceRange;
 }
 
 export interface RawRelationship {
@@ -62,6 +110,9 @@ export interface RawClassDefinition {
     type: 'classDef';
     name: string;
     styles?: string;
+    /** Raw Peggy location; converted to sourceRange by C4XParser. */
+    loc?: PegLocation;
+    sourceRange?: SourceRange;
 }
 
 export interface RawClassAssignment {
@@ -84,6 +135,12 @@ export interface RawBoundary {
     boundaryType?: string;
     direction?: string;
     elements: RawElement[];
+    /**
+     * Boundaries declared directly inside this one (#339): `index` points into
+     * `ParseResult.boundaries`; `afterElements` is how many of this boundary's
+     * `elements` precede it in source, so membership keeps source order.
+     */
+    childBoundaries?: Array<{ index: number; afterElements: number }>;
     relationships: RawRelationship[];
     metadata?: Record<string, string>;
     /** Raw Peggy location — populated by grammar actions, converted to sourceRange by C4XParser. */
@@ -103,6 +160,8 @@ export interface ParseResult {
     relationships: RawRelationship[];
     boundaries?: RawBoundary[];
     classDefinitions?: RawClassDefinition[];
+    /** Top-level `elementStyle` statements in source order; absent when there are none. */
+    elementStyles?: RawElementStyle[];
 }
 
 export interface ParseErrorLocation {

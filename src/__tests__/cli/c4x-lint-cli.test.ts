@@ -377,7 +377,7 @@ describe('c4x-lint CLI (#216)', () => {
             const [runLog] = log.runs;
             assert.deepStrictEqual(
                 runLog.tool.driver.rules.map(rule => rule.id),
-                [...LINT_RULES.map(rule => rule.id), 'C4X-SYNTAX', 'C4X-MODEL'],
+                [...LINT_RULES.map(rule => rule.id), 'C4X-SYNTAX', 'C4X-MODEL', 'C4X-LIMIT'],
             );
             assert.deepStrictEqual(runLog.results.map(r => [r.ruleId, r.level]), [['C4X-L004', 'note'], ['C4X-SYNTAX', 'error']]);
             const location = runLog.results[0].locations[0].physicalLocation;

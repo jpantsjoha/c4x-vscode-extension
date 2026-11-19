@@ -274,7 +274,7 @@ test('pointercancel restores the node to its drag-start position', async ({ page
     expect(await nodeCoordinate(page, 'customer', 'x')).toBe(initialX);
 });
 
-test('a versioned host rejection discards the draft, refreshes and returns focus to the toggle', async ({ page }) => {
+test('a versioned host rejection keeps the draft, says why and asks for no refresh (#439)', async ({ page }) => {
     await loadHarness(page);
     await page.locator('#toggle-layout').click();
     const customer = page.locator('g.node[data-id="customer"]');
@@ -282,16 +282,18 @@ test('a versioned host rejection discards the draft, refreshes and returns focus
     const initialX = await nodeCoordinate(page, 'customer', 'x');
 
     await page.keyboard.press('ArrowRight');
+    const movedX = await nodeCoordinate(page, 'customer', 'x');
+    expect(movedX).not.toBe(initialX);
 
     await rejectNextMove(page);
     await page.locator('#save-staged-changes').click();
 
-    await expect(page.locator('#toggle-layout')).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.locator('#toggle-layout')).toBeFocused();
-    await expect(page.locator('#layout-status')).toHaveText(
-        /Draft discarded; refreshing from source|Preview refreshed|Preview mode/
+    await expect(page.locator('#toggle-layout')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#layout-status')).toHaveAttribute(
+        'title', 'Spike harness rejected a stale revision. Your edits are kept. Discard to reload from source.'
     );
-    expect(await nodeCoordinate(page, 'customer', 'x')).toBe(initialX);
+    await expect(page.locator('#save-staged-changes')).toBeEnabled();
+    expect(await nodeCoordinate(page, 'customer', 'x')).toBe(movedX);
 });
 
 test('a malformed rejection response is ignored and cannot exit edit mode', async ({ page }) => {

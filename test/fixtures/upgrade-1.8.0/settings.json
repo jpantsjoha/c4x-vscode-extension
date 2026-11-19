@@ -1,0 +1,19 @@
+{
+  "_comment": "Hand-built. Every c4x.theme value a 1.8.0 user can hold: the five in the 1.8.0 package.json enum (package.json:283-292 at v1.8.0), c4-standard (offered by the Change Theme picker, which wrote it to settings, and the 1.8.0 fallback in src/themes/ThemeManager.ts:39 at v1.8.0), and an unknown string typed by hand.",
+  "c4x.theme": {
+    "enumAt180": ["classic", "modern", "muted", "high-contrast", "auto"],
+    "pickerOnlyAt180": ["c4-standard"],
+    "unknown": "my-company-theme"
+  },
+  "c4x.lint.enabled": false,
+  "c4x.lint.rules": { "orphan-element": "off" },
+  "c4x.canvas.autoFitOnOpen": false,
+  "c4x.layout.persistence": "sidecar",
+  "c4x.layout.spacing": "compact",
+  "c4x.legend.show": false,
+  "c4x.edgesOnTop": true,
+  "c4x.markdown.previewScale": 1.25,
+  "c4x.ai.model": "gemini-3.8-flash",
+  "c4x.ai.modelStrategy": "auto-ga",
+  "c4x.ai.layoutPreference": "spacious"
+}

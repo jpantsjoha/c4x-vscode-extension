@@ -185,6 +185,9 @@ const payload = {
     deploymentNode: '#FFFFFF',
     external: '#999999',
   },
+  // Draft-state identity (#167 review): required by isRenderMessage, so the
+  // harness must stand in for the host here too.
+  scope: 'file:///large-diagram-harness.c4x',
 };
 
 const vscodeStub = `
@@ -221,7 +224,7 @@ let html = templateMatch[1]
   .replace(/\$\{csp\}/g, "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'")
   .replace(/\$\{nonce\}/g, 'large-diagram-perf')
   .replace('    const vscode = acquireVsCodeApi();', vscodeStub)
-  .replace('${PREVIEW_CLIENT_SCRIPT}', PREVIEW_CLIENT_SCRIPT)
+  .replace('${buildPreviewClientScript(this.smokeSession)}', () => PREVIEW_CLIENT_SCRIPT)
   .replace('</body>', `<script>
     window.__visualLayoutRenderPayload = ${JSON.stringify(payload)};
     window.postMessage({ type: 'render', payload: window.__visualLayoutRenderPayload }, '*');

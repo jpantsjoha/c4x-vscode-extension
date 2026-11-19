@@ -4,7 +4,12 @@ const peggy = require('peggy');
 const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
+const { BUNDLE_PLANNING_TARGET_BYTES } = require('./scripts/vsix-budget');
 const { NOTICES_FILE, writeThirdPartyNotices } = require('./scripts/third-party-notices');
+const { ENGINE_HASH_PLACEHOLDER, engineHash, firstPartyInputs } = require('./scripts/engine-hash');
+const { headlessVscodePlugin } = require('./scripts/headless-vscode-plugin');
+
+const { cloudIconsPlugin } = require('./scripts/cloud-icons-esbuild');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -13,6 +18,8 @@ const checkMcp = process.argv.includes('--check-mcp');
 const mcpBundlePath = path.join('mcp', 'c4x-mcp-server.bundle.cjs');
 const mcpNoticesPath = path.join('mcp', 'THIRD_PARTY_NOTICES.txt');
 const cliBundlePath = path.join('cli', 'c4x-lint.cjs');
+const renderCliBundlePath = path.join('cli', 'c4x.cjs');
+const renderCliNoticesPath = path.join('cli', 'THIRD_PARTY_NOTICES.txt');
 const parserSourcePath = path.join('src', 'parser', 'c4x.generated.js');
 
 async function findPackageDirectory(inputPath) {
@@ -35,7 +42,7 @@ async function findPackageDirectory(inputPath) {
     throw new Error(`Could not locate package metadata for bundled input: ${inputPath}`);
 }
 
-async function createThirdPartyNotices(metafile) {
+async function createThirdPartyNotices(metafile, title, bundleName) {
     const packages = new Map();
 
     for (const inputPath of Object.keys(metafile.inputs)) {
@@ -48,9 +55,9 @@ async function createThirdPartyNotices(metafile) {
     }
 
     const sections = [
-        'C4X MCP SERVER THIRD-PARTY SOFTWARE NOTICES',
+        title,
         '',
-        'This generated file lists licenses for packages embedded in c4x-mcp-server.bundle.cjs.',
+        `This generated file lists licenses for packages embedded in ${bundleName}.`,
     ];
 
     for (const [identifier, { directory, manifest }] of [...packages.entries()].sort(([a], [b]) => a.localeCompare(b))) {
@@ -80,19 +87,34 @@ async function normalizeGeneratedArtifact(filePath) {
     }
 }
 
-function generatedMcpArtifactsPlugin(outfile, noticesPath) {
+/**
+ * Replace the banner's engine-hash placeholder with the SHA-256 of the
+ * first-party sources in this build's metafile (#353): the stale-bundle
+ * check (scripts/engine-hash.js) recomputes it from the working tree.
+ */
+async function stampEngineHash(outfile, metafile) {
+    const content = await fs.readFile(outfile, 'utf8');
+    const stamped = content.replace(ENGINE_HASH_PLACEHOLDER, engineHash(firstPartyInputs(metafile, process.cwd()), process.cwd()));
+    if (stamped !== content) {
+        await fs.writeFile(outfile, stamped);
+    }
+}
+
+function generatedArtifactsPlugin(outfile, noticesPath, title) {
     return {
-        name: 'c4x-generated-mcp-artifacts',
+        name: 'c4x-generated-artifacts',
         setup(build) {
             build.onEnd(async result => {
                 if (result.errors.length === 0 && result.metafile) {
                     await normalizeGeneratedArtifact(outfile);
-                    await fs.writeFile(noticesPath, await createThirdPartyNotices(result.metafile));
+                    await stampEngineHash(outfile, result.metafile);
+                    await fs.writeFile(noticesPath, await createThirdPartyNotices(result.metafile, title, path.basename(outfile)));
                 }
             });
         },
     };
 }
+
 
 function mcpBuildOptions(outfile, noticesPath, logLevel = 'info') {
     return {
@@ -108,9 +130,42 @@ function mcpBuildOptions(outfile, noticesPath, logLevel = 'info') {
         logLevel,
         treeShaking: true,
         legalComments: 'none',
-        banner: { js: '/*! Third-party licenses: ./THIRD_PARTY_NOTICES.txt */' },
+        loader: { '.md': 'text' },
+        banner: { js: `/*! Third-party licenses: ./THIRD_PARTY_NOTICES.txt */\n/*! c4x-engine-sha256: ${ENGINE_HASH_PLACEHOLDER} */` },
         metafile: true,
-        plugins: [generatedMcpArtifactsPlugin(outfile, noticesPath)],
+        // The render worker's test-only delay (src/cli/renderWorker.ts) is
+        // compiled out of every shipped bundle.
+        define: { __C4X_TEST_RENDER_DELAY_MS__: 'undefined' },
+        plugins: [cloudIconsPlugin(), headlessVscodePlugin(), generatedArtifactsPlugin(outfile, noticesPath, 'C4X MCP SERVER THIRD-PARTY SOFTWARE NOTICES')],
+    };
+}
+
+/**
+ * The headless render CLI `c4x` (#353): `c4x render` draws SVG with the
+ * extension's parser, layout and renderer. Tracked like the MCP bundle and,
+ * like it, embeds the layout dependency (dagre) with a notices file. It never
+ * imports `vscode` (headlessVscodePlugin).
+ */
+function renderCliBuildOptions(outfile, noticesPath, logLevel = 'info') {
+    return {
+        entryPoints: ['src/cli/c4xMain.ts'],
+        bundle: true,
+        format: 'cjs',
+        minify: true,
+        sourcemap: false,
+        sourcesContent: false,
+        platform: 'node',
+        target: 'node18',
+        outfile,
+        logLevel,
+        treeShaking: true,
+        legalComments: 'none',
+        banner: { js: `#!/usr/bin/env node\n/*! c4x: C4X render. Generated by esbuild.config.js from src/cli; do not edit. Third-party licenses: ./THIRD_PARTY_NOTICES.txt */\n/*! c4x-engine-sha256: ${ENGINE_HASH_PLACEHOLDER} */` },
+        metafile: true,
+        // The render worker's test-only delay (src/cli/renderWorker.ts) is
+        // compiled out of every shipped bundle.
+        define: { __C4X_TEST_RENDER_DELAY_MS__: 'undefined' },
+        plugins: [cloudIconsPlugin(), headlessVscodePlugin(), generatedArtifactsPlugin(outfile, noticesPath, 'C4X RENDER CLI THIRD-PARTY SOFTWARE NOTICES')],
     };
 }
 
@@ -205,8 +260,13 @@ async function verifyMcpBundle() {
         const candidateCliPath = path.join(tempDirectory, 'c4x-lint.cjs');
         await esbuild.build(cliBuildOptions(candidateCliPath, 'silent'));
         await assertFilesEqual(cliBundlePath, candidateCliPath, 'c4x-lint CLI bundle is stale. Run "pnpm run build:mcp" and commit the regenerated cli/c4x-lint.cjs.');
+        const candidateRenderPath = path.join(tempDirectory, 'c4x.cjs');
+        const candidateRenderNoticesPath = path.join(tempDirectory, 'CLI_THIRD_PARTY_NOTICES.txt');
+        await esbuild.build(renderCliBuildOptions(candidateRenderPath, candidateRenderNoticesPath, 'silent'));
+        await assertFilesEqual(renderCliBundlePath, candidateRenderPath, 'c4x render CLI bundle is stale. Run "pnpm run build:mcp" and commit the regenerated cli/c4x.cjs.');
+        await assertFilesEqual(renderCliNoticesPath, candidateRenderNoticesPath, 'c4x render CLI third-party notices are stale. Run "pnpm run build:mcp" and commit the regenerated cli/THIRD_PARTY_NOTICES.txt.');
 
-        console.log('C4X generated parser, MCP bundle, third-party notices and c4x-lint CLI bundle are fresh.');
+        console.log('C4X generated parser, MCP bundle, third-party notices, c4x-lint CLI bundle and c4x render CLI bundle are fresh.');
     } finally {
         await fs.rm(tempDirectory, { recursive: true, force: true });
     }
@@ -252,6 +312,11 @@ const WEBVIEW_EMBEDDED_HELPERS = [
     'computeZoomToFit',
     'computeOptimalConnectionPoints',
     'computeBoundaryWrap',
+    'formatDraftRestoreStatus',
+    'isDraftStateForCurrentScope',
+    'isRenderScopeValue',
+    'migrateLegacyDraftState',
+    'isPersistableViewport',
     'isRelationshipEndpointLegal',
     'eligibleConnectTargets',
     'advanceConnectMode',
@@ -350,15 +415,31 @@ async function main() {
         logLevel: 'info',
         treeShaking: true,
         metafile: true,
-        plugins: [extensionModuleProvenancePlugin(), extensionNoticesPlugin(NOTICES_FILE)],
+        plugins: [cloudIconsPlugin(), extensionModuleProvenancePlugin(), extensionNoticesPlugin(NOTICES_FILE)],
     };
 
-    // --mcp-only regenerates every tracked generated bundle: the MCP server and
-    // the c4x-lint CLI. Neither ships in the VSIX.
-    const generatedOptions = [mcpBuildOptions(mcpBundlePath, mcpNoticesPath), cliBuildOptions(cliBundlePath)];
+    // The preview layout worker (#454): dagre only, run in a worker thread
+    // beside the extension bundle so a large layout cannot block the host.
+    const layoutWorkerOptions = {
+        entryPoints: ['src/layout/layoutWorkerMain.ts'],
+        bundle: true,
+        format: 'cjs',
+        minify: production,
+        sourcemap: false,
+        platform: 'node',
+        outfile: 'dist/layoutWorker.js',
+        logLevel: 'info',
+        treeShaking: true,
+        legalComments: 'none',
+        plugins: [cloudIconsPlugin(), headlessVscodePlugin()],
+    };
+
+    // --mcp-only regenerates every tracked generated bundle: the MCP server, the
+    // c4x-lint CLI and the c4x render CLI. Only the MCP server ships in the VSIX.
+    const generatedOptions = [mcpBuildOptions(mcpBundlePath, mcpNoticesPath), cliBuildOptions(cliBundlePath), renderCliBuildOptions(renderCliBundlePath, renderCliNoticesPath)];
     const buildOptions = mcpOnly
         ? generatedOptions
-        : [extensionOptions, ...generatedOptions];
+        : [extensionOptions, layoutWorkerOptions, ...generatedOptions];
     const contexts = await Promise.all(buildOptions.map(options => esbuild.context(options)));
 
     if (watch) {
@@ -383,22 +464,22 @@ async function main() {
             await assertWebviewHelpersSurvivedBundling();
         }
 
-        // Report bundle size. Informational only: nothing below fails the build. The
-        // shipped bundle is ~4.2 MB against a 1.5 MB alert and a 3.5 MB planning target,
-        // and whether that is a target to meet or a target to revise is #46's open
-        // decision. Printing ❌ before a ✅ "checks passed" read as a gate; it is not.
+        // Report bundle size against the one raw-bundle planning target
+        // (BUNDLE_PLANNING_TARGET_BYTES). Informational only: nothing here fails the
+        // build. Printing ❌ before a ✅ "checks passed" read as a gate; it is not.
+        // The bundle is deliberately unminified (see WEBVIEW_EMBEDDED_HELPERS), so
+        // reducing it is an architecture question.
         try {
             const bundleStat = await fs.stat('dist/extension.js');
             const bundleBytes = bundleStat.size;
             const bundleKB = (bundleBytes / 1024).toFixed(1);
-            const bundleMB = (bundleBytes / 1024 / 1024).toFixed(2);
+            const targetMB = (BUNDLE_PLANNING_TARGET_BYTES / 1_000_000).toFixed(1);
             const MODE = production ? 'production' : 'development';
-            if (bundleBytes > 1572864) {
-                console.warn(`⚠️  Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — exceeds the 1.5 MB alert threshold; informational, not a gate (#46)`);
-            } else if (bundleBytes > 1048576) {
-                console.warn(`⚠️  Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — exceeds 1 MB target`);
+            const measured = `${bundleBytes} bytes (${bundleKB} KB)`;
+            if (bundleBytes > BUNDLE_PLANNING_TARGET_BYTES) {
+                console.warn(`⚠️  Bundle size (${MODE}): ${measured} — exceeds the ${targetMB} MB planning target; informational, not a gate`);
             } else {
-                console.log(`📦 Bundle size (${MODE}): ${bundleKB} KB (${bundleMB} MB) — within informational target`);
+                console.log(`📦 Bundle size (${MODE}): ${measured} — within the ${targetMB} MB planning target`);
             }
         } catch {
             // Non-fatal: size reporting only

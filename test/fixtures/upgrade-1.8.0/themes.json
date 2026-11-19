@@ -1,0 +1,277 @@
+{
+  "c4-standard": {
+    "name": "c4-standard",
+    "displayName": "C4 Standard",
+    "description": "Filled boxes matching Structurizr / C4-PlantUML defaults",
+    "colors": {
+      "person": {
+        "fill": "#08427B",
+        "stroke": "#073B6F",
+        "text": "#FFFFFF"
+      },
+      "softwareSystem": {
+        "fill": "#1168BD",
+        "stroke": "#0E5CA8",
+        "text": "#FFFFFF"
+      },
+      "externalSystem": {
+        "fill": "#999999",
+        "stroke": "#8A8A8A",
+        "text": "#FFFFFF"
+      },
+      "container": {
+        "fill": "#438DD5",
+        "stroke": "#3C7FC0",
+        "text": "#FFFFFF"
+      },
+      "component": {
+        "fill": "#85BBF0",
+        "stroke": "#78A8D8",
+        "text": "#000000"
+      },
+      "deploymentNode": {
+        "fill": "#FFFFFF",
+        "stroke": "#888888",
+        "text": "#444444"
+      },
+      "externalPerson": {
+        "fill": "#999999",
+        "stroke": "#8A8A8A",
+        "text": "#FFFFFF"
+      },
+      "externalContainer": {
+        "fill": "#999999",
+        "stroke": "#8A8A8A",
+        "text": "#FFFFFF"
+      },
+      "externalComponent": {
+        "fill": "#999999",
+        "stroke": "#8A8A8A",
+        "text": "#FFFFFF"
+      },
+      "relationship": {
+        "stroke": "#707070",
+        "text": "#707070"
+      },
+      "background": "#FFFFFF"
+    },
+    "styles": {
+      "borderRadius": 10,
+      "borderWidth": 2,
+      "fontSize": 14,
+      "fontFamily": "Arial, sans-serif",
+      "shadowEnabled": false
+    }
+  },
+  "classic": {
+    "name": "classic",
+    "displayName": "Classic",
+    "description": "Official C4 Model style - white boxes with colored borders",
+    "colors": {
+      "person": {
+        "fill": "#FFFFFF",
+        "stroke": "#438DD5",
+        "text": "#2B76BF"
+      },
+      "softwareSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#1168BD",
+        "text": "#1168BD"
+      },
+      "externalSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#999999",
+        "text": "#757575"
+      },
+      "container": {
+        "fill": "#FFFFFF",
+        "stroke": "#438DD5",
+        "text": "#2B76BF"
+      },
+      "component": {
+        "fill": "#FFFFFF",
+        "stroke": "#85BBF0",
+        "text": "#1974CD"
+      },
+      "deploymentNode": {
+        "fill": "#FFFFFF",
+        "stroke": "#666666",
+        "text": "#666666"
+      },
+      "externalPerson": {
+        "fill": "#FFFFFF",
+        "stroke": "#999999",
+        "text": "#757575"
+      },
+      "externalContainer": {
+        "fill": "#FFFFFF",
+        "stroke": "#999999",
+        "text": "#757575"
+      },
+      "externalComponent": {
+        "fill": "#FFFFFF",
+        "stroke": "#CCCCCC",
+        "text": "#757575"
+      },
+      "relationship": {
+        "stroke": "#707070",
+        "text": "#707070"
+      },
+      "background": "#FFFFFF"
+    },
+    "styles": {
+      "borderRadius": 10,
+      "borderWidth": 2,
+      "fontSize": 14,
+      "fontFamily": "Arial, sans-serif",
+      "shadowEnabled": false
+    }
+  },
+  "modern": {
+    "name": "modern",
+    "displayName": "Modern",
+    "description": "Vibrant colors with rounded corners and shadows",
+    "colors": {
+      "person": {
+        "fill": "#FFFFFF",
+        "stroke": "#6366F1",
+        "text": "#4338CA"
+      },
+      "softwareSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#3B82F6",
+        "text": "#1D4ED8"
+      },
+      "container": {
+        "fill": "#FFFFFF",
+        "stroke": "#06B6D4",
+        "text": "#155E75"
+      },
+      "component": {
+        "fill": "#FFFFFF",
+        "stroke": "#8B5CF6",
+        "text": "#6D28D9"
+      },
+      "deploymentNode": {
+        "fill": "#F3F4F6",
+        "stroke": "#4B5563",
+        "text": "#374151"
+      },
+      "externalSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#9CA3AF",
+        "text": "#4B5563"
+      },
+      "relationship": {
+        "stroke": "#6B7280",
+        "text": "#374151"
+      },
+      "background": "#FFFFFF"
+    },
+    "styles": {
+      "borderRadius": 12,
+      "borderWidth": 2,
+      "fontSize": 14,
+      "fontFamily": "Helvetica, Arial, sans-serif",
+      "shadowEnabled": true
+    }
+  },
+  "muted": {
+    "name": "muted",
+    "displayName": "Muted",
+    "description": "Grayscale minimalist - great for B&W printing",
+    "colors": {
+      "person": {
+        "fill": "#FFFFFF",
+        "stroke": "#4A5568",
+        "text": "#4A5568"
+      },
+      "softwareSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#718096",
+        "text": "#67768B"
+      },
+      "externalSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#A0AEC0",
+        "text": "#607590"
+      },
+      "container": {
+        "fill": "#FFFFFF",
+        "stroke": "#718096",
+        "text": "#67768B"
+      },
+      "component": {
+        "fill": "#FFFFFF",
+        "stroke": "#A0AEC0",
+        "text": "#607590"
+      },
+      "deploymentNode": {
+        "fill": "#FFFFFF",
+        "stroke": "#718096",
+        "text": "#67768B"
+      },
+      "relationship": {
+        "stroke": "#4A5568",
+        "text": "#4A5568"
+      },
+      "background": "#FFFFFF"
+    },
+    "styles": {
+      "borderRadius": 8,
+      "borderWidth": 2,
+      "fontSize": 13,
+      "fontFamily": "Georgia, serif",
+      "shadowEnabled": false
+    }
+  },
+  "high-contrast": {
+    "name": "high-contrast",
+    "displayName": "High Contrast",
+    "description": "WCAG AAA compliant - maximum visibility",
+    "colors": {
+      "person": {
+        "fill": "#FFFFFF",
+        "stroke": "#000000",
+        "text": "#000000"
+      },
+      "softwareSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#0000CC",
+        "text": "#0000CC"
+      },
+      "externalSystem": {
+        "fill": "#FFFFFF",
+        "stroke": "#666666",
+        "text": "#666666"
+      },
+      "container": {
+        "fill": "#FFFFFF",
+        "stroke": "#006600",
+        "text": "#006600"
+      },
+      "component": {
+        "fill": "#FFFFFF",
+        "stroke": "#CC0000",
+        "text": "#CC0000"
+      },
+      "deploymentNode": {
+        "fill": "#FFFFFF",
+        "stroke": "#000000",
+        "text": "#000000"
+      },
+      "relationship": {
+        "stroke": "#000000",
+        "text": "#000000"
+      },
+      "background": "#FFFFFF"
+    },
+    "styles": {
+      "borderRadius": 8,
+      "borderWidth": 3,
+      "fontSize": 16,
+      "fontFamily": "Arial, sans-serif",
+      "shadowEnabled": false
+    }
+  }
+}

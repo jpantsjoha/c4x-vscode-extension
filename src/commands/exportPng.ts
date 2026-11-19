@@ -26,7 +26,7 @@ export async function exportPngCommand(): Promise<void> {
         return;
     }
 
-    const svg = PreviewPanel.getCurrentSvg();
+    const svg = PreviewPanel.getCurrentExportSvg();
     if (!svg) {
         const action = await vscode.window.showErrorMessage(
             'No rendered diagram found. Open the C4X preview first, then retry the export.',
@@ -42,5 +42,5 @@ export async function exportPngCommand(): Promise<void> {
     const sourceExt = path.extname(editor.document.fileName);
     const baseName = path.basename(editor.document.fileName, sourceExt);
     const exporter = new PngExporter();
-    await exporter.export(svg, themeManager.getCurrentTheme(), `${baseName}.png`);
+    await exporter.export(svg, themeManager.getExportTheme(), `${baseName}.png`);
 }

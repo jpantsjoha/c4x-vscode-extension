@@ -7,7 +7,7 @@
     "theme": "dark"
   },
   "icon": "assets/marketplace/icon.png",
-  "version": "1.8.0",
+  "version": "1.9.2",
   "packageManager": "pnpm@10.18.3",
   "c4xToolchain": {
     "node": [
@@ -60,6 +60,16 @@
   "activationEvents": [
     "onUri"
   ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "The C4X MCP server needs a local process, so it is not offered in a virtual workspace. Everything else works as before."
+    },
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "C4X reads and writes files in the workspace, so it is off in Restricted Mode. The MCP server is likewise not offered until the workspace is trusted."
+    }
+  },
   "main": "./dist/extension.js",
   "contributes": {
     "markdown.markdownItPlugins": true,
@@ -70,6 +80,12 @@
       "./assets/scripts/preview.js"
     ],
     "markdown.enableCommandUris": true,
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "c4x.mcpServer",
+        "label": "C4X"
+      }
+    ],
     "commands": [
       {
         "command": "c4x.selectImageModel",
@@ -78,7 +94,7 @@
       },
       {
         "command": "c4x.selectModel",
-        "title": "C4X: Select Gemini Model",
+        "title": "C4X: Select AI Model",
         "category": "C4X"
       },
       {
@@ -287,17 +303,21 @@
           "default": "classic",
           "enum": [
             "classic",
+            "c4-model",
+            "c4-standard",
             "modern",
             "muted",
             "high-contrast",
             "auto"
           ],
           "enumDescriptions": [
-            "Official C4 Model colors (Simon Brown specification)",
-            "Vibrant colors with rounded corners",
-            "Grayscale minimalist for professional documentation",
-            "WCAG AAA compliant (7:1 contrast ratio)",
-            "Adapts to VS Code light/dark theme automatically"
+            "White boxes with blue outlines (person, systems, containers, components) and grey externals; text in a darkened outline colour",
+            "White boxes outlined in the c4model.com example colours: green person, blue systems, a distinct colour per external system, dark grey relationships",
+            "Filled boxes with white text: dark blue person, blue systems and containers, light blue components, grey externals (the Structurizr / C4-PlantUML default look)",
+            "White boxes with indigo, blue, cyan and purple outlines, rounded corners and drop shadows",
+            "Grayscale minimalist for print and documentation",
+            "White boxes with black, dark blue, dark green and dark red outlines and 3px borders",
+            "Follows the VS Code colour theme: a light or dark palette"
           ],
           "description": "C4 diagram theme"
         },
@@ -312,6 +332,32 @@
           "type": "string",
           "default": "gemini-3.8-flash",
           "description": "Gemini model ID for AI diagram generation. Enter any model ID your API key supports.\n\nVerified 2026-09-05:\n- gemini-3.8-flash — newest generally available flash (default)\n- gemini-3.7-flash — previous generation, still generally available\n- gemini-3.6-flash — previous default, still generally available\n- gemini-3.1-flash-lite — budget option\n- gemini-3.1-pro-preview — best reasoning, used as failover. Preview: no generally available Pro exists in the 3.x line\n\nSee https://ai.google.dev/gemini-api/docs/models for all available models."
+        },
+        "c4x.ai.provider": {
+          "type": "string",
+          "enum": [
+            "gemini",
+            "vscode-lm"
+          ],
+          "default": "gemini",
+          "scope": "application",
+          "enumDescriptions": [
+            "Gemini with your own API key, stored in VS Code's encrypted storage and asked for when none is set. Unchanged from earlier versions.",
+            "A chat model you already have in VS Code (for example through GitHub Copilot), through the VS Code Language Model API. No API key. Needs VS Code 1.91 or later. C4X asks you to confirm the model and shows what will be sent before every generation; VS Code may ask you to allow C4X to use the model."
+          ],
+          "markdownDescription": "Which AI provider generates diagrams from code or a selection.\n\n- `gemini` (default): your Gemini API key.\n- `vscode-lm`: a chat model VS Code already offers you, with no key. Run **C4X: Select AI Model** to choose one. Requests count against your plan with that model's provider.\n\nC4X never switches between providers on its own. Visual (PNG) diagrams always use Gemini. Set in user settings only: a workspace cannot change it."
+        },
+        "c4x.ai.vscodeLm.model": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "The VS Code language model id used when `#c4x.ai.provider#` is `vscode-lm`. Set by **C4X: Select AI Model**. Empty: C4X proposes a mid-tier model, judged from its name only, and asks you to confirm it. If the chosen model is no longer offered, generation stops and asks you to choose another; it never switches for you."
+        },
+        "c4x.ai.vscodeLm.sendWorkspaceGuidelines": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "When `#c4x.ai.provider#` is `vscode-lm`, also send your workspace's guideline files (`docs/C4X-GENERATION-GUIDELINES.md` or `GEMINI.md`, and `EXAMPLES.md`) to the model. Off by default: C4X sends its built-in guidance and no other workspace file. The confirmation before each generation says which applies."
         },
         "c4x.ai.imageModel": {
           "type": "string",
@@ -375,6 +421,11 @@
           "default": true,
           "description": "Show the diagram legend overlay in the preview (default). The legend floats over the canvas — drag it or use arrow keys to reposition — and lists only the element types present in the current diagram. Set to false to hide it entirely."
         },
+        "c4x.export.includeKey": {
+          "type": "boolean",
+          "default": false,
+          "description": "Add the diagram key below the diagram in exported SVG, PNG, PDF and HTML, in Copy SVG and in the Markdown preview. The key lists each distinct element style in the diagram (type, tags, shape and colour), then its boundary and relationship styles, each with a swatch drawn in the element's shape. Off by default: exports stay exactly as before. The preview always shows the key as an overlay; see c4x.legend.show."
+        },
         "c4x.canvas.autoFitOnOpen": {
           "type": "boolean",
           "default": true,
@@ -398,7 +449,13 @@
             "Use exactly the model in c4x.ai.model. If it has been retired or your key cannot reach it, fall back to the newest generally available model in the same tier and tell you.",
             "Automatically use the newest generally available model in the tier, so a new Gemini release is picked up without updating the extension. Preview and experimental models are never selected."
           ],
-          "description": "How C4X chooses a generation model.\\n\\nEither way, a model your key cannot reach is replaced rather than left to fail, and you are told when that happens. Run 'C4X: Select Gemini Model' to see what your key can use."
+          "description": "How C4X chooses a generation model.\\n\\nEither way, a model your key cannot reach is replaced rather than left to fail, and you are told when that happens. Run 'C4X: Select AI Model' to see what your key can use."
+        },
+        "c4x.mcp.register": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "Offer the bundled C4X MCP server (tools `validate_c4x` and `lint_c4x`) to the chat agent in VS Code 1.101 or later. VS Code does not show a separate prompt for it: once the extension is installed the built-in agent can use it. The server only receives text from the agent and returns text; it opens no network connection and writes no file. Turn this off to stop C4X offering the server; the change applies without a reload. You can also disable it in VS Code's MCP server list."
         },
         "c4x.lint.enabled": {
           "type": "boolean",
@@ -659,7 +716,12 @@
     "watch": "node esbuild.config.js --watch",
     "validate:toolchain": "node scripts/validate-toolchain-pins.js",
     "lint": "eslint src mcp",
-    "lint:md": "markdownlint *.md **/*.md --ignore node_modules --ignore out",
+    "lint:md": "markdownlint --dot '**/*.md'",
+    "generate:reference": "ts-node --transpile-only scripts/generate-c4x-reference.ts",
+    "verify:reference": "ts-node --transpile-only scripts/generate-c4x-reference.ts --check",
+    "generate:skill": "ts-node --transpile-only scripts/generate-c4x-skill.ts",
+    "generate:plugin": "node scripts/generate-plugin-manifests.js",
+    "verify:skill": "ts-node --transpile-only scripts/generate-c4x-skill.ts --check",
     "generate:parser": "peggy --format commonjs --output src/parser/c4x.generated.js src/parser/c4x.pegjs",
     "validate:docs": "npm run lint:md && npx ts-node scripts/validate-c4x-examples.ts && npm run verify:doc-claims",
     "test:compile": "tsc -p ./",
@@ -675,9 +737,12 @@
     "lint:c4x": "node cli/c4x-lint.cjs",
     "pretest:vsix-smoke": "pnpm run test:compile && pnpm run build && pnpm run package",
     "test:vsix-smoke": "node scripts/test-vsix-smoke.js",
+    "test:vsix-smoke:bite": "node scripts/test-vsix-smoke-bite.js",
+    "test:vsix-smoke:bite:discard": "node scripts/test-vsix-smoke-bite.js discard",
     "pretest:vsix-uat": "pnpm run build && pnpm run package",
     "test:vsix-uat": "node scripts/test-vsix-installed-uat.js",
-    "coverage": "c8 --all --exclude=\"src/__tests__/**\" --exclude=\"test/**\" --exclude=\"scripts/**\" --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --exclude=\"src/commands/**\" --exclude=\"src/webview/**\" --exclude=\"src/export/**\" --exclude=\"src/diagnostics/**\" --exclude=\"src/extension.ts\" --exclude=\"src/ai/AuthService.ts\" --exclude=\"src/ai/CodeContextExtractor.ts\" --exclude=\"src/ai/GeminiService.ts\" --exclude=\"src/completion/**\" --exclude=\"src/markdown/**\" --exclude=\"src/parser/plantuml/index.ts\" --exclude=\"src/parser/plantuml/macros.ts\" --exclude=\"src/themes/Theme.ts\" --exclude=\"src/model/C4Model.ts\" --check-coverage --lines 80 --statements 80 --functions 80 --branches 85 --reporter=text --reporter=lcov --src=src mocha --config .mocharc.unit.yml",
+    "coverage": "c8 --all --exclude=\"src/__tests__/**\" --exclude=\"test/**\" --exclude=\"scripts/**\" --exclude=\"skills/**\" --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --exclude=\"src/commands/**\" --exclude=\"src/webview/**\" --exclude=\"src/export/**\" --exclude=\"src/diagnostics/**\" --exclude=\"src/extension.ts\" --exclude=\"src/ai/AuthService.ts\" --exclude=\"src/ai/CodeContextExtractor.ts\" --exclude=\"src/ai/GeminiService.ts\" --exclude=\"src/completion/**\" --exclude=\"src/markdown/**\" --exclude=\"src/parser/plantuml/index.ts\" --exclude=\"src/parser/plantuml/macros.ts\" --exclude=\"src/themes/Theme.ts\" --exclude=\"src/model/C4Model.ts\" --check-coverage --lines 80 --statements 80 --functions 80 --branches 85 --reporter=text --reporter=lcov --src=src mocha --config .mocharc.unit.yml && pnpm run coverage:floors",
+    "coverage:floors": "c8 report --temp-directory coverage/tmp --all --src=src --include=\"src/**\" --exclude=\"src/__tests__/**\" --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --reporter=json-summary --reports-dir=.coverage/unit-all && node scripts/check-coverage-floors.js",
     "coverage:all": "c8 --temp-directory .coverage/tmp --clean=true --reporter=none mocha --config .mocharc.unit.yml && c8 --temp-directory .coverage/tmp --clean=false --reporter=none pnpm test && c8 report --temp-directory .coverage/tmp --all --src=src --include=\"src/**\" --exclude=\"node_modules/**\" --exclude=\"out/**\" --exclude=\"test/**\" --exclude=\"src/__tests__/**\" --exclude=\"scripts/**\" --exclude=src/parser/c4x.generated.js --exclude=src/parser/c4x.generated.d.ts --exclude=src/parser/c4x.js --reporter=text-summary --reporter=lcov --reports-dir=.coverage/all --check-coverage --lines 80 --statements 80 --branches 80 --functions 80",
     "coverage:integration": "c8 --all --reporter=text --reporter=lcov --report-dir=.coverage/integration --src=src pnpm test",
     "bench": "node -r ts-node/register test/benchmarks/performance.bench.ts",
@@ -690,16 +755,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@playwright/test": "^1.57.0",
     "@types/dagre": "^0.7.53",
     "@types/glob": "^9.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.0.0",
-    "@types/vscode": "^1.80.0",
+    "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "^2.3.0",
-    "@vscode/vsce": "^2.22.0",
+    "@vscode/vsce": "^3.9.2",
     "c8": "^11.0.0",
     "esbuild": "^0.19.0",
     "eslint": "^9.39.4",
@@ -716,6 +781,11 @@
     "typescript-eslint": "^8.59.1"
   },
   "pnpm": {
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-fc5q-39xc-vjpf"
+      ]
+    },
     "overrides": {
       "@hono/node-server": "1.19.15",
       "express-rate-limit": "8.5.2",
@@ -723,28 +793,23 @@
       "hono": "4.13.8",
       "ip-address": "10.7.2",
       "path-to-regexp": "8.4.2",
-      "qs": "6.16.0",
+      "qs": "6.16.1",
       "yargs": "17.7.3",
       "linkify-it": "5.0.2",
       "serialize-javascript": "7.0.5",
       "minimatch@>=10.0.0 <10.2.3": "10.2.3",
       "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
       "smol-toml@<1.7.1": "1.7.2",
-      "markdownlint-cli>markdown-it@<14.3.1": "14.3.1",
+      "markdownlint-cli>markdown-it@<14.3.3": "14.3.3",
       "brace-expansion@>=1.0.0 <1.1.21": "1.1.21",
       "brace-expansion@>=2.0.0 <2.1.7": "2.1.7",
       "brace-expansion@>=5.0.0 <5.0.12": "5.0.12",
       "proxy-addr@<2.0.8": "2.0.8"
-    },
-    "auditConfig": {
-      "ignoreGhsas": [
-        "GHSA-vfj7-8cjw-p6xm"
-      ]
     }
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
     "dagre": "^0.8.5",
-    "markdown-it": "^14.2.0"
+    "markdown-it": "^14.3.3"
   }
 }

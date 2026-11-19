@@ -377,6 +377,18 @@ export class GeminiService {
     }
 
     public async generateDiagram(files: FileContext[], instruction: string, options?: { direction?: 'TB' | 'LR' }): Promise<string> {
+        return this.generateFromPrompt(() => buildGenerationPrompt(files, instruction, options));
+    }
+
+    /**
+     * Generate from a prompt built and shown to the user beforehand (#392): the
+     * prompt sent is exactly `prompt`, nothing is read or added here.
+     */
+    public async generateDiagramFromPrompt(prompt: string): Promise<string> {
+        return this.generateFromPrompt(async () => prompt);
+    }
+
+    private async generateFromPrompt(makePrompt: () => Promise<string>): Promise<string> {
         if (!this.hasCredentials()) {
             // Re-try initialization in case key was added late
             await this.initialize();
@@ -392,7 +404,7 @@ export class GeminiService {
         }, async (progress) => {
             progress.report({ message: "Analyzing context & generating diagram..." });
 
-            const prompt = await buildGenerationPrompt(files, instruction, options);
+            const prompt = await makePrompt();
 
             // Log prompt for debugging transparency
             console.log('[GeminiService] GENERATED PROMPT PREVIEW:', prompt.substring(0, 500) + '...');

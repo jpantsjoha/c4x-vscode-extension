@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1545 851" role="img">
+  <rect x="0" y="0" width="1545" height="851" fill="#FFFFFF" />
+  
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+          <feOffset in="blur" dx="3" dy="3" result="offsetBlur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+      </defs>
+  
+  <g class="diagram-content" transform="translate(0, 0)">
+    <g class="boundaries">
+
+    </g>
+    <g class="nodes">
+<g class="node" data-id="short_person" data-shape="person" data-type-label="Person" >
+    <rect x="230.00" y="155.60" width="200.00" height="98.40" rx="36.00" ry="36.00" fill="#FFFFFF" stroke="#297E06" stroke-width="2" />
+    <circle cx="330.00" cy="129.20" r="35.20" fill="#FFFFFF" stroke="#297E06" stroke-width="2" />
+<text data-field="label" x="330.00" y="196.80" fill="#297E06" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">User</text>
+    <text data-field="technology" x="330.00" y="212.80" fill="#297E06" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Person]</text>
+    <text data-field="description" x="330.00" y="228.80" fill="#297E06" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Pays bills</text>
+  </g>
+<g class="node" data-id="long_person" data-shape="person" data-type-label="Person" >
+    <rect x="845.00" y="110.00" width="200.00" height="198.00" rx="36.00" ry="36.00" fill="#FFFFFF" stroke="#BF101D" stroke-width="2" />
+    <circle cx="945.00" cy="80.00" r="40.00" fill="#FFFFFF" stroke="#BF101D" stroke-width="2" />
+<text data-field="label" x="945.00" y="145.00" fill="#BF101D" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold"><tspan x="945.00" y="145.00">Personal Banking</tspan><tspan x="945.00" y="161.00">Customer With A Very</tspan><tspan x="945.00" y="177.00">Long Name</tspan></text>
+    <text data-field="technology" x="945.00" y="193.00" fill="#BF101D" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Person]</text>
+    <text data-field="description" x="945.00" y="209.00" fill="#BF101D" text-anchor="middle" font-size="12" font-family="Arial, sans-serif"><title>A customer of the bank with one or more personal bank accounts, who also uses the mobile app, the website and the branch network to manage savings, loans and card payments every single day, and who calls the contact centre when a payment fails, a card is lost or a standing order needs changing before the end of the month</title><tspan x="945.00" y="209.00">A customer of the bank with</tspan><tspan x="945.00" y="225.00">one or more personal bank</tspan><tspan x="945.00" y="241.00">accounts, who also uses the</tspan><tspan x="945.00" y="257.00">mobile app, the website and</tspan><tspan x="945.00" y="273.00">the branch network to</tspan><tspan x="945.00" y="289.00">manage savings, loans an…</tspan></text>
+  </g>
+<g class="node" data-id="medium_system" data-type-label="Software System" >
+    <rect x="200.00" y="388.50" width="260.00" height="140.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="330.00" y="442.50" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Internet Banking System</text>
+    <text data-field="technology" x="330.00" y="458.50" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="330.00" y="474.50" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif"><tspan x="330.00" y="474.50">Allows customers to view information about</tspan><tspan x="330.00" y="490.50">their bank accounts and make payments</tspan></text>
+  </g>
+<g class="node" data-id="short_system" data-type-label="Software System" >
+    <rect x="40.00" y="635.00" width="260.00" height="140.00" rx="6" ry="6" fill="#FFFFFF" stroke="#ED8609" stroke-width="2" />
+<text data-field="label" x="170.00" y="697.00" fill="#B35F00" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Mail</text>
+    <text data-field="technology" x="170.00" y="713.00" fill="#B35F00" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="170.00" y="729.00" fill="#B35F00" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends e-mail</text>
+  </g>
+<g class="node database" data-id="id_system" data-type-label="Software System" >
+    <path d="M 360.00 647.00 L 360.00 763.00 A 130.00 12 0 0 0 620.00 763.00 L 620.00 647.00 A 130.00 12 0 0 0 360.00 647.00 Z" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+    <path d="M 360.00 647.00 A 130.00 12 0 0 1 620.00 647.00" fill="none" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="490.00" y="689.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold"><tspan x="490.00" y="689.00">MainframeBankingSystemFacadeI</tspan><tspan x="490.00" y="705.00">mplementation</tspan></text>
+    <text data-field="technology" x="490.00" y="721.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="490.00" y="737.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Stores all of the core banking information</text>
+  </g>
+<g class="node" data-id="medium_container" data-type-label="Container" >
+    <rect x="825.00" y="393.50" width="240.00" height="130.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="945.00" y="442.50" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">API Application</text>
+    <text data-field="technology" x="945.00" y="458.50" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Container: Java and Spring Boot]</text>
+    <text data-field="description" x="945.00" y="474.50" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif"><tspan x="945.00" y="474.50">Provides Internet banking functionality</tspan><tspan x="945.00" y="490.50">via a JSON/HTTPS API</tspan></text>
+  </g>
+<g class="node" data-id="url_container" data-type-label="Container" >
+    <rect x="1255.00" y="109.00" width="240.00" height="130.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="1375.00" y="158.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Gateway</text>
+    <text data-field="technology" x="1375.00" y="174.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic"><title>[Container: https://api.example.com/v2/accounts/{accountId}/transactions?limit=50]</title><tspan x="1375.00" y="174.00">[Container:</tspan><tspan x="1375.00" y="190.00">https://api.example.com/v2/accounts/…</tspan></text>
+    <text data-field="description" x="1375.00" y="206.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Routes requests</text>
+  </g>
+<g class="node database" data-id="long_db" data-type-label="Container" >
+    <path d="M 680.00 621.00 L 680.00 789.00 A 120.00 12 0 0 0 920.00 789.00 L 920.00 621.00 A 120.00 12 0 0 0 680.00 621.00 Z" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+    <path d="M 680.00 621.00 A 120.00 12 0 0 1 920.00 621.00" fill="none" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="800.00" y="657.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Database</text>
+    <text data-field="technology" x="800.00" y="673.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic"><title>[Container: Relational Database Schema on PostgreSQL 16 with logical replication]</title><tspan x="800.00" y="673.00">[Container: Relational Database</tspan><tspan x="800.00" y="689.00">Schema on PostgreSQL 16 with logic…</tspan></text>
+    <text data-field="description" x="800.00" y="705.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif"><tspan x="800.00" y="705.00">Stores user registration information,</tspan><tspan x="800.00" y="721.00">hashed authentication credentials,</tspan><tspan x="800.00" y="737.00">access logs, audit trails, consent records</tspan><tspan x="800.00" y="753.00">and every statement ever produced for</tspan><tspan x="800.00" y="769.00">every account</tspan></text>
+  </g>
+<g class="node" data-id="cjk_component" data-type-label="Component" >
+    <rect x="980.00" y="641.00" width="220.00" height="128.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="1090.00" y="665.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Контроллер входа</text>
+    <text data-field="technology" x="1090.00" y="681.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic"><tspan x="1090.00" y="681.00">[Component: Spring MVC Rest</tspan><tspan x="1090.00" y="697.00">Controller]</tspan></text>
+    <text data-field="description" x="1090.00" y="713.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif"><tspan x="1090.00" y="713.00">Позволяет пользователям</tspan><tspan x="1090.00" y="729.00">входить в систему</tspan><tspan x="1090.00" y="745.00">интернет-банкинга и</tspan><tspan x="1090.00" y="761.00">просматривать сведения о счетах</tspan></text>
+  </g>
+<g class="node person" data-id="sprite_component" data-type-label="Component" >
+    <rect x="1265.00" y="388.00" width="220.00" height="141.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+    <g class="element-icon">
+      <g transform="translate(1355.00, 398.00) scale(0.4000)" fill="#1168BD" stroke="none"><rect x="20" y="20" width="60" height="60" rx="5" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="30" cy="30" r="3" fill="currentColor"/><circle cx="30" cy="45" r="3" fill="currentColor"/></g>
+    </g>
+<text data-field="label" x="1375.00" y="459.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Accounts Summary Controller</text>
+    <text data-field="technology" x="1375.00" y="474.00" fill="#1168BD" text-anchor="middle" font-size="11" font-family="Arial, sans-serif" font-style="italic"><tspan x="1375.00" y="474.00">[Component: Spring MVC Rest</tspan><tspan x="1375.00" y="489.00">Controller]</tspan></text>
+    <text data-field="description" x="1375.00" y="504.00" fill="#1168BD" text-anchor="middle" font-size="11" font-family="Arial, sans-serif"><tspan x="1375.00" y="504.00">Provides customers with a summary of</tspan><tspan x="1375.00" y="519.00">their bank accounts</tspan></text>
+  </g>
+<g class="node database" data-id="short_component_db" data-type-label="Component" >
+    <path d="M 1265.00 657.00 L 1265.00 753.00 A 110.00 12 0 0 0 1485.00 753.00 L 1485.00 657.00 A 110.00 12 0 0 0 1265.00 657.00 Z" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+    <path d="M 1265.00 657.00 A 110.00 12 0 0 1 1485.00 657.00" fill="none" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="1375.00" y="697.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Cache</text>
+    <text data-field="technology" x="1375.00" y="713.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Component: Redis]</text>
+    <text data-field="description" x="1375.00" y="729.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sessions</text>
+  </g>
+    </g>
+    <g class="edges">
+<g class="edge" data-id="rel-0">
+    <path class="edge-hit-area" d="M330.00,254.00 L330.00,388.50" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M330.00,254.00 L330.00,388.50" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="330.00" y="315.25" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
+  </g>
+<g class="edge" data-id="rel-1">
+    <path class="edge-hit-area" d="M945.00,308.00 L945.00,393.50" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M945.00,308.00 L945.00,393.50" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="945.00" y="344.75" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
+  </g>
+<g class="edge" data-id="rel-2">
+    <path class="edge-hit-area" d="M945.00,523.50 L800.00,609.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M945.00,523.50 L800.00,609.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="872.50" y="560.25" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reads</text>
+  </g>
+<g class="edge" data-id="rel-3">
+    <path class="edge-hit-area" d="M945.00,523.50 L1090.00,641.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M945.00,523.50 L1090.00,641.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="1017.50" y="576.25" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Calls</text>
+  </g>
+<g class="edge" data-id="rel-4">
+    <path class="edge-hit-area" d="M1375.00,239.00 L1375.00,388.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M1375.00,239.00 L1375.00,388.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="1375.00" y="307.50" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Routes to</text>
+  </g>
+<g class="edge" data-id="rel-5">
+    <path class="edge-hit-area" d="M1375.00,529.00 L1375.00,645.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M1375.00,529.00 L1375.00,645.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="1375.00" y="581.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Caches in</text>
+  </g>
+<g class="edge" data-id="rel-6">
+    <path class="edge-hit-area" d="M330.00,528.50 L170.00,635.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M330.00,528.50 L170.00,635.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="250.00" y="575.75" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends with</text>
+  </g>
+<g class="edge" data-id="rel-7">
+    <path class="edge-hit-area" d="M330.00,528.50 L490.00,635.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M330.00,528.50 L490.00,635.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="410.00" y="575.75" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reads</text>
+  </g>
+    </g>
+  </g>
+</svg>

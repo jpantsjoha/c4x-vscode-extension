@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
+import { registerMcpServer } from './mcp/registration';
 import { c4xPlugin } from './markdown/c4xPlugin';
+import { ThemeManager } from './themes/ThemeManager';
 import { DiagnosticsManager } from './diagnostics/DiagnosticsManager';
 import { HtmlExporter } from './export/HtmlExporter';
 import { PdfExporter } from './export/PdfExporter';
@@ -13,6 +15,7 @@ import { exportPngCommand } from './commands/exportPng';
 import { exportSvgCommand } from './commands/exportSvg';
 import { copySvgCommand } from './commands/copySvg';
 import { changeThemeCommand } from './commands/changeTheme';
+import * as smokeProbe from './webview/smokeProbe';
 import { PreviewPanel } from './webview/PreviewPanel';
 import { executeResetLayoutTransaction } from './writeback/WritebackTransaction';
 import { C4XCodeLensProvider } from './markdown/C4XCodeLensProvider';
@@ -46,6 +49,9 @@ export function activate(context: vscode.ExtensionContext) {
       visualDiagramCommand.refreshCredentials().catch(() => undefined),
     ]);
   };
+
+  // Apply a changed c4x.theme setting to open previews without a reload.
+  context.subscriptions.push(ThemeManager.getInstance().watchConfiguration());
 
   // Register commands
   context.subscriptions.push(
@@ -147,6 +153,9 @@ export function activate(context: vscode.ExtensionContext) {
   // Architecture conformance export and checker-result mapping (#219).
   registerConformanceCommands(context);
 
+  // Zero-config MCP registration (#357): a no-op on a VS Code without the API.
+  const mcpRegistration = registerMcpServer(context, vscode);
+
   // Register CodeLens provider: shows "Edit C4 diagram" above each fence in .md files.
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(
@@ -178,7 +187,10 @@ export function activate(context: vscode.ExtensionContext) {
   // See: https://code.visualstudio.com/api/extension-guides/markdown-extension
   return {
     ...(process.env.C4X_VSIX_SMOKE === '1' ? {
-      __test: { whenPreviewRendered: PreviewPanel.whenPreviewRendered },
+      __test: smokeProbe,
+    } : {}),
+    ...(process.env.C4X_VSIX_SMOKE === '1' || context.extensionMode === vscode.ExtensionMode.Test ? {
+      __mcp: { registered: mcpRegistration !== undefined, definitions: () => mcpRegistration?.definitions() ?? [] },
     } : {}),
     extendMarkdownIt(md: import('markdown-it')) {
       try {

@@ -1,42 +1,29 @@
-// Self-correction and response-cleaning logic for AI-generated C4X DSL.
+// The Gemini binding of the provider-neutral generation loop (#393).
 //
-// Independently testable — the core functions are pure (no VS Code state),
-// except for progress reporting passed through as an optional callback.
+// The loop itself — clean, parse, repair, three attempts per model — lives in
+// `generationLoop.ts` and serves every provider. This module binds it to a
+// Gemini client: `geminiCompletion` turns one `generateContent` call into the
+// loop's `complete(prompt) → text`, and `executeWithRetry` keeps the signature
+// FallbackStrategy, the live gate and the tests have always called.
 
 import * as vscode from 'vscode';
 import { C4XParser } from '../parser/C4XParser';
 import { type GenerateContentClient, responseText } from './geminiClient';
-import { buildFixPrompt } from './PromptBuilder';
+import { type CompleteFn, runRepairLoop } from './generationLoop';
+
+// Re-exported so existing callers and tests keep one import site.
+export { cleanResponse } from './generationLoop';
 
 /**
- * Strip markdown fences and sanitise HTML tags from relationship labels.
- *
- * Returns the cleaned C4X DSL string ready for the parser, or an empty
- * string when no code block could be extracted.
+ * One Gemini request as the loop's `complete`: `generateContent` on
+ * `modelName`, the answer's text out. `responseText` throws for a blocked
+ * answer, like the call itself failing, and returns '' for an empty one.
  */
-export function cleanResponse(text: string): string {
-    let clean = text.trim();
-
-    // 1. Extract Code Block if present
-    const codeBlockRegex = /```(?:c4x)?\s*([\s\S]*?)```/i;
-    const match = text.match(codeBlockRegex);
-    if (match && match[1]) {
-        clean = match[1].trim();
-    } else {
-        // Fallback: cleaning of common conversational usage if no block found
-        if (clean.startsWith('```c4x')) { clean = clean.substring(6); }
-        else if (clean.startsWith('```')) { clean = clean.substring(3); }
-        if (clean.endsWith('```')) { clean = clean.substring(0, clean.length - 3); }
-    }
-
-    // 2. Sanitize Relationship Labels: Remove <br>, <br/>, </br> tags
-    // Matches: -->, ..>, ==>, -.-> followed by |Label|
-    clean = clean.replace(/((?:--|\.\.|-\.-|==)>\s*\|)([^|]+)(\|)/g, (match, arrowPart, label, endPipe) => {
-        const cleanLabel = label.replace(/<\/?br\s*\/?>/gi, ' ');
-        return `${arrowPart}${cleanLabel}${endPipe}`;
-    });
-
-    return clean.trim();
+export function geminiCompletion(client: GenerateContentClient, modelName: string): CompleteFn {
+    return async prompt => {
+        const response = await client.models.generateContent({ model: modelName, contents: prompt });
+        return responseText(response);
+    };
 }
 
 /**
@@ -56,46 +43,5 @@ export async function executeWithRetry(
     parser: C4XParser,
     progress?: vscode.Progress<{ message?: string }>
 ): Promise<string> {
-    const isRetry = attempt > 1;
-    const statusMsg = isRetry
-        ? `Auto-Correcting Syntax Error (Attempt ${attempt}/${maxRetries})...`
-        : `Generating with ${modelName}...`;
-
-    progress?.report({ message: statusMsg });
-    console.log(`[SyntaxValidator] ${statusMsg}`);
-
-    const response = await client.models.generateContent({ model: modelName, contents: currentPrompt });
-    // Throws for a blocked answer, like the call itself failing; '' for an
-    // empty one, which the validation below turns into a self-correction pass.
-    const rawText = responseText(response);
-
-    // Log raw response for debugging
-    console.log(`[SyntaxValidator] Raw Response (${rawText.length} chars)`);
-
-    // Self-Correction: Validate with Parser
-    try {
-        // Clean the response (may throw on lazy sprite syntax)
-        const cleanedText = cleanResponse(rawText);
-
-        // If the cleaned text is empty, it means we failed to extract a block -> Retry
-        if (!cleanedText) { throw new Error("No C4X code block found in response."); }
-
-        progress?.report({ message: "Validating Syntax..." });
-        parser.parse(cleanedText);
-        return cleanedText; // Valid!
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (validationError: any) {
-        console.warn(`Validation failed for ${modelName}: ${validationError.message}`);
-
-        if (attempt < maxRetries) {
-            progress?.report({ message: "Syntax Error Detected. Applying Fix..." });
-            console.log(`Re-prompting ${modelName} for fix...`);
-
-            const fixPrompt = buildFixPrompt(rawText, validationError.message);
-            return executeWithRetry(client, modelName, fixPrompt, attempt + 1, maxRetries, parser, progress);
-        }
-
-        // If retries exhausted, throw validation error to trigger fallback mechanism
-        throw validationError;
-    }
+    return runRepairLoop(geminiCompletion(client, modelName), modelName, currentPrompt, attempt, maxRetries, parser, progress);
 }

@@ -1,0 +1,3 @@
+/* The native textarea resize grip is drawn by the browser, not by C4X, and its
+   pixels change between Chrome versions. Hide it so the baseline only covers C4X output. */
+textarea::-webkit-resizer { display: none; }

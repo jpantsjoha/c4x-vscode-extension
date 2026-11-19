@@ -1,28 +1,63 @@
 import { C4XParseError, ParseResult, PegLocation, PegPosition, RawElement, RawRelationship, RawBoundary } from './types';
 import { SourceRange, SourcePosition, makeSourceId, sourcePositionAt } from '../writeback/SourceRange';
 import * as pegParser from './c4x.generated.js';
+import { assignDescriptionFirstArguments } from './elementArguments';
+import { MAX_NESTING_DEPTH } from './nestingDepth';
 
 const GRAPH_INJECTION = 'graph TB\n'; // 9 UTF-16 code units
+
+/**
+ * Offsets of every newline in a source, built once per parse, so the offset of
+ * the newline before any position is a binary search: O(log n) per AST node.
+ * Scanning back with lastIndexOf cost O(line length) per node, which on one
+ * long line with many located attributes was quadratic (40,000 attributes on a
+ * 440 KB line took over 6.5 s, #362).
+ */
+export class NewlineIndex {
+    private offsets: number[] | undefined;
+
+    constructor(private readonly text: string) {}
+
+    /** The offset of the last newline before `offset`, or -1. */
+    previousNewline(offset: number): number {
+        if (!this.offsets) {
+            const found: number[] = [];
+            for (let index = this.text.indexOf('\n'); index !== -1; index = this.text.indexOf('\n', index + 1)) {
+                found.push(index);
+            }
+            this.offsets = found;
+        }
+        const offsets = this.offsets;
+        let low = 0;
+        let high = offsets.length - 1;
+        let result = -1;
+        while (low <= high) {
+            const mid = (low + high) >> 1;
+            if (offsets[mid] < offset) { result = offsets[mid]; low = mid + 1; } else { high = mid - 1; }
+        }
+        return result;
+    }
+}
 
 /**
  * Map a Peggy position from processed-input coordinates back to the original
  * source. The injected directive adds one line. Column is recomputed from the
  * original line start because injection may occur after indentation that
- * Peggy moved onto a different line. This remains O(line length), rather than
- * rescanning the whole document for every AST node.
+ * Peggy moved onto a different line. O(log n) per call through `newlines`.
  */
 function adjustPos(
     pos: PegPosition,
     originalInput: string,
     injectedAt: number,
     injLen: number,
+    newlines: NewlineIndex,
 ): SourcePosition {
     if (injLen === 0 || injectedAt < 0 || pos.offset <= injectedAt) {
         return { offset: pos.offset, line: pos.line, column: pos.column };
     }
     if (pos.offset >= injectedAt + injLen) {
         const originalOffset = pos.offset - injLen;
-        const previousNewline = originalInput.lastIndexOf('\n', originalOffset - 1);
+        const previousNewline = newlines.previousNewline(originalOffset);
         return {
             offset: originalOffset,
             line: pos.line - 1,
@@ -35,6 +70,21 @@ function adjustPos(
     return sourcePositionAt(originalInput, injectedAt);
 }
 
+/**
+ * A clearer message for an unquoted attribute value such as `$strokeWidth=2`
+ * or `$stroke=#BF101D`. Every C4X attribute value is a quoted string or an
+ * identifier (notation decision #320, Decision 3), so a number or colour must be quoted.
+ * Returns undefined when the failure is anything else.
+ */
+export function unquotedValueMessage(text: string, offset: number): string | undefined {
+    const before = /\$([A-Za-z_][A-Za-z0-9_-]*)[ \t]*=[ \t]*$/.exec(text.slice(Math.max(0, offset - 200), offset));
+    if (!before) { return undefined; }
+    const token = /^[^\s,)"\]]+/.exec(text.slice(offset));
+    if (!token || !/^[#0-9.-]/.test(token[0])) { return undefined; }
+    const key = before[1];
+    return `Unquoted value for $${key}: write $${key}="${token[0]}". Attribute values are quoted strings.`;
+}
+
 export class C4XParser {
     public parse(input: string): ParseResult {
         // Preprocess: ensure a default graph direction exists to reduce syntax friction
@@ -43,7 +93,11 @@ export class C4XParser {
         let processedInput = input;
         let injectedAt = -1; // offset in processedInput where the injection starts
         if (!hasExplicitDirection) {
-            const directiveMatch = /^\s*%%\{[^\n]*\}%%\s*/m.exec(input);
+            // `[ \t]*`, not `\s*`: with the m flag, `^\s*` tried at every line start ran
+                // across all the blank lines that follow before failing, which on a
+                // source of blank lines was quadratic (#362). The insertion point, the
+                // end of the match, is the same.
+                const directiveMatch = /^[^\S\n\r\u2028\u2029]*%%\{[^\n]*\}%%\s*/m.exec(input);
             if (directiveMatch) {
                 const insertPos = directiveMatch.index + directiveMatch[0].length;
                 processedInput = input.slice(0, insertPos) + GRAPH_INJECTION + input.slice(insertPos);
@@ -55,16 +109,18 @@ export class C4XParser {
         }
 
         try {
-            const result = pegParser.parse(processedInput) as ParseResult;
+            // The grammar counts structural nesting and stops past the bound (#362).
+            const result = pegParser.parse(processedInput, { maxNestingDepth: MAX_NESTING_DEPTH }) as ParseResult;
             result.hasExplicitDirection = hasExplicitDirection;
 
             // Convert raw Peggy locations to SourceRanges in original-file coordinates
             const injLen = hasExplicitDirection ? 0 : GRAPH_INJECTION.length;
+            const newlines = new NewlineIndex(input);
             const adjustLoc = (loc: PegLocation | undefined): SourceRange | undefined => {
                 if (!loc) { return undefined; }
                 return {
-                    start: adjustPos(loc.start, input, injectedAt, injLen),
-                    end: adjustPos(loc.end, input, injectedAt, injLen),
+                    start: adjustPos(loc.start, input, injectedAt, injLen, newlines),
+                    end: adjustPos(loc.end, input, injectedAt, injLen, newlines),
                 };
             };
 
@@ -75,11 +131,54 @@ export class C4XParser {
                         el.sourceId = makeSourceId('element', el.id);
                         delete el.loc;
                     }
+                    if (el.shapeLoc) {
+                        el.shapeRange = adjustLoc(el.shapeLoc);
+                        delete el.shapeLoc;
+                    }
+                    for (const duplicate of el.duplicateKeys ?? []) {
+                        if (duplicate.loc) {
+                            duplicate.sourceRange = adjustLoc(duplicate.loc);
+                            delete duplicate.loc;
+                        }
+                    }
+                    for (const dropped of el.droppedConstructs ?? []) {
+                        if (dropped.loc) {
+                            dropped.sourceRange = adjustLoc(dropped.loc);
+                            delete dropped.loc;
+                        }
+                    }
                     if (el.children) { assignElementRanges(el.children); }
                 }
             };
 
             assignElementRanges(result.elements);
+
+            // Person and System calls take (id, "Label", "Description"); the grammar
+            // fills technology first, so move a lone positional to description (#420).
+            assignDescriptionFirstArguments(result.elements);
+            for (const boundary of result.boundaries ?? []) {
+                assignDescriptionFirstArguments(boundary.elements);
+            }
+
+            for (const classDef of result.classDefinitions ?? []) {
+                if (classDef.loc) {
+                    classDef.sourceRange = adjustLoc(classDef.loc);
+                    delete classDef.loc;
+                }
+            }
+
+            for (const style of result.elementStyles ?? []) {
+                if (style.loc) {
+                    style.sourceRange = adjustLoc(style.loc);
+                    delete style.loc;
+                }
+                for (const pair of style.properties) {
+                    if (pair.loc) {
+                        pair.sourceRange = adjustLoc(pair.loc);
+                        delete pair.loc;
+                    }
+                }
+            }
 
             const relationshipOccurrences = new Map<string, number>();
             result.relationships.forEach((rel: RawRelationship) => {
@@ -150,8 +249,9 @@ export class C4XParser {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const error = e as any;
             if (error.location) {
-                const adjusted = adjustPos(error.location.start, input, injectedAt, hasExplicitDirection ? 0 : GRAPH_INJECTION.length);
-                throw new C4XParseError(error.message, { line: adjusted.line, column: adjusted.column });
+                const adjusted = adjustPos(error.location.start, input, injectedAt, hasExplicitDirection ? 0 : GRAPH_INJECTION.length, new NewlineIndex(input));
+                const message = unquotedValueMessage(processedInput, error.location.start.offset) ?? error.message;
+                throw new C4XParseError(message, { line: adjusted.line, column: adjusted.column });
             } else {
                 throw new C4XParseError(error.message, { line: 1, column: 1 });
             }

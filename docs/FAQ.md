@@ -1,7 +1,7 @@
 # Frequently Asked Questions (FAQ)
 
-**Version**: 1.4.0
-**Last Updated**: 2026-05-02
+**Version**: 1.8.0
+**Last Updated**: 2026-11-13
 
 This document answers common questions about the C4X extension.
 
@@ -101,11 +101,11 @@ subgraph MySystem {
 
 ### Q: Will C4X support other DSLs like Structurizr or PlantUML?
 
-A: Yes. Support for importing diagrams from Structurizr DSL and C4-PlantUML is on our roadmap. The goal is to provide a unified preview and editing experience for multiple C4 diagram dialects.
+A: Yes, and it already does. C4X imports Structurizr DSL and C4-PlantUML and previews them beside native `.c4x`. Imported formats keep their original file untouched: layout changes go to a sidecar file. See [PlantUML C4 examples](./EXAMPLES-PLANTUML.md) and the [roadmap](./ROADMAP.md) for what comes next.
 
 ### Q: Where can I find the extension on the VS Code Marketplace?
 
-A: C4X is available on the [VS Code Marketplace](https://marketplace.visualstudio.com/). Search for "C4X" in VS Code's Extensions panel or install it directly from the Marketplace.
+A: C4X is on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x) and on [Open VSX](https://open-vsx.org/extension/jpantsjoha/c4x) as `jpantsjoha.c4x`. Search for "C4X" in the Extensions view, or run `code --install-extension jpantsjoha.c4x`.
 
 ---
 
@@ -152,8 +152,8 @@ A: C4X works with any Gemini model your API key supports. Here are the recommend
 | `gemini-3.6-flash` | Supported | Previous default, still generally available |
 | `gemini-3.1-flash-lite` | Supported | Budget option |
 | `gemini-3.1-pro-preview` | Failover | Best reasoning. A preview model: no generally available Pro exists in the 3.x line |
-| `gemini-2.5-pro` | Retires 2026-10-16 | Legacy, migrate before then |
-| `gemini-2.5-flash` | Retires 2026-10-16 | Legacy, migrate before then |
+| `gemini-2.5-pro` | Retires 2026-12-01 | Legacy, migrate before then |
+| `gemini-2.5-flash` | Retires 2026-12-01 | Legacy, migrate before then |
 
 **Removed models** (no longer available):
 - `gemini-3-pro-preview` -- retired 2026-03-09
@@ -218,7 +218,7 @@ A: Work through these steps:
 5. **Check the Output panel**: Open VS Code's Output panel (View > Output) and select "C4X" from the dropdown for detailed error messages.
 
 ### Q: Can I use Claude or OpenAI models?
-A: Not currently. C4X uses the Google Generative AI SDK, which only supports Gemini models. Multi-provider support is on the roadmap. For now, any valid Gemini model ID will work.
+A: Not currently. C4X uses Google's `@google/genai` SDK, which talks to Gemini models only. Any valid Gemini model ID your key can reach will work.
 
 ### Q: Why do different diagram levels scan different depths?
 A: This is part of **Smart Context Tuning** (v1.3.0):

@@ -4,7 +4,7 @@
  * White boxes with subtle gray borders
  */
 
-import { C4Theme } from './Theme';
+import { C4Theme, legacyThemeTokens } from './Theme';
 
 export const MutedTheme: C4Theme = {
     name: 'muted',
@@ -54,4 +54,5 @@ export const MutedTheme: C4Theme = {
         fontFamily: 'Georgia, serif',
         shadowEnabled: false,     // No shadows for clean print
     },
+    ...legacyThemeTokens({ stroke: '#4A5568', text: '#4A5568' }),
 };

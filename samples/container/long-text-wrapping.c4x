@@ -1,0 +1,15 @@
+%%{ c4: container }%%
+graph TB
+    %% Long text wraps inside its shape (1.9.0). A label, [technology] or description
+    %% wider than its box breaks onto more lines and the box grows taller; its width
+    %% stays the same. Text that fits is drawn on one line, as before.
+    Person(customer, "Personal Banking Customer", "A customer of the bank with one or more personal bank accounts")
+    Container(spa, "Single-Page Application", "JavaScript and Angular", "Provides all of the Internet banking functionality to customers via their web browser")
+    Container(api, "API Application", "Java and Spring Boot", "Provides Internet banking functionality via a JSON/HTTPS API")
+    ContainerDb(db, "Database", "Oracle Database Schema", "Stores user registration information, hashed authentication credentials, access logs, etc.")
+    System_Ext(mainframe, "Mainframe Banking System", "Stores all of the core banking information about customers, accounts, transactions, etc.")
+
+    customer -->|Views account balances and makes payments using| spa
+    spa -->|Makes API calls to| "JSON/HTTPS" api
+    api -->|Reads from and writes to| "SQL/TCP" db
+    api -->|Makes API calls to| "XML/HTTPS" mainframe

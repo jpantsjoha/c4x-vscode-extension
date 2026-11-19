@@ -9,6 +9,10 @@ export interface VisualLayoutNodeSnapshot {
     width: number;
     height: number;
     locked?: boolean;
+    /** True when `$x` is authored on the element: a boundary move leaves its x alone, as the host does. */
+    manualX?: boolean;
+    /** True when `$y` is authored on the element: a boundary move leaves its y alone, as the host does. */
+    manualY?: boolean;
     description?: string;
     technology?: string;
     tags?: string[];
@@ -361,6 +365,34 @@ export interface ExternalChangeConflictMessage {
     reason: string;
 }
 
+/**
+ * Host → webview: a theme change or refresh is waiting because the preview has
+ * unsaved staged edits; it applies after Save or Discard (#408).
+ */
+export interface RefreshDeferredMessage {
+    type: 'visualLayout.refreshDeferred';
+    protocolVersion: typeof VISUAL_LAYOUT_PROTOCOL_VERSION;
+}
+
+/**
+ * Webview → host: the webview declined a theme or refresh result (a `render`
+ * or an `error` sent with `refresh: true`) because it holds unsaved staged
+ * edits the host had not yet heard about. The host re-sends it after Save or
+ * Discard (#408).
+ */
+export interface RefreshDeclinedMessage {
+    type: 'visualLayout.refreshDeclined';
+    /**
+     * The `renderToken` of the render or error the webview still shows, so
+     * the host can restore the state that describes it (#439). Optional.
+     */
+    shownRenderToken?: number;
+}
+
+export function isRefreshDeclinedMessage(message: unknown): message is RefreshDeclinedMessage {
+    return isRecord(message) && message.type === 'visualLayout.refreshDeclined';
+}
+
 /** Webview → host: user chose a conflict-resolution action. */
 export type ConflictResolutionAction = 'reloadAndDiscard' | 'viewDiff' | 'rebase';
 
@@ -368,18 +400,37 @@ export interface ResolveConflictMessage {
     type: 'visualLayout.resolveConflict';
     protocolVersion: typeof VISUAL_LAYOUT_PROTOCOL_VERSION;
     action: ConflictResolutionAction;
+    /**
+     * With `rebase`: the keys of the staged edits, so the host can refuse a
+     * rebase that would move a positional relationship or boundary edit onto
+     * a different statement (#261). Absent means unknown, and every changed
+     * positional id counts.
+     */
+    stagedKeys?: string[];
 }
+
+/** Bounds on `stagedKeys`, matching the limits a draft can hold. */
+export const MAX_CONFLICT_STAGED_KEYS = 1000;
+export const MAX_CONFLICT_STAGED_KEY_LENGTH = 512;
 
 export function isResolveConflictMessage(value: unknown): value is ResolveConflictMessage {
     if (!isRecord(value)) {
         return false;
+    }
+    if (value.stagedKeys !== undefined) {
+        if (!Array.isArray(value.stagedKeys) || value.stagedKeys.length > MAX_CONFLICT_STAGED_KEYS) {
+            return false;
+        }
+        if (!value.stagedKeys.every(key => typeof key === 'string' && key.length > 0 && key.length <= MAX_CONFLICT_STAGED_KEY_LENGTH)) {
+            return false;
+        }
     }
     return value.type === 'visualLayout.resolveConflict' &&
         value.protocolVersion === VISUAL_LAYOUT_PROTOCOL_VERSION &&
         (value.action === 'reloadAndDiscard' || value.action === 'viewDiff' || value.action === 'rebase');
 }
 
-export type VisualLayoutHostMessage = MoveAcceptedMessage | MoveRejectedMessage | BatchAcceptedMessage | SourceDiffMessage | ExternalChangeConflictMessage;
+export type VisualLayoutHostMessage = MoveAcceptedMessage | MoveRejectedMessage | BatchAcceptedMessage | SourceDiffMessage | ExternalChangeConflictMessage | RefreshDeferredMessage;
 
 export type MoveResult =
     | {
@@ -674,6 +725,20 @@ export function isSemanticAuthoringMessage(value: unknown): value is SemanticAut
 }
 
 /**
+ * Plain-language outcome texts for a file that changed on disk under an open
+ * draft (#293). Shared by the host (which sends them) and its tests.
+ */
+export const SOURCE_CHANGED_SAVE_REFUSAL =
+    'The preview is out of date with the source, so these staged edits cannot be saved.';
+export const SOURCE_CHANGED_REBASE_NOTICE =
+    'The source changed while you were editing. These staged edits cannot be saved. Close and reopen this editor and make them again.';
+
+/** The notice to show with an accepted Rebase, or undefined when Save can still succeed. */
+export function rebaseAcceptedNotice(hasCurrentLayout: boolean): string | undefined {
+    return hasCurrentLayout ? undefined : SOURCE_CHANGED_REBASE_NOTICE;
+}
+
+/**
  * Applies a validated draft move immutably. The returned snapshot exists only in
  * extension/webview memory; this helper has no source or workspace write path.
  */
@@ -856,4 +921,35 @@ function isOptionalTags(value: unknown): boolean {
     return value === undefined ||
         (Array.isArray(value) && value.length <= MAX_TAGS &&
             value.every(tag => isBoundedString(tag, MAX_ID_LENGTH)));
+}
+
+/**
+ * Webview → host (#340): the client entered or left edit mode. In edit mode the
+ * host lays the diagram out at the standard box sizes, as a Save of the first
+ * move will (a diagram with saved geometry never grows boxes for text), so a
+ * drag starts from the layout Save produces and nothing the user did not move
+ * shifts on Save. Only a clean webview reports `edit`.
+ */
+export interface LayoutModeMessage {
+    type: 'visualLayout.layoutMode';
+    mode: 'edit' | 'view';
+}
+
+/** Accepts only a `visualLayout.layoutMode` message whose mode is `edit` or `view`. */
+export function isLayoutModeMessage(message: unknown): message is LayoutModeMessage {
+    return isRecord(message) && message.type === 'visualLayout.layoutMode' &&
+        (message.mode === 'edit' || message.mode === 'view');
+}
+
+/** The client's report that it holds, or no longer holds, unsaved staged edits. */
+export interface DirtyStateChangedMessage {
+    type: 'dirtyStateChanged';
+    dirty: boolean;
+}
+
+/** Accepts only a `dirtyStateChanged` message whose `dirty` is a real boolean. */
+export function isDirtyStateChangedMessage(message: unknown): message is DirtyStateChangedMessage {
+    return typeof message === 'object' && message !== null &&
+        'type' in message && (message as { type: unknown }).type === 'dirtyStateChanged' &&
+        'dirty' in message && typeof (message as { dirty: unknown }).dirty === 'boolean';
 }

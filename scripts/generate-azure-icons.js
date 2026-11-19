@@ -4,7 +4,8 @@ const glob = require('glob');
 
 // Correct path relative to CWD
 const rootDir = 'assets/cloud/Azure/Icons';
-const outPath = 'src/assets/azure-icons.ts';
+const { writeCloudIconData, DATA_FILE } = require('./cloud-icon-data');
+const outPath = DATA_FILE;
 
 console.log(`Scanning ${rootDir}...`);
 
@@ -33,9 +34,6 @@ files.forEach(file => {
         // Remove newlines and trim
         body = body.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').replace(/> </g, '><').trim();
         
-        // Escape single quotes
-        body = body.replace(/'/g, "\'");
-
         // Generate key
         const filename = path.basename(file, '.svg');
         // Example: 10318-icon-service-Resource-Graph-Explorer
@@ -60,17 +58,5 @@ files.forEach(file => {
     }
 });
 
-let output = `import { Sprite } from './icons';\n\nexport const AZURE_SPRITES: Record<string, Sprite> = {\n`;
-
-sprites.forEach((sprite, key) => {
-    output += `    '${key}': {\n`;
-    output += `        body: '${sprite.body}',\n`;
-    output += `        viewBox: '${sprite.viewBox}',\n`;
-    output += `        preserveColor: true\n`;
-    output += `    },\n`;
-});
-
-output += `};\n`;
-
-fs.writeFileSync(outPath, output);
-console.log(`Generated ${outPath} with ${sprites.size} unique icons from ${files.length} source files.`);
+writeCloudIconData('azure', Object.fromEntries(sprites));
+console.log(`Generated ${outPath} (azure section) with ${sprites.size} unique icons from ${files.length} source files.`);

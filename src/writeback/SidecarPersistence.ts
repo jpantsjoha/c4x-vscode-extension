@@ -181,33 +181,96 @@ export async function loadSidecarLayout(
 const writeChains: Map<string, Promise<void>> = new Map();
 
 /**
- * Saves/updates an element layout coordinate in the sidecar file.
+ * Saves/updates an element layout coordinate in the sidecar file. It reads the
+ * sidecar under the same rules as a Save (#443): a missing or empty file starts
+ * fresh; a file that cannot be read, or holds invalid JSON, is refused and left
+ * untouched.
  */
-export async function saveSidecarLayout(
+export function saveSidecarLayout(
     documentUri: SidecarUri,
     elementId: string,
     x: number,
     y: number,
     boundary: SidecarPersistenceBoundary = createDefaultVscodeSidecarPersistenceBoundary(),
 ): Promise<void> {
+    return writeSidecarLayoutEntries(documentUri, [{ id: elementId, x, y }], boundary, () => undefined);
+}
+
+/** One staged coordinate destined for the sidecar. */
+export interface SidecarLayoutEntry {
+    readonly id: string;
+    readonly x: number;
+    readonly y: number;
+}
+
+/**
+ * Why a sidecar step refused or failed (#443).
+ * - `unreadable`: the file exists (or may exist) but could not be read. Nothing
+ *   was written.
+ * - `invalid_json`: the file holds text that is not JSON. It may carry other
+ *   documents' layouts, so it is never replaced. Nothing was written.
+ * - `write_failed`: `writeFile` rejected. The file may or may not hold the new
+ *   bytes.
+ */
+export class SidecarPersistenceError extends Error {
+    constructor(
+        public readonly kind: 'unreadable' | 'invalid_json' | 'write_failed',
+        public readonly sidecarPath: string,
+        message: string,
+    ) {
+        super(message);
+        this.name = 'SidecarPersistenceError';
+    }
+}
+
+/**
+ * True for the "file does not exist" rejections of the boundaries in use:
+ * VS Code's `FileSystemError.FileNotFound` (code `FileNotFound`, name
+ * `EntryNotFound (FileSystemError)`) and Node's `ENOENT`. Every other read
+ * failure is treated as a file that exists but could not be read.
+ */
+export function isSidecarFileNotFound(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) { return false; }
+    const { code, name } = error as { code?: unknown; name?: unknown };
+    return code === 'FileNotFound' || code === 'ENOENT' ||
+        (typeof name === 'string' && name.startsWith('EntryNotFound'));
+}
+
+function describeError(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Writes several coordinates to the sidecar in one read-modify-write, queued
+ * per sidecar file with every other sidecar write and reset. `beforeWrite` runs
+ * after the read and synchronously before `writeFile` is called, with no await
+ * between them: if it throws, nothing is written and its error is returned
+ * (#443). The merged bytes equal those of one main-branch `saveSidecarLayout`
+ * call per entry, in order, for any file main could read as JSON.
+ */
+export function writeSidecarLayoutEntries(
+    documentUri: SidecarUri,
+    entries: readonly SidecarLayoutEntry[],
+    boundary: SidecarPersistenceBoundary,
+    beforeWrite: () => void,
+): Promise<void> {
     const sidecarUri = getSidecarUri(documentUri, boundary);
     const chainKey = sidecarUri.fsPath;
     const previous = writeChains.get(chainKey) ?? Promise.resolve();
     const write = previous.then(() =>
-        writeSidecarLayoutEntry(documentUri, sidecarUri, elementId, x, y, boundary),
+        writeSidecarLayoutEntriesNow(documentUri, sidecarUri, entries, boundary, beforeWrite),
     );
     // A failed write is returned to its caller but must not block later writes.
     writeChains.set(chainKey, write.catch(() => undefined));
     return write;
 }
 
-async function writeSidecarLayoutEntry(
+async function writeSidecarLayoutEntriesNow(
     documentUri: SidecarUri,
     sidecarUri: SidecarUri,
-    elementId: string,
-    x: number,
-    y: number,
+    entries: readonly SidecarLayoutEntry[],
     boundary: SidecarPersistenceBoundary,
+    beforeWrite: () => void,
 ): Promise<void> {
     let data: SidecarLayoutData = {
         $schema: 'https://c4model.com/schemas/c4x-layout.schema.json',
@@ -215,41 +278,76 @@ async function writeSidecarLayoutEntry(
         layouts: {}
     };
 
+    let bytes: Uint8Array | undefined;
     try {
-        const bytes = await boundary.readFile(sidecarUri);
-        const content = new TextDecoder('utf-8').decode(bytes);
-        const parsed = JSON.parse(content);
-        if (parsed && typeof parsed === 'object') {
-            data = parsed as SidecarLayoutData;
+        bytes = await boundary.readFile(sidecarUri);
+    } catch (error) {
+        if (!isSidecarFileNotFound(error)) {
+            throw new SidecarPersistenceError(
+                'unreadable',
+                sidecarUri.fsPath,
+                `The layout file ${sidecarUri.fsPath} could not be read (${describeError(error)}); it was left unchanged.`,
+            );
         }
-    } catch {
-        // File does not exist or is malformed, start fresh
+        // The file does not exist: start fresh.
     }
 
-    if (!isPlainRecord(data.layouts)) { data.layouts = {}; }
+    if (bytes !== undefined) {
+        const content = new TextDecoder('utf-8').decode(bytes);
+        // An empty or whitespace-only file holds no layouts: start fresh.
+        if (content.trim().length > 0) {
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(content);
+            } catch (error) {
+                throw new SidecarPersistenceError(
+                    'invalid_json',
+                    sidecarUri.fsPath,
+                    `The layout file ${sidecarUri.fsPath} is not valid JSON (${describeError(error)}); it was left unchanged. Fix or remove it, then save again.`,
+                );
+            }
+            if (parsed && typeof parsed === 'object') {
+                data = parsed as SidecarLayoutData;
+            }
+        }
+    }
+
     const relPath = getRelativePath(documentUri, boundary);
-    if (!isPlainRecord(data.layouts[relPath])) {
-        data.layouts[relPath] = { elements: {} };
-    }
-    if (!isPlainRecord(data.layouts[relPath].elements)) {
-        data.layouts[relPath].elements = {};
-    }
+    for (const entry of entries) {
+        if (!isPlainRecord(data.layouts)) { data.layouts = {}; }
+        if (!isPlainRecord(data.layouts[relPath])) {
+            data.layouts[relPath] = { elements: {} };
+        }
+        if (!isPlainRecord(data.layouts[relPath].elements)) {
+            data.layouts[relPath].elements = {};
+        }
 
-    // Preserve any existing fields (notably `locked`) so a coordinate update
-    // does not silently strip metadata written by another code path. A
-    // malformed or array entry is coerced to {} so array indices never leak
-    // into the persisted record.
-    const existingEntry: unknown = data.layouts[relPath].elements[elementId];
-    data.layouts[relPath].elements[elementId] = {
-        ...(isPlainRecord(existingEntry) ? existingEntry : {}),
-        x: normalizeCoordinate(x),
-        y: normalizeCoordinate(y),
-    };
+        // Preserve any existing fields (notably `locked`) so a coordinate update
+        // does not silently strip metadata written by another code path. A
+        // malformed or array entry is coerced to {} so array indices never leak
+        // into the persisted record.
+        const existingEntry: unknown = data.layouts[relPath].elements[entry.id];
+        data.layouts[relPath].elements[entry.id] = {
+            ...(isPlainRecord(existingEntry) ? existingEntry : {}),
+            x: normalizeCoordinate(entry.x),
+            y: normalizeCoordinate(entry.y),
+        };
+    }
 
     // Deterministically serialize (trailing newline is emitted by stringifyDeterministic)
-    const jsonStr = stringifyDeterministic(data);
-    const writeBytes = new TextEncoder().encode(jsonStr);
-    await boundary.writeFile(sidecarUri, writeBytes);
+    const writeBytes = new TextEncoder().encode(stringifyDeterministic(data));
+    // The commit point (#443): the caller's check, then the write call, with
+    // no await between them.
+    beforeWrite();
+    try {
+        await boundary.writeFile(sidecarUri, writeBytes);
+    } catch (error) {
+        throw new SidecarPersistenceError(
+            'write_failed',
+            sidecarUri.fsPath,
+            `Writing the layout file ${sidecarUri.fsPath} failed (${describeError(error)}). The layout file may or may not hold the new coordinates.`,
+        );
+    }
 }
 
 /** Removes one document's sidecar entry and deletes an empty sidecar file. */

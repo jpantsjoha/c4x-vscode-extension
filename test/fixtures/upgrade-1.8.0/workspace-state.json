@@ -1,0 +1,15 @@
+{
+  "native": {
+    "c4x.editorPanelBinding": {
+      "kind": "native",
+      "uri": "file:///workspace/diagrams/architecture.c4x"
+    }
+  },
+  "markdown": {
+    "c4x.editorPanelBinding": {
+      "kind": "markdown",
+      "uri": "file:///workspace/docs/design.md",
+      "blockOrdinal": 2
+    }
+  }
+}

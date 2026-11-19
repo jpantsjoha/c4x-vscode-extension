@@ -1,0 +1,25 @@
+%%{ c4: deployment }%%
+graph TB
+    Node(laptop, "Developer Laptop", "Microsoft Windows 10 or Apple macOS", "A developer's laptop.") {
+        Node(browser, "Web Browser", "Chrome, Firefox, Safari or Edge", "") {
+            Container(ui, "UI", "JavaScript and Angular", "Single-page app that provides Internet banking functionality to customers via their web browser.", $tags="WebBrowser")
+        }
+        Node(docker, "Docker Container - Web Server", "Docker", "") {
+            Node(tomcat, "Apache Tomcat", "Apache Tomcat 8.x", "") {
+                Container(backend, "Backend", "Java and Spring Boot", "Provides Internet banking functionality via a JSON/HTTPS API.", $tags="Terminal")
+            }
+        }
+        Node(dbdocker, "Docker Container - Database Server", "Docker", "") {
+            Node(dbserver, "Database Server", "MySQL 5.5.x", "") {
+                ContainerDb(db, "Database", "MySQL Database Schema", "User account information, access logs, etc.")
+            }
+        }
+    }
+    Node(bigbank, "Big Bank plc", "Big Bank plc data center", "") {
+        Node(core, "bigbank-api***", "Ubuntu 16.04 LTS", "") {
+            System_Ext(coresys, "Core Banking System", "Handles core banking functions including customer information, bank account management, transactions, etc.", $tags="Core Banking")
+        }
+    }
+    ui -->|Makes API calls to| "JSON/HTTPS" backend
+    backend -->|Reads from and writes to| "MySQL protocol/TLS" db
+    backend -->|Makes API calls to| "XML/HTTPS" coresys

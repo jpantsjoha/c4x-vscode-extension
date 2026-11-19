@@ -187,6 +187,53 @@ export function resolveAnchor(document: vscode.TextDocument, anchor: SaveAnchor)
     return { valid: true, block };
 }
 
+/**
+ * Marks a draft scope whose fence identity is ambiguous: two or more fences in
+ * the document share the same model identity AND body fingerprint, so no
+ * content-derived scope can tell them apart. The webview refuses to restore a
+ * draft under an ambiguous scope — guessing would put one fence's staged edits
+ * and camera onto the other (#167 review).
+ */
+export const AMBIGUOUS_FENCE_SCOPE_MARKER = '#c4x-fence-ambiguous:';
+const STABLE_FENCE_SCOPE_MARKER = '#c4x-fence:';
+
+/**
+ * Draft-state identity of a Markdown fence (#167 review). A block ordinal is a
+ * position, not an identity: insert a fence above and every later fence shifts,
+ * so an ordinal-scoped draft is silently invalidated and collides with the
+ * different fence that moves into its ordinal. The scope is therefore derived
+ * from the fence's own content — the model identity already computed for save
+ * anchors (view type, element ids, relationships, boundaries) plus a hash of
+ * the exact body text — combined with the document URI. Inserting, removing or
+ * reordering fences leaves every surviving fence's scope untouched.
+ *
+ * The binding is resolved against the fences present right now: it is only
+ * usable when exactly one fence carries this identity. Two fences with
+ * identical content produce the ambiguous marker instead; the webview discards
+ * the draft rather than guessing which twin it belongs to. Returns undefined
+ * when the ordinal no longer resolves to any fence.
+ */
+export function computeFenceDraftScope(document: vscode.TextDocument, blockOrdinal: number): string | undefined {
+    const source = document.getText();
+    const blocks = findC4xFencedBlocks(document);
+    const block = blocks[blockOrdinal];
+    if (!block) {
+        return undefined;
+    }
+    const fingerprint = calculateFingerprint(source.slice(block.bodyRange.start, block.bodyRange.end));
+    const twins = blocks.filter(candidate =>
+        candidate.modelIdentity === block.modelIdentity &&
+        calculateFingerprint(source.slice(candidate.bodyRange.start, candidate.bodyRange.end)) === fingerprint);
+    const marker = twins.length === 1 ? STABLE_FENCE_SCOPE_MARKER : AMBIGUOUS_FENCE_SCOPE_MARKER;
+    return `${document.uri.toString()}${marker}${block.modelIdentity}:${fingerprint}`;
+}
+
+/** Native documents need the same source-revision fence as Markdown bodies. */
+export function computeNativeDraftScope(document: vscode.TextDocument): string {
+    const source = document.getText();
+    return `${document.uri.toString()}#c4x-native:${calculateModelIdentity(source)}:${calculateFingerprint(source)}`;
+}
+
 function splitLines(source: string): TextLine[] {
     const lines: TextLine[] = [];
     let start = 0;

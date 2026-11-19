@@ -119,13 +119,30 @@ if (initialZoomEnv !== undefined && Number.isFinite(Number(initialZoomEnv))) {
   payload.settings.initialZoom = Number(initialZoomEnv);
 }
 
+// Diagram identity for draft-state scoping (#167 review): stands in for the
+// scope the host computes from the document URI (and, for Markdown-bound
+// panels, the fence's content identity). A test can set C4X_HARNESS_SCOPE to
+// declare that the harness is now showing a DIFFERENT diagram, so a draft
+// persisted under the default scope must be rejected wholesale.
+payload.scope = process.env.C4X_HARNESS_SCOPE || 'file:///prototype-harness.c4x';
+
 const vscodeStub = `
     window.__visualLayoutMessages = [];
     window.__visualLayoutRejectNextMove = false;
+    // In-memory stand-in for the webview state API (#167). A test seeds
+    // window.__visualLayoutPersistedState before load to simulate a reload,
+    // and reads it back afterwards to see what the client persisted.
+    if (window.__visualLayoutPersistedState === undefined) {
+      window.__visualLayoutPersistedState = null;
+    }
     const vscode = {
-      // Mirrors VS Code's webview state API so a draft can be reloaded (#260).
-      getState() { return window.__visualLayoutSavedState; },
-      setState(state) { window.__visualLayoutSavedState = state; },
+      getState() { return window.__visualLayoutSavedState ?? window.__visualLayoutPersistedState; },
+      setState(state) {
+        window.__visualLayoutSavedState = state;
+        window.__visualLayoutPersistedState = state;
+        return state;
+      },
+
       postMessage(message) {
         window.__visualLayoutMessages.push(message);
         if (message.type === 'visualLayout.applySemanticEdits') {
@@ -162,7 +179,7 @@ let html = templateMatch[1]
   .replace(/\$\{csp\}/g, "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'")
   .replace(/\$\{nonce\}/g, 'prototype')
   .replace('    const vscode = acquireVsCodeApi();', vscodeStub)
-  .replace('${PREVIEW_CLIENT_SCRIPT}', PREVIEW_CLIENT_SCRIPT)
+  .replace('${buildPreviewClientScript(this.smokeSession)}', () => PREVIEW_CLIENT_SCRIPT)
   .replace('</body>', `<script>
     window.__visualLayoutRenderPayload = ${JSON.stringify(payload)};
     window.postMessage({ type: 'render', payload: window.__visualLayoutRenderPayload }, '*');
