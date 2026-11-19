@@ -1,0 +1,117 @@
+{
+  "tier": "unit",
+  "floors": {
+    "ai": {
+      "lines": 89,
+      "statements": 89,
+      "functions": 93,
+      "branches": 88
+    },
+    "assets": {
+      "lines": 99,
+      "statements": 99,
+      "functions": 100,
+      "branches": 80
+    },
+    "cli": {
+      "lines": 96,
+      "statements": 96,
+      "functions": 95,
+      "branches": 89
+    },
+    "commands": {
+      "lines": 19,
+      "statements": 19,
+      "functions": 30,
+      "branches": 64
+    },
+    "completion": {
+      "lines": 35,
+      "statements": 35,
+      "functions": 77,
+      "branches": 94
+    },
+    "conformance": {
+      "lines": 99,
+      "statements": 99,
+      "functions": 97,
+      "branches": 88
+    },
+    "diagnostics": {
+      "lines": 35,
+      "statements": 35,
+      "functions": 66,
+      "branches": 94
+    },
+    "export": {
+      "lines": 80,
+      "statements": 80,
+      "functions": 80,
+      "branches": 57
+    },
+    "layout": {
+      "lines": 96,
+      "statements": 96,
+      "functions": 95,
+      "branches": 90
+    },
+    "markdown": {
+      "lines": 81,
+      "statements": 81,
+      "functions": 75,
+      "branches": 75
+    },
+    "mcp": {
+      "lines": 99,
+      "statements": 99,
+      "functions": 99,
+      "branches": 99
+    },
+    "model": {
+      "lines": 94,
+      "statements": 94,
+      "functions": 98,
+      "branches": 97
+    },
+    "parser": {
+      "lines": 92,
+      "statements": 92,
+      "functions": 92,
+      "branches": 86
+    },
+    "render": {
+      "lines": 99,
+      "statements": 99,
+      "functions": 97,
+      "branches": 97
+    },
+    "themes": {
+      "lines": 99,
+      "statements": 99,
+      "functions": 95,
+      "branches": 87
+    },
+    "webview": {
+      "lines": 89,
+      "statements": 89,
+      "functions": 82,
+      "branches": 86
+    },
+    "writeback": {
+      "lines": 93,
+      "statements": 93,
+      "functions": 91,
+      "branches": 87
+    }
+  },
+  "exempt": [
+    {
+      "path": "src/webview/smokeProbe.ts",
+      "reason": "Test-only probe returned from activate() under C4X_VSIX_SMOKE=1 only. The unit tier cannot construct a panel; the packaged-VSIX smoke exercises every function."
+    },
+    {
+      "path": "src/extension.ts",
+      "reason": "Activation entry point; no unit test loads it, so it reads 0% in the unit tier. The extension-host tier is its only exerciser."
+    }
+  ]
+}

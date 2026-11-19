@@ -5,7 +5,7 @@ import * as path from 'path';
 describe('MCP Server Tests', () => {
     it('validate_c4x tool should validate correct C4X syntax', async function () {
         this.timeout(30000); // 30 seconds for MCP server startup
-        const scriptPath = path.resolve(__dirname, '../../mcp/c4x-mcp-server.js');
+        const scriptPath = path.resolve(__dirname, '../../../mcp/c4x-mcp-server.bundle.cjs');
         const mcpProcess = spawn('node', [scriptPath], { stdio: ['pipe', 'pipe', 'pipe'] });
 
         return new Promise<void>((resolve, reject) => {
@@ -68,7 +68,7 @@ describe('MCP Server Tests', () => {
 
     it('validate_c4x tool should report errors for invalid C4X syntax', async function () {
         this.timeout(30000); // 30 seconds for MCP server startup
-        const scriptPath = path.resolve(__dirname, '../../mcp/c4x-mcp-server.js');
+        const scriptPath = path.resolve(__dirname, '../../../mcp/c4x-mcp-server.bundle.cjs');
         const mcpProcess = spawn('node', [scriptPath], { stdio: ['pipe', 'pipe', 'pipe'] });
 
         return new Promise<void>((resolve, reject) => {

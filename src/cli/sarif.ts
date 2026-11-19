@@ -9,6 +9,7 @@
 import { LINT_RULES } from '../model/lint';
 import type { LintSeverity } from '../model/lint';
 import { MODEL_RULE_ID, SYNTAX_RULE_ID } from './lintSource';
+import { LIMIT_RULE_ID } from './limits';
 import type { FileReport } from './report';
 
 export const SARIF_VERSION = '2.1.0';
@@ -21,7 +22,7 @@ export const C4X_LINT_VERSION = '0.1.0';
 export const SARIF_SCHEMA = 'https://json.schemastore.org/sarif-2.1.0.json';
 /** Where the rule catalogue is published; each rule's `helpUri` is an anchor in it. */
 export const LINT_RULES_DOC_URL = 'https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/C4X-LINT-RULES.md';
-/** Where `C4X-SYNTAX` and `C4X-MODEL`, which exist only outside the editor, are described. */
+/** Where `C4X-SYNTAX`, `C4X-MODEL` and `C4X-LIMIT`, which exist only outside the editor, are described. */
 export const LINT_CLI_DOC_URL = 'https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/C4X-LINT-CLI.md';
 
 export type SarifLevel = 'none' | 'note' | 'warning' | 'error';
@@ -108,6 +109,13 @@ function ruleDescriptors(): SarifReportingDescriptor[] {
             name: 'C4XModel',
             shortDescription: { text: 'The diagram builds a consistent model' },
             helpUri: `${LINT_CLI_DOC_URL}#what-is-linted`,
+            defaultConfiguration: { level: 'error' },
+        },
+        {
+            id: LIMIT_RULE_ID,
+            name: 'C4XLimit',
+            shortDescription: { text: 'The diagram is within the input limits' },
+            helpUri: `${LINT_CLI_DOC_URL}#limits`,
             defaultConfiguration: { level: 'error' },
         },
     ];

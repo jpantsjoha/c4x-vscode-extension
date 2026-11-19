@@ -6,8 +6,12 @@
 import type MarkdownIt from 'markdown-it';
 import { c4xParser } from '../parser/C4XParser';
 import { c4ModelBuilder } from '../model/C4ModelBuilder';
-import { dagreLayoutEngine } from '../layout/DagreLayoutEngine';
-import { svgBuilder } from '../render/SvgBuilder';
+import { dagreLayoutEngine, resolveLayoutSpacing } from '../layout/DagreLayoutEngine';
+import { SharedLayoutBudget, defaultLayoutWorker, layoutTooLongMessage, layoutWithDeadlineSync, needsLayoutWorker } from '../layout/layoutDeadline';
+import { elementStyleContextFor, svgBuilder } from '../render/SvgBuilder';
+import type { C4Theme } from '../themes/Theme';
+import { themeManager } from '../themes/ThemeManager';
+import { appendKeyToSvg, computeKeyEntries, readExportIncludeKey } from '../render/KeyRenderer';
 
 import { parsePlantUMLtoC4Model } from '../parser/plantuml/PlantUMLAdapter';
 
@@ -23,12 +27,21 @@ export interface C4xPluginOptions {
     applyPreviewScale?: boolean;
     /** Host protocol for document-bound edit links; omitted by exporters. */
     editLinkScheme?: string;
+    /**
+     * Theme to draw with, resolved on each render. Omitted by the live Markdown
+     * preview, which follows the editor (dark variant in a dark editor).
+     * Exporters pass the export theme so exported images use the light variant.
+     */
+    theme?: () => C4Theme;
 }
 
 /**
  * C4X MarkdownIt plugin
  * Registers a custom renderer for ```c4x fenced code blocks
  */
+/** The synchronous layout wait of one Markdown render (preview or export), all fences together. */
+const layoutBudget = new SharedLayoutBudget();
+
 export function c4xPlugin(md: MarkdownIt, options: C4xPluginOptions = {}): MarkdownIt {
     const applyPreviewScale = options.applyPreviewScale ?? true;
     const optionsForPlugin = options;
@@ -36,6 +49,9 @@ export function c4xPlugin(md: MarkdownIt, options: C4xPluginOptions = {}): Markd
     const defaultFence = md.renderer.rules.fence || function (tokens, idx, options, env, self) {
         return self.renderToken(tokens, idx, options);
     };
+
+    // One host-blocking budget per Markdown render, shared by every fence.
+    md.core.ruler.before('normalize', 'c4x_layout_budget', () => { layoutBudget.reset(); });
 
     // Override fence renderer to intercept c4x blocks
     md.renderer.rules.fence = (tokens, idx, options, env, self) => {
@@ -70,7 +86,7 @@ export function c4xPlugin(md: MarkdownIt, options: C4xPluginOptions = {}): Markd
             }).toString()}` : undefined;
 
         // Render C4X diagram
-        return renderC4XBlock(token.content, lang, attributes, editHref, applyPreviewScale);
+        return renderC4XBlock(token.content, lang, attributes, editHref, applyPreviewScale, optionsForPlugin.theme);
     };
 
     return md;
@@ -110,6 +126,11 @@ export function readMarkdownPreviewScale(): number {
     }
 }
 
+/** A non-negative CSS length or percentage, e.g. `50%`, `640px`, `30em`. */
+export function isCssLength(value: string): boolean {
+    return /^\d+(?:\.\d+)?(?:px|%|em|rem|vw|vh)?$/.test(value);
+}
+
 /**
  * Render a C4X code block as inline SVG
  * @param source C4X-DSL source code
@@ -119,7 +140,7 @@ export function readMarkdownPreviewScale(): number {
  * @param applyPreviewScale Whether to apply the c4x.markdown.previewScale factor to the width cap
  * @returns HTML string with inline SVG or error message
  */
-function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}, editHref: string | undefined = undefined, applyPreviewScale = true): string {
+function renderC4XBlock(source: string, lang: string, attributes: Record<string, string> = {}, editHref: string | undefined = undefined, applyPreviewScale = true, themeOf?: () => C4Theme): string {
     try {
         let model;
 
@@ -140,10 +161,47 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
 
         // 4. Layout the first view (synchronous - Dagre layout is actually sync!)
         const view = model.views[0];
-        const layout = dagreLayoutEngine.layoutSync(view);
+        // The theme's font decides where element text wraps (#340), so the
+        // layout and the SVG use the same theme.
+        const theme = themeOf ? themeOf() : undefined;
+        // A large view lays out in the worker, which the host waits for at most
+        // the preview budget (#454); the message replaces the diagram.
+        const workerSpec = needsLayoutWorker(view) ? defaultLayoutWorker() : undefined;
+        let layout;
+        if (workerSpec) {
+            const allowed = layoutBudget.remaining();
+            if (allowed <= 0) {
+                // Earlier fences spent the render's blocking budget: no wait for this one.
+                return renderError(layoutTooLongMessage(view), 'C4X Layout Deadline');
+            }
+            const waitStart = Date.now();
+            const outcome = layoutWithDeadlineSync(view, { ...(theme ? { theme } : {}), spacing: resolveLayoutSpacing() }, workerSpec, allowed);
+            layoutBudget.spend(Date.now() - waitStart);
+            if (outcome.status === 'timed-out') {
+                return renderError(outcome.message, 'C4X Layout Deadline');
+            }
+            if (outcome.status !== 'ok') {
+                return renderError(outcome.status === 'failed' ? outcome.message : 'Layout cancelled.', 'C4X Layout Error');
+            }
+            layout = outcome.layout;
+        } else {
+            layout = dagreLayoutEngine.layoutSync(view, theme ? { theme } : {});
+        }
 
         // 5. Render SVG
-        const rawSvg = svgBuilder.build(layout);
+        // c4x.export.includeKey (#327): the Markdown preview and the HTML and
+        // PDF exports built on this plugin add the key below the diagram.
+        const includeKey = readExportIncludeKey();
+        const plainSvg = svgBuilder.build(layout, theme ? { theme, view } : { view });
+        let rawSvg = plainSvg;
+        if (includeKey) {
+            const keyTheme = theme ?? themeManager.getCurrentTheme();
+            rawSvg = appendKeyToSvg(plainSvg, computeKeyEntries(layout, keyTheme, elementStyleContextFor(layout, view, keyTheme)), keyTheme, layout.width);
+        }
+        // The key can be wider than a narrow diagram; the document grows to it.
+        const intrinsicWidth = includeKey
+            ? Number(/viewBox="0 0 ([\d.]+)/.exec(rawSvg)?.[1] ?? layout.width)
+            : layout.width;
 
         // Strip XML declaration — not valid inside an HTML document
         const svg = rawSvg.replace(/^\s*<\?xml[^?]*\?>\s*/, '');
@@ -157,14 +215,16 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
         // max-width to the minimum of the two. Exporters skip the scale so
         // exported/printed diagrams keep their intrinsic size.
         const scale = applyPreviewScale ? readMarkdownPreviewScale() : 1;
-        let style = `max-width: ${Math.round(layout.width * scale)}px;`;
-        if (attributes['width']) {
+        let style = `max-width: ${Math.round(intrinsicWidth * scale)}px;`;
+        // Fence attributes reach a style attribute, so only a plain length or
+        // number is used: no url(), no extra declaration (#362).
+        if (attributes['width'] && isCssLength(attributes['width'])) {
             style += `width: ${attributes['width']};`;
         }
-        if (attributes['height']) {
+        if (attributes['height'] && isCssLength(attributes['height'])) {
             style += `height: ${attributes['height']};`;
         }
-        if (attributes['scale']) {
+        if (attributes['scale'] && /^\d+(?:\.\d+)?$/.test(attributes['scale'])) {
             style += `transform: scale(${attributes['scale']}); transform-origin: top left;`;
         }
 
@@ -198,7 +258,7 @@ function renderC4XBlock(source: string, lang: string, attributes: Record<string,
 /**
  * Render an error message for display in markdown
  */
-function renderError(message: string): string {
+function renderError(message: string, title = 'C4X Parse Error'): string {
     return `
 <div class="c4x-error" role="alert">
     <div class="c4x-error-header">
@@ -206,7 +266,7 @@ function renderError(message: string): string {
             <circle cx="10" cy="10" r="9" stroke="#dc2626" stroke-width="2" fill="#fee"/>
             <path d="M10 6V11M10 14V14.5" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        <strong>C4X Parse Error</strong>
+        <strong>${escapeHtml(title)}</strong>
     </div>
     <pre class="c4x-error-message">${escapeHtml(message)}</pre>
 </div>`.trim();

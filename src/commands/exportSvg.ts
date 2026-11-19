@@ -10,7 +10,7 @@ import { themeManager } from '../themes/ThemeManager';
 
 export async function exportSvgCommand(): Promise<void> {
     // Get current SVG from preview panel
-    const svg = PreviewPanel.getCurrentSvg?.();
+    const svg = PreviewPanel.getCurrentExportSvg?.();
 
     if (!svg) {
         const action = await vscode.window.showErrorMessage(
@@ -24,15 +24,9 @@ export async function exportSvgCommand(): Promise<void> {
     }
 
     // Get current theme
-    const theme = themeManager.getCurrentTheme();
-
-    // Get suggested filename from active document
-    const activeEditor = vscode.window.activeTextEditor;
-    const suggestedFileName = activeEditor
-        ? activeEditor.document.fileName.replace(/\.(c4x|md)$/, '.svg')
-        : 'diagram.svg';
+    const theme = themeManager.getExportTheme();
 
     // Export
     const exporter = new SvgExporter();
-    await exporter.export(svg, theme, suggestedFileName);
+    await exporter.export(svg, theme);
 }

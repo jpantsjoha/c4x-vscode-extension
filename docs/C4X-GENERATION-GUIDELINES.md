@@ -25,22 +25,76 @@ Follow C4 Model semantics strictly:
 
 ## Element Type Whitelist (CRITICAL)
 
-These are the **ONLY** valid element types. DO NOT invent others.
+These are the **ONLY** valid element types. DO NOT invent others. Container, Component and Node take `(id, "Label", "Technology", "Description")`. Person and System (with their `_Ext` and `Db` spellings) take `(id, "Label", "Description")`: the one text after the label is the description. The generated [C4X reference](reference/c4x-reference.md) lists every spelling, argument and placement rule; it is the authority when this page and the grammar differ.
 
-```
-Person(id, "Name", "Description")           # Human actors
-System(id, "Name", "Description")           # Internal software systems
-System_Ext(id, "Name", "Description")       # External software systems
-Container(id, "Name", "Tech", "Desc")       # Applications, services, SPAs
-ContainerDb(id, "Name", "Tech", "Desc")     # Databases, data stores
-Component(id, "Name", "Description")        # Internal modules, classes
-Node(id, "Name", "Description")             # Deployment infrastructure
+```c4x
+%%{ c4: container }%%
+graph TB
+  %% Human actors
+  Person(user, "User", "Human actors")
+  %% Internal and external software systems
+  System(app, "App", "Internal software systems")
+  System_Ext(partner, "Partner", "External software systems")
+  %% Applications, services, SPAs and their databases
+  Container(web, "Web App", "React", "Applications, services, SPAs")
+  ContainerDb(db, "Database", "PostgreSQL", "Databases, data stores")
+  %% Internal modules, classes
+  Component(ctl, "Controller", "Spring MVC", "Internal modules, classes")
+  %% Deployment infrastructure
+  Node(host, "Server", "Linux", "Deployment infrastructure")
 ```
 
 **Common Mistakes** ❌:
 - `Developer()`, `Class()`, `Database()` - Use `Person()`, `Component()`, `ContainerDb()` instead
 - `Goal()`, `Reason()`, `Decision()`, `Process()`, `Action()` - These are behavioral, not structural
 - Inventing custom types - Only the whitelist above is supported
+
+## Notation (shapes, relationship technology, boundary types)
+
+Generate the notation the renderer draws; the [C4X reference](reference/c4x-reference.md) lists every shape and rule.
+
+### Shapes for data stores, queues, browsers
+
+Give an element its own outline with `$shape="<Name>"` as the LAST argument. The value is one of the 19 shape names; the eight drawn today are `Box`, `RoundedBox`, `Cylinder`, `Bucket`, `Folder`, `WebBrowser`, `Terminal` and `Person`. An unknown name is a lint finding (C4X-L110, "did you mean"); the element is drawn as the theme rectangle.
+
+| What | `$shape` |
+|---|---|
+| Database, data store, cache | `Cylinder` |
+| Object storage (S3, GCS) | `Bucket` |
+| File storage | `Folder` |
+| Web UI, single-page app | `WebBrowser` |
+| Command-line tool | `Terminal` |
+| Queue, topic, stream | `Pipe` (valid; drawn as the theme rectangle until the renderer draws it) |
+
+```c4x
+%%{ c4: container }%%
+graph TB
+  Container(spa, "Web App", "React", "Shows the UI", $shape="WebBrowser")
+  Container(api, "API", "Spring Boot", "Serves orders")
+  ContainerDb(db, "Orders", "PostgreSQL", "Stores orders", $shape="Cylinder")
+  spa -->|Calls the| "HTTPS" api
+  api -->|Reads and writes orders in| "JDBC" db
+```
+
+### Relationship technology
+
+Write the protocol in quotes after the label: `a -->|Label| "Technology" b`. The preview draws it as `[Technology]` under the label. Name it on every relationship between containers.
+
+### Boundary types
+
+Use the boundary macro of the level: `System_Boundary` around the containers of one system, `Container_Boundary` around the components of one container, `Enterprise_Boundary` around the systems of one organisation. The theme draws the type under the title (`[Software System]`, `[Container]`).
+
+## Text length (current limit)
+
+Element text is drawn on one unwrapped line and the box does not grow, so a line wider than its box overflows it. This is current behaviour, tracked in #340. Until it is fixed, keep every label, technology and description within the limit for the element kind, measured from the box width and font size the renderer uses:
+
+| Text | Safe for any kind |
+|---|---|
+| Label | 23 characters |
+| Technology | 28 characters (Container, Component and Node, or Person and System given two texts) |
+| Description | 30 characters |
+
+A Container description can run to 33 characters and a Software System to 36; a Person or Component is the tightest at 30. The renderer draws the technology inside square brackets, which take two characters of the width, so a technology gets two fewer: 28 for any kind, 31 for a Container. The limits for each kind, and how they are measured, are in the `textLimits` field of the [C4X reference](reference/c4x-reference.md). The unit tests fail when the reference and the renderer disagree.
 
 ## Layout Strategy (Smart Visuals)
 
@@ -84,9 +138,9 @@ graph TB
 
 ### Linear Flow Pattern
 
-**Note**: The C4X parser currently only supports `graph TB` (top-to-bottom). Use TB with horizontal relationship patterns for linear flows:
+**Note**: The parser accepts `graph TB`, `BT`, `LR` and `RL`. This pattern uses TB with horizontal relationship patterns for linear flows:
 
-```
+```c4x
 %%{ c4: container }%%
 graph TB
   %% Linear flow pattern
@@ -95,7 +149,9 @@ graph TB
   Container(api, "API", "REST", "Backend")
   ContainerDb(db, "DB", "PostgreSQL", "Data")
 
-  user --> web --> api --> db
+  user --> web
+  web --> api
+  api --> db
 ```
 
 **Best for**: Linear pipelines, sequences, small diagrams (< 6 elements)
@@ -201,31 +257,39 @@ graph TB
 ### 1. Subgraph Syntax
 
 **✅ CORRECT:**
-```
-subgraph MySystem {
-  Container(api, "API", "Tech", "Desc")
-}
+```c4x
+%%{ c4: container }%%
+graph TB
+  Person(user, "User", "End user")
+  subgraph MySystem {
+    Container(api, "API", "Tech", "Desc")
+  }
+  user -->|Calls the| api
 ```
 
 **❌ WRONG** - No quotes in subgraph ID:
-```
-subgraph "My System" {
-  Container(api, "API", "Tech", "Desc")
-}
+```wrong-c4x
+%%{ c4: container }%%
+graph TB
+  subgraph "My System" {
+    Container(api, "API", "Tech", "Desc")
+  }
 ```
 
 **❌ WRONG** - No bracket labels:
-```
-subgraph MySystem ["My System"] {
-  Container(api, "API", "Tech", "Desc")
-}
+```wrong-c4x
+%%{ c4: container }%%
+graph TB
+  subgraph MySystem ["My System"] {
+    Container(api, "API", "Tech", "Desc")
+  }
 ```
 
 ### 2. Directives
 
 Must be **first line** of C4X block:
 
-```
+```c4x
 %%{ c4: container }%%
 graph TB
   %% diagram content
@@ -235,41 +299,53 @@ Options: `system-context`, `container`, `component`, `dynamic`, `deployment`
 
 ### 3. Arrows
 
-**✅ Standard relationship:**
-```
-A -->|Label| B
-```
-
-**✅ Async/dotted:**
-```
-A -.->|Publishes event| B
-```
-
-**✅ Data flow (bold):**
-```
-A ==>|Data stream| B
+**✅ Standard relationship, async/dotted and data flow (bold):**
+```c4x
+%%{ c4: container }%%
+graph TB
+  Container(a, "A", "Go", "Sends events")
+  Container(b, "B", "Go", "Receives events")
+  a -->|Calls the| b
+  a -.->|Publishes event to| b
+  a ==>|Streams data to| b
 ```
 
 **❌ WRONG** - Short arrow not supported:
-```
-A ->|Label| B
+```wrong-c4x
+%%{ c4: container }%%
+graph TB
+  Container(a, "A", "Go", "Sends events")
+  Container(b, "B", "Go", "Receives events")
+  a ->|Calls the| b
 ```
 
 ### 4. Relationship Labels
 
 **✅ CORRECT** - Plain text only:
-```
-User -->|Sends HTTP request| API
+```c4x
+%%{ c4: container }%%
+graph TB
+  Person(user, "User", "End user")
+  Container(api, "API", "Go", "Serves requests")
+  user -->|Sends HTTP request to| api
 ```
 
-**❌ WRONG** - No HTML in labels:
-```
-User -->|Sends<br/>request| API
+**❌ WRONG** - No HTML in labels (the generation loop strips it, but do not write it):
+```cleaned-c4x
+%%{ c4: container }%%
+graph TB
+  Person(user, "User", "End user")
+  Container(api, "API", "Go", "Serves requests")
+  user -->|Sends<br/>request to| api
 ```
 
 **Note**: `<br/>` IS allowed in node labels, NOT relationship labels:
-```
-Container(api, "API<br/>Gateway<br/>Service", "Kong", "Router")
+```c4x
+%%{ c4: container }%%
+graph TB
+  Container(api, "API<br/>Gateway<br/>Service", "Kong", "Router")
+  Container(db, "Orders", "PostgreSQL", "Stores orders", $shape="Cylinder")
+  api -->|Reads orders from| "JDBC" db
 ```
 
 ### 5. Node Label Format
@@ -277,8 +353,12 @@ Container(api, "API<br/>Gateway<br/>Service", "Kong", "Router")
 **Pattern**: `ID[Label<br/>Type<br/>Tech]`
 
 **Use `<br/>` for multi-line labels in nodes ONLY:**
-```
-Container(api, "API Gateway<br/>REST API<br/>Kong", "Kong", "Routes requests")
+```c4x
+%%{ c4: container }%%
+graph TB
+  Container(api, "API Gateway<br/>REST API<br/>Kong", "Kong", "Routes requests")
+  Container(svc, "Order Service", "Go", "Handles orders")
+  api -->|Routes requests to| svc
 ```
 
 ## Visual Diagram Generation (Image Model)
@@ -287,7 +367,9 @@ When generating PNG/visual diagrams, enforce additional rules:
 
 ### Color Palette (C4 Official - EXACT COLORS)
 
-```
+The image prompt takes these from the **active theme** (`c4x.theme`): the c4-model theme asks for white boxes outlined in green, blue and per-system accent colours, other themes for their own element colours. The table is the c4-standard theme, which is also what a prompt built without a theme carries.
+
+```text
 Person:           #08427B (Dark Blue), White Text
 Software System:  #1168BD (Blue), White Text
 External System:  #999999 (Grey), White Text
@@ -311,6 +393,9 @@ Component:        #85BBF0 (Lighter Blue), Black Text
 - **Person**: Stick figure icon + rounded rectangle
 - **Nodes**: Rounded rectangles, UNIFORM size for same-type elements
 - **Database**: MUST use cylinder shape
+- **Browser UI**: browser window with a title bar; **CLI**: terminal window; **Queue**: pipe
+- **Relationships**: technology in square brackets on a second line under the label
+- **Boundaries**: titled with their type, e.g. `[Container]`
 - **Boundaries**: Dashed borders, transparent backgrounds
 
 ## Reference Examples

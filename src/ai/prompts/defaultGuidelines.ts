@@ -6,6 +6,8 @@
 //
 // Keep this embedded fallback consistent with the documented generation guidelines.
 
+import { exampleText } from '../promptExamples';
+
 export const DEFAULT_GUIDELINES = `
 ## 🎨 Expert Visual Architect - Layout Strategy (v2.0)
 
@@ -14,33 +16,7 @@ C4X diagrams must be **tidy, consistent, elegant, well-aligned, and visually app
 
 ### Element Organization Pattern
 \`\`\`c4x
-graph TB
-  # 1. External actors FIRST (top of diagram)
-  Person(user, "User", "End user")
-  System_Ext(external, "External System", "Third party")
-
-  # 2. Main system boundary
-  subgraph MainSystem {
-    # Entry point
-    Container(gateway, "API Gateway", "Kong", "Router")
-
-    # Core services (in execution order)
-    Container(auth, "Auth Service", "Node.js", "Authentication")
-    Container(business, "Business Logic", "Java", "Processing")
-
-    # Data layer LAST
-    ContainerDb(db, "Database", "PostgreSQL", "Storage")
-  }
-
-  # 3. External storage/systems (bottom)
-  System_Ext(storage, "File System", "S3")
-
-  # 4. Relationships follow execution flow
-  user --> gateway
-  gateway --> auth
-  auth --> business
-  business --> db
-  business --> storage
+${exampleText('built-in-pattern')}
 \`\`\`
 
 ### Layout Rules
@@ -54,9 +30,14 @@ graph TB
 
 ### Syntax Constraints
 - **Subgraph**: \`subgraph ID {\` (NO quotes, NO brackets)
-- **Arrows**: \`-->\` (solid), \`-.->\` (async/dotted), \`==>\` (data flow)
+- **Arrows**: \`-->\` (solid), \`-.->\` (async/dotted), \`==>\` (sync)
 - **Labels**: Plain text in relationships, \`<br/>\` allowed in node labels ONLY
 - **Directives**: \`%%{ c4: container }%%\` at very top
+
+### Notation
+- **Shapes**: \`$shape="Cylinder"\` (databases, data stores), \`Bucket\` (object storage), \`Folder\` (file storage), \`WebBrowser\` (web UIs, SPAs), \`Terminal\` (command-line tools), \`Pipe\` (queues) as the LAST argument of the element. Any other name is a lint finding (C4X-L110).
+- **Relationship technology**: in quotes after the label: \`${exampleText('rel-technology')}\`
+- **Boundary types**: \`System_Boundary\` for the containers of a system, \`Container_Boundary\` for the components of a container; the type is drawn under the title.
 
 ### Advanced Patterns (from 108 validated examples)
 - **Event-Driven**: Use \`-.->\` for async events

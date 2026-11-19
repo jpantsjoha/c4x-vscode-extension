@@ -1,0 +1,1636 @@
+{
+  "$schema": "./c4x-reference.schema.json",
+  "attributes": {
+    "known": {
+      "code": "Source paths or globs this element stands for, comma separated: `$code=\"src/api/**, src/main.ts\"`. Only on Container and Component. Give it once per element.",
+      "shape": "One of the style shapes. Overrides any shape a tag style or the theme sets. Give it once per element.",
+      "sprite": "The id of a bundled icon, such as `database`. Drawn as the element icon. See docs/ICONS.md.",
+      "tags": "Comma separated tag names: `$tags=\"Queue, Internal\"`. Tags select `elementStyle` rules and appear in the legend."
+    },
+    "other": "Any other `$key=\"value\"` is kept as element metadata. It draws nothing, and does not style the element: colours come from tags and `elementStyle`."
+  },
+  "authoringRules": [
+    "Declare the view on the first line: `%%{ c4: <view> }%%`. `graph TB` is optional and defaults to `TB`.",
+    "Prefer the call form `Type(id, \"Label\", \"Technology\", \"Description\")` to the bracket form.",
+    "Write comments with `%%`. Nothing else is a comment.",
+    "Use an arrow label of two or more words that reads in the direction of the arrow (C4X-L003, C4X-L008).",
+    "Name the protocol on every relationship between processes (C4X-L004), after the label, in quotes.",
+    "Keep each label, technology and description inside the textLimits for its element kind until #340 is fixed.",
+    "Put each element in the scope its view allows (placement).",
+    "Style with tags and `elementStyle`, never with `classDef`."
+  ],
+  "boundaries": [
+    {
+      "form": "System_Boundary(id, \"Label\") { ... }",
+      "summary": "The software system in scope, with its containers inside. Used in container and component views.",
+      "type": "System_Boundary"
+    },
+    {
+      "form": "Container_Boundary(id, \"Label\") { ... }",
+      "summary": "The container in scope, with its components inside. Used in component views. A component view decomposes exactly one (C4X-L101).",
+      "type": "Container_Boundary"
+    },
+    {
+      "form": "Enterprise_Boundary(id, \"Label\") { ... }",
+      "summary": "A company, department or other grouping of people and software systems. Used in system context and container views.",
+      "type": "Enterprise_Boundary"
+    }
+  ],
+  "document": {
+    "comment": {
+      "marker": "%%",
+      "summary": "A comment. Runs to the end of the line. C4X comments start with `%%`; `//` and `#` are not comments."
+    },
+    "graphLine": {
+      "default": "TB",
+      "directions": [
+        "TB",
+        "BT",
+        "LR",
+        "RL"
+      ],
+      "form": "graph <direction>",
+      "keyword": "graph",
+      "optional": true,
+      "summary": "The layout direction: top to bottom, bottom to top, left to right, right to left. When it is missing, the parser adds `graph TB`."
+    },
+    "viewDeclaration": {
+      "default": "system-context",
+      "form": "%%{ c4: <view> }%%",
+      "optional": true,
+      "summary": "It names the view, which decides what the diagram may contain and which lint rules run."
+    }
+  },
+  "elementCall": {
+    "form": "Type(id, \"Label\", \"Technology\", \"Description\", $key=\"value\")",
+    "signature": [
+      {
+        "field": "id",
+        "kind": "identifier",
+        "meaning": "The element id: letters, digits, `_` and `-`, starting with a letter or `_`. Relationships and `class` statements refer to it. Unique in the diagram.",
+        "name": "id",
+        "position": 1,
+        "required": true
+      },
+      {
+        "field": "label",
+        "kind": "quoted string",
+        "meaning": "The name drawn in bold at the top of the box. Quoted.",
+        "name": "label",
+        "position": 2,
+        "required": true
+      },
+      {
+        "field": "technology",
+        "kind": "quoted string",
+        "meaning": "The third argument when there are two quoted texts after the label, or the only one for a Container, Component or Node. Drawn in square brackets under the label, in italics. For a Person or a software system with one text after the label, that text is the description instead (see elementKinds).",
+        "name": "technology",
+        "position": 3,
+        "required": false
+      },
+      {
+        "field": "description",
+        "kind": "quoted string",
+        "meaning": "The fourth argument, or the only text after the label for a Person or a software system. Drawn as plain text under the label and the technology.",
+        "name": "description",
+        "position": 4,
+        "required": false
+      },
+      {
+        "field": "attributes",
+        "kind": "attributes",
+        "meaning": "Zero or more `$key=\"value\"` pairs, comma separated, after the quoted arguments. See attributes.",
+        "name": "attributes",
+        "position": 5,
+        "required": false
+      }
+    ],
+    "typeIsAnyIdentifier": true
+  },
+  "elementKinds": [
+    {
+      "argumentFields": {
+        "withOneText": {
+          "3": "description"
+        },
+        "withTwoTexts": {
+          "3": "technology",
+          "4": "description"
+        }
+      },
+      "codeMappable": false,
+      "example": "Person(u, \"Customer\", \"Holds an account\")",
+      "impliedTags": {
+        "always": [
+          "Element",
+          "Person"
+        ],
+        "database": [
+          "Database"
+        ],
+        "external": [
+          "External"
+        ]
+      },
+      "kind": "Person",
+      "spellings": [
+        {
+          "callForm": true,
+          "database": false,
+          "external": false,
+          "name": "Person"
+        },
+        {
+          "callForm": true,
+          "database": false,
+          "external": true,
+          "name": "Person_Ext"
+        }
+      ],
+      "summary": "A human user or actor. Drawn with a person icon.",
+      "usage": "Pass the description as the one text after the label: `Person(u, \"Customer\", \"Holds an account\")`. With two texts they mean technology, then description."
+    },
+    {
+      "argumentFields": {
+        "withOneText": {
+          "3": "description"
+        },
+        "withTwoTexts": {
+          "3": "technology",
+          "4": "description"
+        }
+      },
+      "codeMappable": false,
+      "example": "System(s, \"Core Banking\", \"Holds accounts\")",
+      "impliedTags": {
+        "always": [
+          "Element",
+          "Software System"
+        ],
+        "database": [
+          "Database"
+        ],
+        "external": [
+          "External"
+        ]
+      },
+      "kind": "SoftwareSystem",
+      "spellings": [
+        {
+          "callForm": false,
+          "database": false,
+          "external": false,
+          "name": "software system"
+        },
+        {
+          "callForm": true,
+          "database": false,
+          "external": false,
+          "name": "SoftwareSystem"
+        },
+        {
+          "callForm": true,
+          "database": false,
+          "external": false,
+          "name": "System"
+        },
+        {
+          "callForm": true,
+          "database": false,
+          "external": true,
+          "name": "System_Ext"
+        },
+        {
+          "callForm": true,
+          "database": true,
+          "external": false,
+          "name": "SystemDb"
+        },
+        {
+          "callForm": true,
+          "database": true,
+          "external": true,
+          "name": "SystemDb_Ext"
+        }
+      ],
+      "summary": "A software system: the highest level of abstraction. Use the _Ext spelling for a system outside the scope.",
+      "usage": "Pass the description as the one text after the label: `System(s, \"Core Banking\", \"Holds accounts\")`. With two texts they mean technology, then description."
+    },
+    {
+      "argumentFields": {
+        "withOneText": {
+          "3": "technology"
+        },
+        "withTwoTexts": {
+          "3": "technology",
+          "4": "description"
+        }
+      },
+      "codeMappable": true,
+      "example": "Container(api, \"API\", \"Java, Spring Boot\", \"Serves the web app\")",
+      "impliedTags": {
+        "always": [
+          "Element",
+          "Container"
+        ],
+        "database": [
+          "Database"
+        ],
+        "external": [
+          "External"
+        ]
+      },
+      "kind": "Container",
+      "spellings": [
+        {
+          "callForm": true,
+          "database": false,
+          "external": false,
+          "name": "Container"
+        },
+        {
+          "callForm": true,
+          "database": false,
+          "external": true,
+          "name": "Container_Ext"
+        },
+        {
+          "callForm": true,
+          "database": true,
+          "external": false,
+          "name": "ContainerDb"
+        },
+        {
+          "callForm": true,
+          "database": true,
+          "external": true,
+          "name": "ContainerDb_Ext"
+        }
+      ],
+      "summary": "A separately running application or data store inside a software system.",
+      "usage": "Pass the technology, then the description: `Container(api, \"API\", \"Java, Spring Boot\", \"Serves the web app\")`."
+    },
+    {
+      "argumentFields": {
+        "withOneText": {
+          "3": "technology"
+        },
+        "withTwoTexts": {
+          "3": "technology",
+          "4": "description"
+        }
+      },
+      "codeMappable": true,
+      "example": "Component(auth, \"Auth Controller\", \"Spring MVC\", \"Signs users in\")",
+      "impliedTags": {
+        "always": [
+          "Element",
+          "Component"
+        ],
+        "database": [
+          "Database"
+        ],
+        "external": [
+          "External"
+        ]
+      },
+      "kind": "Component",
+      "spellings": [
+        {
+          "callForm": true,
+          "database": false,
+          "external": false,
+          "name": "Component"
+        },
+        {
+          "callForm": true,
+          "database": false,
+          "external": true,
+          "name": "Component_Ext"
+        },
+        {
+          "callForm": true,
+          "database": true,
+          "external": false,
+          "name": "ComponentDb"
+        },
+        {
+          "callForm": true,
+          "database": true,
+          "external": true,
+          "name": "ComponentDb_Ext"
+        }
+      ],
+      "summary": "A group of related code inside a container, behind one interface.",
+      "usage": "Pass the technology, then the description: `Component(auth, \"Auth Controller\", \"Spring MVC\", \"Signs users in\")`."
+    },
+    {
+      "argumentFields": {
+        "withOneText": {
+          "3": "technology"
+        },
+        "withTwoTexts": {
+          "3": "technology",
+          "4": "description"
+        }
+      },
+      "codeMappable": false,
+      "example": "Node(k8s, \"Cluster\", \"Kubernetes\", \"Runs the services\")",
+      "impliedTags": {
+        "always": [
+          "Element",
+          "Deployment Node"
+        ],
+        "database": [
+          "Database"
+        ],
+        "external": [
+          "External"
+        ]
+      },
+      "kind": "DeploymentNode",
+      "spellings": [
+        {
+          "callForm": true,
+          "database": false,
+          "external": false,
+          "name": "Node"
+        }
+      ],
+      "summary": "A place where containers run: a server, a cloud region, a cluster, a device. Nodes nest.",
+      "usage": "Pass the technology, then the description, then a block of children: `Node(k8s, \"Cluster\", \"Kubernetes\", \"Runs the services\") { ... }`."
+    }
+  ],
+  "elementKindsNote": "The model builder reads the type name without regard to case. The grammar accepts any identifier as a type, so a name outside this list parses and then fails with C4X-MODEL.",
+  "examples": [
+    {
+      "covers": [
+        "view declaration",
+        "Person",
+        "System",
+        "System_Ext",
+        "relationship label",
+        "comment"
+      ],
+      "id": "system-context",
+      "lintedAt": "info",
+      "source": "%%{ c4: system-context }%%\ngraph TB\n    %% People first, then systems, then relationships.\n    Person(customer, \"Customer\", \"Holds an account\")\n    System(bank, \"Banking System\", \"Holds accounts and payments\")\n    System_Ext(mail, \"Mail System\", \"Sends statements\")\n    customer -->|Views balances and pays bills in| bank\n    bank -->|Sends statements through| mail",
+      "summary": "People and neighbouring systems around one system.",
+      "title": "System context"
+    },
+    {
+      "covers": [
+        "System_Boundary",
+        "Container",
+        "ContainerDb",
+        "technology",
+        "relationship technology",
+        "direction"
+      ],
+      "id": "container",
+      "lintedAt": "info",
+      "source": "%%{ c4: container }%%\ngraph LR\n    Person(customer, \"Customer\", \"Holds an account\")\n    System_Boundary(bank, \"Banking System\") {\n        Container(web, \"Web App\", \"TypeScript, React\", \"Shows balances\")\n        Container(api, \"API\", \"Java, Spring Boot\", \"Serves the web app\")\n        ContainerDb(db, \"Database\", \"PostgreSQL\", \"Stores accounts\")\n    }\n    customer -->|Views balances using| web\n    web -->|Calls the API of| \"JSON/HTTPS\" api\n    api -->|Reads and writes accounts in| \"JDBC\" db",
+      "summary": "Containers inside a system boundary, with protocols on the relationships that cross a process.",
+      "title": "Container"
+    },
+    {
+      "covers": [
+        "Container_Boundary",
+        "Component",
+        "Component_Ext",
+        "ContainerDb",
+        "$code"
+      ],
+      "id": "component",
+      "lintedAt": "info",
+      "source": "%%{ c4: component }%%\ngraph TB\n    Container_Boundary(api, \"API\") {\n        Component(rest, \"Account Controller\", \"Spring MVC\", \"Handles requests\", $code=\"src/api/**\")\n        Component(repo, \"Account Repository\", \"Spring Data\", \"Reads accounts\", $code=\"src/data/**\")\n    }\n    ContainerDb(db, \"Database\", \"PostgreSQL\", \"Stores accounts\")\n    rest -->|Loads accounts through| repo\n    repo -->|Reads accounts from| \"JDBC\" db",
+      "summary": "Components inside one container, with a neighbouring container outside it.",
+      "title": "Component"
+    },
+    {
+      "covers": [
+        "dynamic view",
+        "ordering",
+        "dashed arrow"
+      ],
+      "id": "dynamic",
+      "lintedAt": "info",
+      "source": "%%{ c4: dynamic }%%\ngraph TB\n    Person(customer, \"Customer\", \"Holds an account\")\n    Container(web, \"Web App\", \"TypeScript, React\", \"Shows balances\")\n    Container(api, \"API\", \"Java, Spring Boot\", \"Serves the web app\")\n    customer -->|Opens the balance page of| web\n    web -->|Requests balances from| \"JSON/HTTPS\" api\n    api -.->|Returns balances to| \"JSON/HTTPS\" web",
+      "summary": "One scenario. Relationships are numbered in source order.",
+      "title": "Dynamic"
+    },
+    {
+      "covers": [
+        "Node",
+        "nesting",
+        "Container inside Node"
+      ],
+      "id": "deployment",
+      "lintedAt": "info",
+      "source": "%%{ c4: deployment }%%\ngraph TB\n    Node(region, \"Cloud Region\", \"Europe\", \"Hosts the service\") {\n        Node(cluster, \"Cluster\", \"Kubernetes\", \"Runs the pods\") {\n            Container(api, \"API\", \"Java, Spring Boot\", \"Serves the web app\")\n        }\n    }",
+      "summary": "Containers placed on nested deployment nodes.",
+      "title": "Deployment"
+    },
+    {
+      "covers": [
+        "$tags",
+        "elementStyle",
+        "$shape",
+        "$stroke",
+        "$border",
+        "$strokeWidth",
+        "$legend",
+        "$sprite",
+        "class"
+      ],
+      "id": "styles",
+      "lintedAt": "info",
+      "source": "%%{ c4: container }%%\ngraph TB\n    System_Boundary(shop, \"Shop\") {\n        Container(api, \"API\", \"Go\", \"Serves orders\", $tags=\"Core\")\n        Container(queue, \"Order Queue\", \"RabbitMQ\", \"Buffers orders\", $tags=\"Queue\")\n        ContainerDb(files, \"File Store\", \"S3\", \"Holds receipts\", $sprite=\"database\")\n    }\n    class api Critical\n    api -->|Publishes orders to| \"AMQP\" queue\n    api -->|Stores receipts in| \"HTTPS\" files\n    elementStyle Queue $shape=\"RoundedBox\", $stroke=\"#BF101D\", $border=\"dashed\", $strokeWidth=\"3\", $legend=\"Message queue\"\n    elementStyle Critical $background=\"#FFF3E0\", $color=\"#111111\"",
+      "summary": "Tags select element styles. A shape and an outline style on one tag, an icon on another.",
+      "title": "Tags and element styles"
+    }
+  ],
+  "grammar": {
+    "file": "src/parser/c4x.pegjs",
+    "rules": [
+      {
+        "expression": "_ directive:Directive? _ GraphKeyword _ direction:Direction _ statements:StatementList _",
+        "name": "Start"
+      },
+      {
+        "expression": "\"%%{\" _ \"c4:\" _ view:Identifier _ \"}%%\"",
+        "name": "Directive"
+      },
+      {
+        "expression": "\"graph\"",
+        "name": "GraphKeyword"
+      },
+      {
+        "expression": "\"TB\" / \"BT\" / \"LR\" / \"RL\"",
+        "name": "Direction"
+      },
+      {
+        "expression": "head:Statement tail:(_ Statement)* / _",
+        "name": "StatementList"
+      },
+      {
+        "expression": "Comment / Title / ClassDef / ClassAssignment / ElementStyle / Subgraph / DeploymentNode / BoundaryBlock / ElementCall / Element / Relationship",
+        "name": "Statement"
+      },
+      {
+        "expression": "\"title\" _ [^\\n]*",
+        "name": "Title"
+      },
+      {
+        "expression": "NestEnter node:BoundaryBlockBody NestLeave / NestUndo",
+        "name": "BoundaryBlock"
+      },
+      {
+        "expression": "type:BoundaryType _ \"(\" _ id:Identifier _ \",\" _ label:QuotedString _ \")\" _ NestOpen _ elements:SubgraphElementList _ \"}\"",
+        "name": "BoundaryBlockBody"
+      },
+      {
+        "expression": "\"System_Boundary\" / \"Container_Boundary\" / \"Enterprise_Boundary\"",
+        "name": "BoundaryType"
+      },
+      {
+        "expression": "\"classDef\" __ name:Identifier _ body:ClassDefBody?",
+        "name": "ClassDef"
+      },
+      {
+        "expression": "\"class\" __ targets:IdentifierList __ className:Identifier",
+        "name": "ClassAssignment"
+      },
+      {
+        "expression": "\"elementStyle\" __ tag:(QuotedString / Identifier) _ head:StylePair tail:(_ \",\" _ StylePair)*",
+        "name": "ElementStyle"
+      },
+      {
+        "expression": "pair:KVPair",
+        "name": "StylePair"
+      },
+      {
+        "expression": "head:Identifier tail:(_ \",\" _ Identifier)*",
+        "name": "IdentifierList"
+      },
+      {
+        "expression": "chars:(!\"\\n\" .)+",
+        "name": "ClassDefBody"
+      },
+      {
+        "expression": "\"%%\" (!\"\\n\" .)* _",
+        "name": "Comment"
+      },
+      {
+        "expression": "NestEnter node:SubgraphBody NestLeave / NestUndo",
+        "name": "Subgraph"
+      },
+      {
+        "expression": "\"subgraph\" _ label:Identifier _ kv:KVArgs? _ NestOpen _ elements:SubgraphElementList _ \"}\" _",
+        "name": "SubgraphBody"
+      },
+      {
+        "expression": "head:SubgraphStatement tail:(_ SubgraphStatement)* / _",
+        "name": "SubgraphElementList"
+      },
+      {
+        "expression": "Comment / DeploymentNode / BoundaryBlock / Subgraph / ElementCall / Element / Relationship / DirectionStatement",
+        "name": "SubgraphStatement"
+      },
+      {
+        "expression": "\"direction\" _ dir:Direction",
+        "name": "DirectionStatement"
+      },
+      {
+        "expression": "NestEnter node:DeploymentNodeBody NestLeave / NestUndo",
+        "name": "DeploymentNode"
+      },
+      {
+        "expression": "\"Node\" _ props:NodeProps _ NestOpen _ elements:SubgraphElementList _ \"}\"",
+        "name": "DeploymentNodeBody"
+      },
+      {
+        "expression": "\"(\" _ id:Identifier _ \",\" _ label:QuotedString _ args:ElementCallArgs _ \")\" / label:QuotedString _ technology:QuotedString? _ kv:KVArgs?",
+        "name": "NodeProps"
+      },
+      {
+        "expression": "type:Identifier _ \"(\" _ id:Identifier _ \",\" _ label:QuotedString _ args:ElementCallArgs _ \")\"",
+        "name": "ElementCall"
+      },
+      {
+        "expression": "technology:(_ \",\" _ QuotedString)? description:(_ \",\" _ QuotedString)? kv:(_ \",\" _ KVArgs)?",
+        "name": "ElementCallArgs"
+      },
+      {
+        "expression": "head:KVPair tail:(_ \",\" _ KVPair)*",
+        "name": "KVArgs"
+      },
+      {
+        "expression": "\"$\" key:Identifier _ \"=\" _ value:Value",
+        "name": "KVPair"
+      },
+      {
+        "expression": "QuotedString / DottedIdentifier",
+        "name": "Value"
+      },
+      {
+        "expression": "head:Identifier tail:(\".\" Identifier)*",
+        "name": "DottedIdentifier"
+      },
+      {
+        "expression": "\"\\\"\" chars:(!\"\\\"\" .)* \"\\\"\"",
+        "name": "QuotedString"
+      },
+      {
+        "expression": "id:Identifier _ \"[\" _ body:ElementBody _ \"]\" _ kv:KVArgs?",
+        "name": "Element"
+      },
+      {
+        "expression": "head:ElementLine tail:(Break ElementLine)*",
+        "name": "ElementBody"
+      },
+      {
+        "expression": "chars:(!(\"\\n\" / \"[\" / \"]\" / \"<br/>\") .)+",
+        "name": "ElementLine"
+      },
+      {
+        "expression": "from:Identifier _ arrow:Arrow _ label:RelationshipLabel? _ technology:RelationshipTechnology? _ to:Identifier",
+        "name": "Relationship"
+      },
+      {
+        "expression": "\"|\" chars:(!\"|\" .)* \"|\"",
+        "name": "RelationshipLabel"
+      },
+      {
+        "expression": "\"\\\"\" chars:(!\"\\\"\" .)* \"\\\"\"",
+        "name": "RelationshipTechnology"
+      },
+      {
+        "expression": "&{…}",
+        "name": "NestEnter"
+      },
+      {
+        "expression": "&{…}",
+        "name": "NestLeave"
+      },
+      {
+        "expression": "&{…} .",
+        "name": "NestUndo"
+      },
+      {
+        "expression": "\"{\" &{…}",
+        "name": "NestOpen"
+      },
+      {
+        "expression": "\"-->\" / \"-.->\" / \"==>\"",
+        "name": "Arrow"
+      },
+      {
+        "expression": "$([a-zA-Z_] [a-zA-Z0-9_-]*)",
+        "name": "Identifier"
+      },
+      {
+        "expression": "_ \"<br/>\" _",
+        "name": "Break"
+      },
+      {
+        "expression": "(Whitespace / Newline)*",
+        "name": "_"
+      },
+      {
+        "expression": "(Whitespace / Newline)+",
+        "name": "__"
+      },
+      {
+        "expression": "[ \\t\\r]+",
+        "name": "Whitespace"
+      },
+      {
+        "expression": "\"\\n\"",
+        "name": "Newline"
+      }
+    ]
+  },
+  "inputLimits": [
+    {
+      "appliesTo": "validate_c4x, lint_c4x, render_c4x, c4x render",
+      "name": "mcpSourceBytes",
+      "summary": "Largest `code` argument (or file, for c4x render), in UTF-8 bytes. A larger one is an input error.",
+      "unit": "bytes",
+      "value": 1048576
+    },
+    {
+      "appliesTo": "c4x-lint",
+      "name": "cliFileBytes",
+      "summary": "Largest file read. A larger file is reported and not linted; the run exits 2.",
+      "unit": "bytes",
+      "value": 4194304
+    },
+    {
+      "appliesTo": "C4X, PlantUML and Structurizr parsers (every entry point, the editor included)",
+      "name": "nestingDepth",
+      "summary": "Boundaries, nodes, subgraphs or nested elements open at once. Deeper nesting is a located syntax error.",
+      "unit": "levels",
+      "value": 32
+    },
+    {
+      "appliesTo": "validate_c4x, lint_c4x, c4x-lint, render_c4x, c4x render",
+      "name": "elements",
+      "summary": "Elements and boundaries in one diagram, at every level. More is a C4X-LIMIT error.",
+      "unit": "elements",
+      "value": 2000
+    },
+    {
+      "appliesTo": "validate_c4x, lint_c4x, c4x-lint, render_c4x, c4x render",
+      "name": "relationships",
+      "summary": "Relationships in one diagram. More is a C4X-LIMIT error.",
+      "unit": "relationships",
+      "value": 5000
+    },
+    {
+      "appliesTo": "validate_c4x, lint_c4x, c4x-lint, render_c4x, c4x render",
+      "name": "textLength",
+      "summary": "One label, description, technology, tag or attribute value. Longer is a C4X-LIMIT error.",
+      "unit": "characters",
+      "value": 4096
+    },
+    {
+      "appliesTo": "validate_c4x, lint_c4x, c4x-lint, render_c4x, c4x render",
+      "name": "entries",
+      "summary": "$key=\"value\" pairs as written on one element, node or subgraph (each repeat counts); tags on one element; pairs in one elementStyle. More is a C4X-LIMIT error.",
+      "unit": "entries",
+      "value": 256
+    },
+    {
+      "appliesTo": "validate_c4x, lint_c4x, render_c4x",
+      "name": "outputLineLength",
+      "summary": "One line of tool output; a longer line is cut.",
+      "unit": "characters",
+      "value": 2000
+    },
+    {
+      "appliesTo": "lint_c4x, render_c4x",
+      "name": "findingLines",
+      "summary": "Findings listed in one result; the heading counts them all.",
+      "unit": "lines",
+      "value": 200
+    },
+    {
+      "appliesTo": "validate_c4x, lint_c4x, render_c4x",
+      "name": "toolOutputBytes",
+      "summary": "Text in one tool result, after the other caps (the SVG of render_c4x is a separate item, bounded by renderSvgBytes).",
+      "unit": "bytes",
+      "value": 524288
+    },
+    {
+      "appliesTo": "render_c4x, c4x render",
+      "name": "renderElements",
+      "summary": "Elements and boundaries one render lays out, at every level. More returns the findings and a \"render too large\" result, no SVG.",
+      "unit": "elements",
+      "value": 100
+    },
+    {
+      "appliesTo": "render_c4x, c4x render",
+      "name": "renderRelationships",
+      "summary": "Relationships one render routes. More returns the findings and a \"render too large\" result, no SVG.",
+      "unit": "relationships",
+      "value": 150
+    },
+    {
+      "appliesTo": "render_c4x, c4x render",
+      "name": "renderSvgBytes",
+      "summary": "Largest SVG returned. A larger render returns the findings and a \"render too large\" result, never a partial SVG.",
+      "unit": "bytes",
+      "value": 2097152
+    },
+    {
+      "appliesTo": "render_c4x, c4x render",
+      "name": "renderTimeMs",
+      "summary": "Hard deadline for one render, enforced: a render still running then is stopped and returns its findings and no SVG (c4x render exits 3).",
+      "unit": "milliseconds",
+      "value": 2000
+    }
+  ],
+  "knownLimitations": [
+    {
+      "id": "text-overflow",
+      "issue": "#340",
+      "text": "Element text is one unwrapped line and the box does not grow. A line wider than its box overflows it. textLimits holds the measured limit for each kind. Keep labels, technologies and descriptions inside it until the issue is fixed."
+    }
+  ],
+  "lint": {
+    "cliNotes": [
+      "Every rule defaults to `info`. `c4x-lint` lists info findings but exits 0 at its default `--max-severity error`, and `--quiet` hides them. To see them as failures use `--max-severity info`.",
+      "Syntax errors (`C4X-SYNTAX`), model errors (`C4X-MODEL`) and input-limit errors (`C4X-LIMIT`) are always errors.",
+      "Raise or switch off a rule with `c4x.lint.rules` in settings, or the same table in `.c4x-lint.json`."
+    ],
+    "defaultSeverity": "info",
+    "otherDiagnostics": [
+      {
+        "id": "C4X-SYNTAX",
+        "message": "C4X syntax error: Expected \")\", \",\", \"\\n\", or [ \\t\\r] but end of input found.",
+        "severity": "error",
+        "summary": "The source does not parse. Always an error.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\""
+      },
+      {
+        "id": "C4X-MODEL",
+        "message": "C4X model error: Unsupported element type \"Goal\"",
+        "severity": "error",
+        "summary": "The source parses but cannot be built into a model: an unknown element type, a repeated id, a relationship that names an unknown id, or `$code` on a kind other than Container and Component. Always an error.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nGoal(a, \"A\")"
+      },
+      {
+        "id": "C4X-LIMIT",
+        "message": "C4X input limit: A label is 4097 characters long; C4X allows at most 4096 in one text field.",
+        "severity": "error",
+        "summary": "The source parses but exceeds an input limit (see Input limits in the C4X reference): too many elements or relationships, a text field longer than 4,096 characters, or more than 256 entries in one attribute list, tag list or elementStyle. Always an error.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\", \"Go\", \"Does a thing\")"
+      }
+    ],
+    "rules": [
+      {
+        "appliesTo": "Container and Component elements, including database and external variants",
+        "checklistItem": "Do you understand what every element does?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Describe its responsibility in the fourth argument: Container(api, \"API\", \"Go\", \"Description\").",
+          "message": "Container \"API\" (api) has no description.",
+          "source": "%%{ c4: container }%%\ngraph TB\nContainer(api, \"API\", \"Go\")"
+        },
+        "id": "C4X-L001",
+        "levels": [
+          "container",
+          "component"
+        ],
+        "rationale": "A short description gives an at-a-glance view of the element's responsibility. Without it a reader has a name and a box, and has to guess what the element does.",
+        "structurizrEquivalent": [
+          "model.container.description",
+          "model.component.description"
+        ],
+        "title": "Container and component have a description"
+      },
+      {
+        "appliesTo": "Container and Component elements, including database and external variants",
+        "checklistItem": "Where applicable, do you understand the technology choices associated with every element?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Name it in the third argument: Container(api, \"API\", \"Technology\", \"Serves requests\").",
+          "message": "Container \"API\" (api) declares no technology.",
+          "source": "%%{ c4: container }%%\ngraph TB\nContainer(api, \"API\", \"\", \"Serves requests\")"
+        },
+        "id": "C4X-L002",
+        "levels": [
+          "container",
+          "component"
+        ],
+        "rationale": "Container and component diagrams exist to show the major technology choices. An element without a technology leaves out the thing the diagram is for.",
+        "structurizrEquivalent": [
+          "model.container.technology",
+          "model.component.technology"
+        ],
+        "title": "Container and component declare a technology"
+      },
+      {
+        "appliesTo": "Every relationship",
+        "checklistItem": "Does every arrow have a label describing the intent of that relationship?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Label it with the intent, read in the direction of the arrow: u -->|<intent>| s.",
+          "message": "Relationship u --> s has no label.",
+          "source": "%%{ c4: system-context }%%\ngraph TB\nPerson(u, \"User\")\nSystem(s, \"Shop\")\nu --> s"
+        },
+        "id": "C4X-L003",
+        "levels": [
+          "system-context",
+          "container",
+          "component",
+          "dynamic",
+          "deployment"
+        ],
+        "rationale": "An unlabelled arrow says that two elements are related but not how or why. The label carries the intent, and should read in the direction of the arrow.",
+        "structurizrEquivalent": [
+          "model.relationship.description"
+        ],
+        "title": "Relationship has a label"
+      },
+      {
+        "appliesTo": "Relationships whose endpoints run in different processes: between two different containers or software systems, or between a component and a container or software system. Relationships with a person at either end, and between two components, are not checked",
+        "checklistItem": "Where applicable, do you understand the technology choices associated with every relationship? (e.g. protocols for inter-process communication)",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Name the protocol in quotes after the label: api -->|Reads and writes orders in| \"<protocol>\" db.",
+          "message": "Relationship api --> db crosses a process boundary (Container to Container) but declares no technology.",
+          "source": "%%{ c4: container }%%\ngraph TB\nContainer(api, \"API\", \"Go\", \"Serves requests\")\nContainer(db, \"Database\", \"PostgreSQL\", \"Stores orders\")\napi -->|Reads and writes orders in| db"
+        },
+        "id": "C4X-L004",
+        "levels": [
+          "container",
+          "component"
+        ],
+        "rationale": "A relationship between containers is inter-process communication. Naming the protocol (JSON/HTTPS, JDBC, AMQP) tells the reader how the processes talk, which is what the container and component levels are meant to show.",
+        "structurizrEquivalent": [
+          "model.relationship.technology"
+        ],
+        "title": "Relationship across a process boundary declares a technology"
+      },
+      {
+        "appliesTo": "Software System elements in a view that decomposes a system: a container view with at least one internal container, or a component view with at least one internal component",
+        "checklistItem": "Do you understand what the diagram scope is?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Declare it as System_Ext(mail, \"Mail Service\", ...), or add External as a tag in the bracket form.",
+          "message": "Software System \"Mail Service\" (mail) is outside the system this container view decomposes, but is not marked external.",
+          "source": "%%{ c4: container }%%\ngraph TB\nSystem_Boundary(shop, \"Shop\") {\n    Container(api, \"API\", \"Go\", \"Serves requests\")\n}\nSystem(mail, \"Mail Service\")\napi -->|Sends receipts through| \"SMTP\" mail"
+        },
+        "id": "C4X-L005",
+        "levels": [
+          "container",
+          "component"
+        ],
+        "rationale": "A container or component view zooms into one software system, drawn as the boundary around its parts. Any software system drawn as a box is therefore a neighbour, outside the scope. Marking it external draws it in the external style, so the reader can see where the scope ends.",
+        "structurizrEquivalent": [],
+        "title": "Software system outside the scope is marked external"
+      },
+      {
+        "appliesTo": "Every element and typed boundary, and every relationship. Inside a System_Boundary, Container_Boundary, Enterprise_Boundary or deployment Node every placement is checked; at the diagram root or inside an untyped subgraph, only types the view level allows nowhere. A deployment view may also hold software system instances in nodes and people at the root",
+        "checklistItem": "Do you understand the type of every element? (i.e. the level of abstraction; e.g. software system, container, etc)",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Allowed here in this view: Person, Person_Ext, System, System_Ext, Enterprise_Boundary. Container belongs in container (C2) or component (C3) or deployment views: move it to one, or change its type. If this view is not a system context view, declare its level on the first line, e.g. %%{ c4: container }%%.",
+          "message": "\"API\" (api): Container cannot be placed in the diagram root in a C1 logical view.",
+          "source": "%%{ c4: system-context }%%\ngraph TB\nPerson(u, \"User\")\nContainer(api, \"API\", \"Go\", \"Serves requests\")\nu -->|Calls the| api"
+        },
+        "id": "C4X-L006",
+        "levels": [
+          "system-context",
+          "container",
+          "component",
+          "deployment"
+        ],
+        "rationale": "Each C4 level shows one level of abstraction. A component in a system context view, or a container drawn inside another container, mixes levels and leaves the reader unsure what kind of thing each box is. The verdicts come from C4X's one table of C4 nesting rules, shared with the visual editor.",
+        "structurizrEquivalent": [],
+        "title": "Element and relationship are legal at the view level"
+      },
+      {
+        "appliesTo": "Every labelled relationship",
+        "checklistItem": "Does every arrow have a label describing the intent of that relationship?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Replace it with a phrase that says what the relationship is for, read in the direction of the arrow (for example \"Reads orders from\" rather than \"Uses\").",
+          "message": "Relationship u --> s is labelled with the single word \"Uses\".",
+          "source": "%%{ c4: system-context }%%\ngraph TB\nPerson(u, \"User\")\nSystem(s, \"Shop\")\nu -->|Uses| s"
+        },
+        "id": "C4X-L008",
+        "levels": [
+          "system-context",
+          "container",
+          "component",
+          "dynamic",
+          "deployment"
+        ],
+        "rationale": "A one-word label such as \"Uses\" says that a relationship exists, which the arrow already said. A phrase such as \"Reads account balances from\" says what it is for.",
+        "structurizrEquivalent": [],
+        "title": "Relationship label says more than one word"
+      },
+      {
+        "appliesTo": "Component views. Counts the Container_Boundaries C4X-L006 accepts: more than one is reported on each boundary after the first; none at all, while the view draws an internal component that C4X-L006 accepts, is reported on the view",
+        "checklistItem": "Do you understand what the diagram scope is?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Keep \"A\" as the container in scope: draw \"B\" as a Container box, or give it a component view of its own.",
+          "message": "This component view decomposes 2 containers (\"A\", \"B\"); a component view zooms into one container.",
+          "source": "%%{ c4: component }%%\ngraph TB\nContainer_Boundary(a, \"A\") {\n    Component(x, \"X\", \"Go\", \"Does x\")\n}\nContainer_Boundary(b, \"B\") {\n    Component(y, \"Y\", \"Go\", \"Does y\")\n}\nx -->|Calls the| y"
+        },
+        "id": "C4X-L101",
+        "levels": [
+          "component"
+        ],
+        "rationale": "A component diagram zooms into one container and shows the components inside it. With two containers decomposed, or none named, the reader cannot tell which container the diagram is about or which container each component belongs to.",
+        "structurizrEquivalent": [],
+        "title": "Component view decomposes exactly one container"
+      },
+      {
+        "appliesTo": "Every element except deployment nodes. An element counts as connected when it, or an element nested inside it, is either end of a relationship",
+        "checklistItem": "Do you understand what the diagram scope is?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Connect it to what it uses or what uses it, or remove it from this view.",
+          "message": "Software System \"Orphan\" (t) has no relationship in this view.",
+          "source": "%%{ c4: system-context }%%\ngraph TB\nPerson(u, \"User\")\nSystem(s, \"Shop\")\nSystem(t, \"Orphan\")\nu -->|Buys goods from| s"
+        },
+        "id": "C4X-L102",
+        "levels": [
+          "system-context",
+          "container",
+          "component",
+          "dynamic"
+        ],
+        "rationale": "The supporting elements of a C4 view are the people and systems connected to the elements in scope. A box with no relationship shows neither what it depends on nor what depends on it, and is usually left over from an earlier version of the diagram.",
+        "structurizrEquivalent": [
+          "model.element.disconnected"
+        ],
+        "title": "Element is connected to the rest of the view"
+      },
+      {
+        "appliesTo": "Relationships between two components that sit inside two different Container_Boundaries. Relationships from a person, system or container box to a component are not checked",
+        "checklistItem": "Do you understand what the diagram scope is?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Point it at the container instead: draw \"B\" as a Container box outside the container in scope and connect to that. Its components belong in its own component view.",
+          "message": "Relationship x --> y reaches from a component of \"A\" into \"B\", a different container's boundary.",
+          "source": "%%{ c4: component }%%\ngraph TB\nContainer_Boundary(a, \"A\") {\n    Component(x, \"X\", \"Go\", \"Does x\")\n}\nContainer_Boundary(b, \"B\") {\n    Component(y, \"Y\", \"Go\", \"Does y\")\n}\nx -->|Reaches into the| y"
+        },
+        "id": "C4X-L103",
+        "levels": [
+          "component"
+        ],
+        "rationale": "Outside the container in scope, a component view shows other containers as boxes, not their insides. A relationship from a component of one container to a component of another mixes two decompositions in one diagram; it should target the other container.",
+        "structurizrEquivalent": [],
+        "title": "Relationship does not reach into another container"
+      },
+      {
+        "appliesTo": "Every element, compared with the others declared directly in the same boundary or subgraph, in the same deployment node (dynamic views, which C4X-L006 does not check), or at the diagram root. Names are compared ignoring case and spacing. Elements C4X-L006 reports are left to it",
+        "checklistItem": "Does every element have a name?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Give each element a name that tells it apart, or, if both boxes are the same thing, draw it once and point both relationships at it.",
+          "message": "Software System \"Shop\" (b) has the same name as Software System \"Shop\" (a) at the diagram root.",
+          "source": "%%{ c4: system-context }%%\ngraph TB\nPerson(u, \"User\")\nSystem(a, \"Shop\")\nSystem(b, \"Shop\")\nu -->|Buys goods from| a\nu -->|Also buys goods from| b"
+        },
+        "id": "C4X-L104",
+        "levels": [
+          "system-context",
+          "container",
+          "component",
+          "dynamic"
+        ],
+        "rationale": "Two boxes with one name in the same boundary are either the same thing drawn twice or two things the reader cannot tell apart. Either way the reader cannot say which box a sentence about that name refers to.",
+        "structurizrEquivalent": [],
+        "title": "Element names are unique within a boundary"
+      },
+      {
+        "appliesTo": "Container views with no container and component views with no component. Empty views, and views in which C4X-L006 reports anything, are not checked",
+        "checklistItem": "Do you understand what the diagram type is?",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Declare %%{ c4: system-context }%% on the first line, or add the containers this view is meant to show.",
+          "message": "This view is declared as a container view but draws no container: its most detailed elements belong in a system-context view.",
+          "source": "%%{ c4: container }%%\ngraph TB\nPerson(u, \"User\")\nSystem(s, \"Shop\")\nu -->|Buys goods from| s"
+        },
+        "id": "C4X-L105",
+        "levels": [
+          "container",
+          "component"
+        ],
+        "rationale": "The view declaration tells the reader which level of zoom they are looking at. A container view that shows only people and software systems is a system context diagram, and labelling it otherwise sends the reader looking for detail that is not there.",
+        "structurizrEquivalent": [],
+        "title": "Declared view level matches the elements drawn"
+      },
+      {
+        "appliesTo": "Relationships whose one end contains the other: an element nested in the other, or declared inside a typed boundary whose alias is the id of the other end. A relationship C4X-L006 reports, or whose end it reports, is left to it",
+        "checklistItem": "Do you understand the type of every element? (i.e. the level of abstraction; e.g. software system, container, etc)",
+        "defaultSeverity": "info",
+        "exampleFinding": {
+          "hint": "Point it at the element outside \"Cloud Region\" that \"Cluster\" actually uses, or remove it.",
+          "message": "Relationship region --> cluster connects Deployment Node \"Cluster\" (cluster) to Deployment Node \"Cloud Region\" (region), which contains it: a deployment node and the deployment node it belongs to are two levels of one thing.",
+          "source": "%%{ c4: deployment }%%\ngraph TB\nNode(region, \"Cloud Region\", \"Europe\", \"Hosts the service\") {\n    Node(cluster, \"Cluster\", \"Kubernetes\", \"Runs the pods\") {\n    }\n}\nregion -->|Contains the| cluster"
+        },
+        "id": "C4X-L106",
+        "levels": [
+          "system-context",
+          "container",
+          "component",
+          "dynamic",
+          "deployment"
+        ],
+        "rationale": "A component and the software system it belongs to are two levels of abstraction of the same thing. An arrow between them says the system depends on part of itself, which tells the reader nothing and hides the real dependency on something outside.",
+        "structurizrEquivalent": [],
+        "title": "Relationship does not join a part to its whole"
+      }
+    ]
+  },
+  "placement": {
+    "component": {
+      "Container_Boundary": [
+        "Component",
+        "Component_Ext"
+      ],
+      "Enterprise_Boundary": [
+        "Person",
+        "Person_Ext",
+        "SoftwareSystem",
+        "System_Ext",
+        "System_Boundary"
+      ],
+      "Node": [],
+      "System_Boundary": [
+        "Container",
+        "Container_Ext",
+        "Container_Boundary"
+      ],
+      "root": [
+        "Person",
+        "Person_Ext",
+        "SoftwareSystem",
+        "System_Ext",
+        "System_Boundary",
+        "Enterprise_Boundary"
+      ]
+    },
+    "container": {
+      "Container_Boundary": [],
+      "Enterprise_Boundary": [
+        "Person",
+        "Person_Ext",
+        "SoftwareSystem",
+        "System_Ext",
+        "System_Boundary"
+      ],
+      "Node": [],
+      "System_Boundary": [
+        "Container",
+        "Container_Ext"
+      ],
+      "root": [
+        "Person",
+        "Person_Ext",
+        "SoftwareSystem",
+        "System_Ext",
+        "System_Boundary",
+        "Enterprise_Boundary"
+      ]
+    },
+    "deployment": {
+      "Container_Boundary": [],
+      "Enterprise_Boundary": [],
+      "Node": [
+        "Node",
+        "Container",
+        "Container_Ext"
+      ],
+      "System_Boundary": [],
+      "root": [
+        "Node"
+      ]
+    },
+    "system-context": {
+      "Container_Boundary": [],
+      "Enterprise_Boundary": [
+        "Person",
+        "Person_Ext",
+        "SoftwareSystem",
+        "System_Ext"
+      ],
+      "Node": [],
+      "System_Boundary": [],
+      "root": [
+        "Person",
+        "Person_Ext",
+        "SoftwareSystem",
+        "System_Ext",
+        "Enterprise_Boundary"
+      ]
+    }
+  },
+  "placementNote": "For each view and each place an element can sit (`root`, or inside a boundary or node), the element spellings the legality table accepts there. The dynamic view is not checked.",
+  "relationships": {
+    "arrows": [
+      {
+        "arrow": "-->",
+        "modelType": "uses",
+        "summary": "A solid arrow. The default for a call or a dependency."
+      },
+      {
+        "arrow": "-.->",
+        "modelType": "async",
+        "summary": "A dashed arrow. Use it for asynchronous or optional communication."
+      },
+      {
+        "arrow": "==>",
+        "modelType": "sync",
+        "summary": "A thick arrow. Use it to stress the main path."
+      }
+    ],
+    "form": "from -->|Label| \"Technology\" to",
+    "labelDelimiter": "|",
+    "parts": [
+      {
+        "name": "from",
+        "required": true
+      },
+      {
+        "name": "arrow",
+        "required": true
+      },
+      {
+        "name": "label",
+        "required": false
+      },
+      {
+        "name": "technology",
+        "required": false
+      },
+      {
+        "name": "to",
+        "required": true
+      }
+    ],
+    "technologyDelimiter": "\"",
+    "technologyNote": "C4X-L004 asks for a technology on a relationship that crosses a process boundary: between two different containers or software systems, or between a component and a container or software system. Relationships that touch a person, and relationships between two components, are not checked. The technology is stored in the model and drawn under the relationship label as `[technology]` in italics (#421)."
+  },
+  "schemaVersion": 2,
+  "sources": [
+    "src/parser/c4x.pegjs",
+    "src/model/C4ModelBuilder.ts",
+    "src/model/c4Legality.ts",
+    "src/model/styleDiagnostics.ts",
+    "src/model/lint/catalogue.ts",
+    "src/render/elementStyle.ts",
+    "src/cli/limits.ts",
+    "src/parser/nestingDepth.ts",
+    "scripts/c4x-reference/annotations.ts"
+  ],
+  "spellingsRejectedByBuilder": [],
+  "statements": [
+    {
+      "form": "%% text",
+      "rule": "Comment",
+      "summary": "A comment. Runs to the end of the line. C4X comments start with `%%`; `//` and `#` are not comments."
+    },
+    {
+      "form": "title Text",
+      "rule": "Title",
+      "summary": "A title line. Parsed and dropped: it does not appear in the drawing."
+    },
+    {
+      "form": "classDef name styles",
+      "rule": "ClassDef",
+      "summary": "A Mermaid class definition. Parsed and ignored (C4X-L115). Use `elementStyle`."
+    },
+    {
+      "form": "class id1, id2 TagName",
+      "rule": "ClassAssignment",
+      "summary": "Adds a tag to elements by id. The tag then matches `elementStyle` rules."
+    },
+    {
+      "form": "elementStyle TagName $stroke=\"#RRGGBB\", $shape=\"Cylinder\"",
+      "rule": "ElementStyle",
+      "summary": "Styles every element that carries a tag. Top level only. Later keys win; tag matching ignores case."
+    },
+    {
+      "form": "subgraph Name { ... }",
+      "rule": "Subgraph",
+      "summary": "An untyped visual group. Its children may be elements, relationships and nested groups. Takes the `direction` statement."
+    },
+    {
+      "form": "Node(id, \"Label\", \"Technology\", \"Description\") { ... }",
+      "rule": "DeploymentNode",
+      "summary": "A deployment node with children. Nodes nest. Two forms: the call form, and a short form that takes a quoted label and an optional quoted technology."
+    },
+    {
+      "form": "System_Boundary(id, \"Label\") { ... }",
+      "rule": "BoundaryBlock",
+      "summary": "A typed boundary around the elements inside it."
+    },
+    {
+      "form": "Type(id, \"Label\", \"Technology\", \"Description\", $key=\"value\")",
+      "rule": "ElementCall",
+      "summary": "An element in call form, the form to prefer: it has room for technology and description. The type is any identifier at parse time; the model builder accepts only the element kinds listed in elementKinds."
+    },
+    {
+      "form": "id[Label<br/>Type<br/>Tag]",
+      "rule": "Element",
+      "summary": "An element in bracket form: label, type and tags on separate lines joined by `<br/>`. It has no slot for technology or description, so rule C4X-L001 and C4X-L002 report it."
+    },
+    {
+      "form": "from -->|Label| \"Technology\" to",
+      "rule": "Relationship",
+      "summary": "A directed relationship between two element ids. The label sits between bars, the technology (protocol) in quotes after it."
+    }
+  ],
+  "styles": {
+    "diagnostics": [
+      {
+        "id": "C4X-L107",
+        "message": "Unknown style key $outline in elementStyle T; it is ignored. Keys: $stroke, $background, $color, $shape, $sprite, $border, $strokeWidth, $legend.",
+        "severity": "error",
+        "summary": "An `elementStyle` key outside the allowed keys. The key is ignored.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $tags=\"T\")\nelementStyle T $outline=\"#000000\""
+      },
+      {
+        "id": "C4X-L108",
+        "message": "$stroke is repeated in elementStyle T; the last value is used.",
+        "severity": "error",
+        "summary": "A key repeated in one `elementStyle`, or `$shape` given twice on one element. The last value is used.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $tags=\"T\")\nelementStyle T $stroke=\"#000000\", $stroke=\"#111111\""
+      },
+      {
+        "id": "C4X-L109",
+        "message": "$stroke takes a hex colour, \"#RGB\" or \"#RRGGBB\"; got \"red\" in elementStyle T; the key is ignored.",
+        "severity": "warning",
+        "summary": "A value the key does not accept. The key is ignored.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $tags=\"T\")\nelementStyle T $stroke=\"red\""
+      },
+      {
+        "id": "C4X-L110",
+        "message": "Unknown shape \"Cylindre\" on element \"a\"; it is drawn as the theme rectangle. Did you mean \"Cylinder\"?",
+        "severity": "warning",
+        "summary": "A shape name outside the shape list. The element is drawn as the theme rectangle.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $shape=\"Cylindre\")"
+      },
+      {
+        "id": "C4X-L111",
+        "message": "Shape \"Hexagon\" on element \"a\" is not drawn yet (#334 draws it); it is drawn as the theme rectangle until then.",
+        "severity": "info",
+        "summary": "A valid shape the renderer does not draw yet. The element is drawn as the theme rectangle.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $shape=\"Hexagon\")"
+      },
+      {
+        "id": "C4X-L112",
+        "message": "A second elementStyle for tag \"t\" (also styled as \"T\"); the two merge and later keys win.",
+        "severity": "warning",
+        "summary": "Two `elementStyle` statements for one tag, in any case. They merge and later keys win.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $tags=\"T\")\nelementStyle T $stroke=\"#000000\"\nelementStyle t $color=\"#111111\""
+      },
+      {
+        "id": "C4X-L113",
+        "message": "$colour is not a style key in elementStyle T; write $color. The key is ignored.",
+        "severity": "error",
+        "summary": "`$colour` is not an alias of `$color`. The key is ignored.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $tags=\"T\")\nelementStyle T $colour=\"#000000\""
+      },
+      {
+        "id": "C4X-L114",
+        "message": "$stroke on element \"a\" is kept as metadata and does not style it; colours come from tags (elementStyle).",
+        "severity": "info",
+        "summary": "An element attribute that looks like a style key. It is kept as metadata and styles nothing.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\", $stroke=\"#000000\")"
+      },
+      {
+        "id": "C4X-L115",
+        "message": "classDef \"big\" has no effect. Use `elementStyle big $stroke=\"#RRGGBB\"` to style elements tagged big.",
+        "severity": "info",
+        "summary": "A Mermaid `classDef`, which C4X parses and ignores.",
+        "trigger": "%%{ c4: container }%%\ngraph TB\nContainer(a, \"A\", \"Go\", \"Does a thing\")\nclassDef big fill:#fff"
+      },
+      {
+        "id": "C4X-L116",
+        "message": "A `subgraph` inside deployment Node \"n\" is not drawn. Nodes hold elements and relationships only. Move it outside the Node.",
+        "severity": "warning",
+        "summary": "A subgraph, boundary or `direction` inside a deployment Node, which is not drawn there.",
+        "trigger": "%%{ c4: deployment }%%\ngraph TB\nNode(n, \"Host\") {\n  subgraph g {\n    Container(a, \"A\", \"Go\", \"Does a thing\")\n  }\n}"
+      }
+    ],
+    "keys": [
+      {
+        "accepts": "A hex colour, `#RGB` or `#RRGGBB`, quoted.",
+        "example": "#BF101D",
+        "key": "stroke",
+        "summary": "Outline colour."
+      },
+      {
+        "accepts": "A hex colour, `#RGB` or `#RRGGBB`, quoted.",
+        "example": "#FFF3E0",
+        "key": "background",
+        "summary": "Fill colour."
+      },
+      {
+        "accepts": "A hex colour, `#RGB` or `#RRGGBB`, quoted.",
+        "example": "#111111",
+        "key": "color",
+        "summary": "Text colour. Spell it `color`: `$colour` is an error (C4X-L113)."
+      },
+      {
+        "accepts": "One of the shape names, exactly as spelled, case sensitive.",
+        "example": "Cylinder",
+        "key": "shape",
+        "summary": "Outline shape. See shapes for the names and which ones the renderer draws today."
+      },
+      {
+        "accepts": "The id of a bundled icon (docs/ICONS.md).",
+        "example": "database",
+        "key": "sprite",
+        "summary": "Icon drawn on the element."
+      },
+      {
+        "accepts": "`solid`, `dashed` or `dotted`.",
+        "example": "dashed",
+        "key": "border",
+        "summary": "Outline style.",
+        "values": [
+          "solid",
+          "dashed",
+          "dotted"
+        ]
+      },
+      {
+        "accepts": "A whole number from 1 to 10, quoted: `$strokeWidth=\"3\"`.",
+        "example": "3",
+        "key": "strokeWidth",
+        "range": {
+          "max": 10,
+          "min": 1
+        },
+        "summary": "Outline width in pixels."
+      },
+      {
+        "accepts": "Non-empty text of at most 120 characters, quoted.",
+        "example": "Message queue",
+        "key": "legend",
+        "maxLength": 120,
+        "summary": "The text for this style in the legend."
+      }
+    ],
+    "shapeNote": "Names are case sensitive. A valid shape the renderer does not draw yet is drawn as the theme rectangle (C4X-L111).",
+    "shapes": [
+      {
+        "drawn": true,
+        "name": "Box"
+      },
+      {
+        "drawn": true,
+        "name": "RoundedBox"
+      },
+      {
+        "drawn": false,
+        "name": "Circle"
+      },
+      {
+        "drawn": false,
+        "name": "Ellipse"
+      },
+      {
+        "drawn": false,
+        "name": "Hexagon"
+      },
+      {
+        "drawn": false,
+        "name": "Diamond"
+      },
+      {
+        "drawn": true,
+        "name": "Cylinder"
+      },
+      {
+        "drawn": true,
+        "name": "Bucket"
+      },
+      {
+        "drawn": false,
+        "name": "Pipe"
+      },
+      {
+        "drawn": true,
+        "name": "Person"
+      },
+      {
+        "drawn": false,
+        "name": "Robot"
+      },
+      {
+        "drawn": true,
+        "name": "Folder"
+      },
+      {
+        "drawn": true,
+        "name": "WebBrowser"
+      },
+      {
+        "drawn": false,
+        "name": "Window"
+      },
+      {
+        "drawn": true,
+        "name": "Terminal"
+      },
+      {
+        "drawn": false,
+        "name": "Shell"
+      },
+      {
+        "drawn": false,
+        "name": "MobileDevicePortrait"
+      },
+      {
+        "drawn": false,
+        "name": "MobileDeviceLandscape"
+      },
+      {
+        "drawn": false,
+        "name": "Component"
+      }
+    ],
+    "tagMatching": "Case insensitive. An element carries its implied tags (see elementKinds), then its own tags in order. Rules apply in tag order; later keys win."
+  },
+  "textLimits": {
+    "charWidthFactor": 0.6,
+    "issue": "#340",
+    "kinds": [
+      {
+        "boxHeight": 160,
+        "boxWidth": 200,
+        "fontSize": {
+          "description": 11,
+          "label": 14,
+          "technology": 11
+        },
+        "kind": "Person",
+        "maxCharacters": {
+          "description": 30,
+          "label": 23,
+          "technology": 28
+        },
+        "technologyWrapper": 2
+      },
+      {
+        "boxHeight": 140,
+        "boxWidth": 260,
+        "fontSize": {
+          "description": 12,
+          "label": 14,
+          "technology": 12
+        },
+        "kind": "SoftwareSystem",
+        "maxCharacters": {
+          "description": 36,
+          "label": 30,
+          "technology": 34
+        },
+        "technologyWrapper": 2
+      },
+      {
+        "boxHeight": 130,
+        "boxWidth": 240,
+        "fontSize": {
+          "description": 12,
+          "label": 14,
+          "technology": 12
+        },
+        "kind": "Container",
+        "maxCharacters": {
+          "description": 33,
+          "label": 28,
+          "technology": 31
+        },
+        "technologyWrapper": 2
+      },
+      {
+        "boxHeight": 120,
+        "boxWidth": 220,
+        "fontSize": {
+          "description": 12,
+          "label": 14,
+          "technology": 12
+        },
+        "kind": "Component",
+        "maxCharacters": {
+          "description": 30,
+          "label": 26,
+          "technology": 28
+        },
+        "technologyWrapper": 2
+      },
+      {
+        "boxHeight": 200,
+        "boxWidth": 300,
+        "fontSize": {
+          "description": 12,
+          "label": 14,
+          "technology": 12
+        },
+        "kind": "DeploymentNode",
+        "maxCharacters": {
+          "description": 41,
+          "label": 35,
+          "technology": 39
+        },
+        "technologyWrapper": 2
+      }
+    ],
+    "method": "Estimate: a line is characters x font size x 0.6 pixels wide, the rule the renderer itself uses to place relationship labels. The box width and font sizes are read from a real layout and render of one element of each kind. Real text in a proportional font is usually narrower, so treat the limit as safe, not exact. The #351 dogfood run found overflow at about 33 characters in a 220 px box.",
+    "safeForAnyKind": {
+      "description": 30,
+      "label": 23,
+      "technology": 28
+    },
+    "status": "current behaviour; element text is not wrapped (#340)"
+  },
+  "title": "C4X reference",
+  "viewTypes": [
+    {
+      "id": "system-context",
+      "level": "C1",
+      "lintRules": [
+        "C4X-L003",
+        "C4X-L006",
+        "C4X-L008",
+        "C4X-L102",
+        "C4X-L104",
+        "C4X-L106"
+      ],
+      "summary": "The system in scope, the people who use it and the systems it depends on."
+    },
+    {
+      "id": "container",
+      "level": "C2",
+      "lintRules": [
+        "C4X-L001",
+        "C4X-L002",
+        "C4X-L003",
+        "C4X-L004",
+        "C4X-L005",
+        "C4X-L006",
+        "C4X-L008",
+        "C4X-L102",
+        "C4X-L104",
+        "C4X-L105",
+        "C4X-L106"
+      ],
+      "summary": "The applications and data stores inside one system, and how they talk to each other."
+    },
+    {
+      "id": "component",
+      "level": "C3",
+      "lintRules": [
+        "C4X-L001",
+        "C4X-L002",
+        "C4X-L003",
+        "C4X-L004",
+        "C4X-L005",
+        "C4X-L006",
+        "C4X-L008",
+        "C4X-L101",
+        "C4X-L102",
+        "C4X-L103",
+        "C4X-L104",
+        "C4X-L105",
+        "C4X-L106"
+      ],
+      "summary": "The components inside one container."
+    },
+    {
+      "id": "deployment",
+      "level": "C4",
+      "lintRules": [
+        "C4X-L003",
+        "C4X-L006",
+        "C4X-L008",
+        "C4X-L106"
+      ],
+      "summary": "Where containers run: nested deployment nodes with container instances inside."
+    },
+    {
+      "id": "dynamic",
+      "level": "dynamic",
+      "lintRules": [
+        "C4X-L003",
+        "C4X-L008",
+        "C4X-L102",
+        "C4X-L104",
+        "C4X-L106"
+      ],
+      "summary": "One scenario: the relationships are numbered in source order."
+    }
+  ]
+}

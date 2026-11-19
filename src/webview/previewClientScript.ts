@@ -1,6 +1,14 @@
 import { VISUAL_LAYOUT_PROTOCOL_VERSION } from './visualLayoutProtocol';
 import { emitLiveRegion } from './webviewA11y';
 import { LEGEND_CATALOG, type LegendItem } from './legendCatalog';
+import { ELEMENT_STYLE_CLIENT_FUNCTIONS } from '../render/elementStyle';
+import { SHAPE_GEOMETRY_CLIENT_FUNCTIONS } from '../render/shapeGeometry';
+import { TEXT_LAYOUT_CLIENT_FUNCTIONS, TEXT_METRICS } from '../render/textLayout';
+import { BOUNDARY_LABEL_CLIENT_FUNCTIONS } from '../render/boundaryLabel';
+import { KEY_CLIENT_FUNCTIONS } from '../render/KeyRenderer';
+import { DEPLOYMENT_NOTATION_CLIENT_FUNCTIONS } from '../render/deploymentNotation';
+import { BUNDLED_SPRITE_IDS } from '../assets/spriteIds';
+import { draftStyleElements, isValidElementStyleInputs, paintNodeWithStyle } from './elementStyleClient';
 import { dropInvalidPersistedAdds, dropUnmovableBoundaryEdits, formatUnmovableBoundaryNotice, isPersistedAddRelationshipList, type PersistedDraftState, type PersistedStagedEdit } from './draftState';
 import {
     INSPECTOR_LABEL_MAX,
@@ -117,6 +125,73 @@ export function isZeroDeltaMove(
     return Math.round(start.x) === Math.round(end.x) && Math.round(start.y) === Math.round(end.y);
 }
 
+/** A frame or node as `planBoundaryMove` sees it: layout position, pinning, current position. */
+export interface BoundaryMoveItem {
+    id: string;
+    /** Position in the layout snapshot. */
+    x: number;
+    y: number;
+    /** Where the editor currently shows it (after earlier, unsaved moves). */
+    currentX: number;
+    currentY: number;
+    /** Pinned by an authored or staged coordinate on that axis. */
+    pinnedX: boolean;
+    pinnedY: boolean;
+    childNodeIds?: string[];
+    childBoundaryIds?: string[];
+}
+
+/**
+ * Where every descendant of a moved boundary goes, axis by axis, by the rules
+ * the host applies on save (DagreLayoutEngine.applyBoundaryManualGeometry): an
+ * unpinned descendant follows its parent's displacement; a pinned one stays
+ * where it is now, and its own contents follow ITS displacement on that axis,
+ * so a staged nested move survives a later move of its parent.
+ * Pure — exported for unit tests and embedded in the webview (#339).
+ */
+export function planBoundaryMove(
+    movedId: string,
+    dx: number,
+    dy: number,
+    boundaries: BoundaryMoveItem[],
+    nodes: BoundaryMoveItem[],
+): { boundaries: Array<{ id: string; x: number; y: number }>; nodes: Array<{ id: string; x: number; y: number }> } {
+    const boundaryById = new Map(boundaries.map(b => [b.id, b]));
+    const nodeById = new Map(nodes.map(n => [n.id, n]));
+    const plan: { boundaries: Array<{ id: string; x: number; y: number }>; nodes: Array<{ id: string; x: number; y: number }> } =
+        { boundaries: [], nodes: [] };
+    const visited = new Set([movedId]);
+    const walk = (frame: BoundaryMoveItem, ax: number, ay: number): void => {
+        for (const nodeId of frame.childNodeIds || []) {
+            const node = nodeById.get(nodeId);
+            if (!node) { continue; }
+            plan.nodes.push({
+                id: node.id,
+                x: node.pinnedX ? node.currentX : node.x + ax,
+                y: node.pinnedY ? node.currentY : node.y + ay,
+            });
+        }
+        for (const childId of frame.childBoundaryIds || []) {
+            if (visited.has(childId)) { continue; }
+            visited.add(childId);
+            const child = boundaryById.get(childId);
+            if (!child) { continue; }
+            const nextX = child.pinnedX ? child.currentX : child.x + ax;
+            const nextY = child.pinnedY ? child.currentY : child.y + ay;
+            plan.boundaries.push({ id: child.id, x: nextX, y: nextY });
+            // Contents follow the child's own displacement: zero for a frame
+            // pinned where the layout put it, the staged step for a frame the
+            // user already moved, the parent's step for an unpinned frame.
+            walk(child, nextX - child.x, nextY - child.y);
+        }
+    };
+    const moved = boundaryById.get(movedId);
+    if (moved) {
+        walk(moved, dx, dy);
+    }
+    return plan;
+}
+
 /**
  * Where a finished pointer drag leaves an element, and whether to stage it.
  * The canvas rounds every drag frame, so a drag that comes back home ends at
@@ -188,9 +263,86 @@ export function applyEdgeGeometry(edgeEl: EdgeElementLike, points: EdgeEndpoints
     }
     const label = edgeEl.querySelector('text');
     if (label) {
-        label.setAttribute('x', ((points.from.x + points.to.x) / 2).toFixed(2));
-        label.setAttribute('y', (((points.from.y + points.to.y) / 2) - 6).toFixed(2));
+        // #421: with a technology line the label baseline sits 3.5 px above the
+        // centre of the block and the technology baseline 9.5 px below it, as the render drew them.
+        const tech = edgeEl.querySelector('text[data-field="relationship-technology"]');
+        const mid = ((points.from.y + points.to.y) / 2) - 6;
+        const x = ((points.from.x + points.to.x) / 2).toFixed(2);
+        label.setAttribute('x', x);
+        label.setAttribute('y', (tech ? mid - 3.5 : mid).toFixed(2));
+        if (tech) {
+            tech.setAttribute('x', x);
+            tech.setAttribute('y', (mid + 9.5).toFixed(2));
+        }
     }
+}
+
+/** DOM surface for saving and restoring an edge's rendered geometry (#419). */
+export interface ReadableAttributeTarget extends AttributeTarget {
+    getAttribute(name: string): string | null;
+}
+
+export interface RestorableEdgeElement {
+    getAttribute(name: string): string | null;
+    setAttribute(name: string, value: string): void;
+    removeAttribute(name: string): void;
+    querySelectorAll(selectors: string): ArrayLike<ReadableAttributeTarget>;
+    querySelector(selectors: string): ReadableAttributeTarget | null;
+}
+
+/**
+ * Save an edge's rendered path and label position once, before the first
+ * live repaint replaces its routed polyline (#419). Exported for unit tests;
+ * injected into the webview below.
+ */
+export function rememberEdgeGeometry(edgeEl: RestorableEdgeElement): void {
+    const path = edgeEl.querySelectorAll('path')[0];
+    if (edgeEl.getAttribute('data-rendered-d') !== null || !path) {
+        return;
+    }
+    edgeEl.setAttribute('data-rendered-d', path.getAttribute('d') ?? '');
+    const label = edgeEl.querySelector('text');
+    if (label) {
+        edgeEl.setAttribute('data-rendered-label', (label.getAttribute('x') ?? '') + ',' + (label.getAttribute('y') ?? ''));
+    }
+    const tech = edgeEl.querySelector('text[data-field="relationship-technology"]');
+    if (tech) {
+        edgeEl.setAttribute('data-rendered-tech', (tech.getAttribute('x') ?? '') + ',' + (tech.getAttribute('y') ?? ''));
+    }
+}
+
+/**
+ * Put back the geometry rememberEdgeGeometry saved, when both endpoints are
+ * back where the render drew them (a cancelled or zero-distance drag), so a
+ * routed edge does not stay straight through another box (#419).
+ * Exported for unit tests; injected into the webview below.
+ */
+export function restoreEdgeGeometry(edgeEl: RestorableEdgeElement): void {
+    const d = edgeEl.getAttribute('data-rendered-d');
+    if (d === null) {
+        return;
+    }
+    const paths = edgeEl.querySelectorAll('path');
+    for (let i = 0; i < paths.length; i++) {
+        paths[i].setAttribute('d', d);
+    }
+    const label = edgeEl.querySelector('text');
+    const saved = edgeEl.getAttribute('data-rendered-label');
+    if (label && saved !== null) {
+        const [x, y] = saved.split(',');
+        label.setAttribute('x', x);
+        label.setAttribute('y', y);
+    }
+    const tech = edgeEl.querySelector('text[data-field="relationship-technology"]');
+    const savedTech = edgeEl.getAttribute('data-rendered-tech');
+    if (tech && savedTech !== null) {
+        const [tx, ty] = savedTech.split(',');
+        tech.setAttribute('x', tx);
+        tech.setAttribute('y', ty);
+    }
+    edgeEl.removeAttribute('data-rendered-d');
+    edgeEl.removeAttribute('data-rendered-label');
+    edgeEl.removeAttribute('data-rendered-tech');
 }
 
 export interface ViewBox {
@@ -205,6 +357,11 @@ export interface NodeBounds {
     y: number;
     width: number;
     height: number;
+    /**
+     * Where the node's outline crosses each side's midline (#323), from
+     * `shapeSideInsets` (src/render/shapeGeometry.ts). Absent: the bounding box.
+     */
+    insets?: { top: number; right: number; bottom: number; left: number };
 }
 
 /**
@@ -243,18 +400,22 @@ export function computeOptimalConnectionPoints(
     from: NodeBounds,
     to: NodeBounds
 ): EdgeEndpoints {
+    // Points sit on the outline where it crosses each side's midline (#323).
+    const none = { top: 0, right: 0, bottom: 0, left: 0 };
+    const fi = from.insets || none;
+    const ti = to.insets || none;
     const fromPoints = [
-        { x: from.x + from.width / 2, y: from.y, edge: 'top' },
-        { x: from.x + from.width, y: from.y + from.height / 2, edge: 'right' },
-        { x: from.x + from.width / 2, y: from.y + from.height, edge: 'bottom' },
-        { x: from.x, y: from.y + from.height / 2, edge: 'left' }
+        { x: from.x + from.width / 2, y: from.y + fi.top, edge: 'top' },
+        { x: from.x + from.width - fi.right, y: from.y + from.height / 2, edge: 'right' },
+        { x: from.x + from.width / 2, y: from.y + from.height - fi.bottom, edge: 'bottom' },
+        { x: from.x + fi.left, y: from.y + from.height / 2, edge: 'left' }
     ];
 
     const toPoints = [
-        { x: to.x + to.width / 2, y: to.y, edge: 'top' },
-        { x: to.x + to.width, y: to.y + to.height / 2, edge: 'right' },
-        { x: to.x + to.width / 2, y: to.y + to.height, edge: 'bottom' },
-        { x: to.x, y: to.y + to.height / 2, edge: 'left' }
+        { x: to.x + to.width / 2, y: to.y + ti.top, edge: 'top' },
+        { x: to.x + to.width - ti.right, y: to.y + to.height / 2, edge: 'right' },
+        { x: to.x + to.width / 2, y: to.y + to.height - ti.bottom, edge: 'bottom' },
+        { x: to.x + ti.left, y: to.y + to.height / 2, edge: 'left' }
     ];
 
     const isBelow = to.y >= from.y + from.height;
@@ -330,6 +491,8 @@ export interface BoundaryWrapPadding {
     paddingX: number;
     paddingTop: number;
     paddingBottom: number;
+    /** Narrowest frame that holds the boundary's label (#324); 0 or absent for none. */
+    minWidth: number;
 }
 
 /**
@@ -373,11 +536,16 @@ export function computeBoundaryWrap(
     if (children.length === 0) {
         // Nothing to contain: honour explicit sizes as-is, otherwise leave the
         // empty computed frame alone.
+        // A bottom-left label still has to fit (#324): the host raises an empty
+        // frame to the label's width and bottom reserve when the theme has one.
+        const labelWidth = options && options.minWidth !== undefined ? options.minWidth : 0;
+        const emptyWidth = frame.manualWidth !== undefined ? frame.manualWidth : frame.width;
+        const emptyHeight = frame.manualHeight !== undefined ? frame.manualHeight : frame.height;
         return {
             x: frame.x,
             y: frame.y,
-            width: frame.manualWidth !== undefined ? frame.manualWidth : frame.width,
-            height: frame.manualHeight !== undefined ? frame.manualHeight : frame.height,
+            width: labelWidth > 0 ? Math.max(emptyWidth, labelWidth) : emptyWidth,
+            height: labelWidth > 0 ? Math.max(emptyHeight, paddingBottom) : emptyHeight,
         };
     }
 
@@ -398,10 +566,11 @@ export function computeBoundaryWrap(
     const requiredWidth = (maxX + paddingX) - x;
     const requiredHeight = (maxY + paddingBottom) - y;
 
+    const width = frame.manualWidth !== undefined ? Math.max(frame.manualWidth, requiredWidth) : requiredWidth;
     return {
         x,
         y,
-        width: frame.manualWidth !== undefined ? Math.max(frame.manualWidth, requiredWidth) : requiredWidth,
+        width: options && options.minWidth !== undefined ? Math.max(width, options.minWidth) : width,
         height: frame.manualHeight !== undefined ? Math.max(frame.manualHeight, requiredHeight) : requiredHeight,
     };
 }
@@ -471,6 +640,50 @@ export function computeZoomToFit(
     const pan = computeCentringPan(nodes, anchorBox);
 
     return { zoom: safeZoom, panX: pan.panX, panY: pan.panY };
+}
+
+/**
+ * Zoom to fit, kept clear of a bottom overlay (#262, #327). `obstacle` is the
+ * overlay's box in viewport CSS pixels (the docked key). When the plain fit
+ * would put any content under it, the fit is redone in the viewport above the
+ * obstacle's top edge (less an 8 px gap) and the content is centred there, so
+ * the key never covers a node after Fit or auto-fit. With no obstacle, or one
+ * the plain fit already clears, the result is exactly `computeZoomToFit`'s.
+ * Pure — exported for unit tests.
+ */
+export function computeZoomToFitClearOf(
+    nodes: NodeBounds[],
+    anchorBox: ViewBox,
+    padding: number,
+    viewport: { w: number; h: number },
+    obstacle?: { x: number; y: number; w: number; h: number } | null,
+): { zoom: number; panX: number; panY: number } {
+    const fit = computeZoomToFit(nodes, anchorBox, padding, viewport);
+    const content = computeContentBounds(nodes);
+    if (!obstacle || !content || obstacle.w <= 0 || obstacle.h <= 0) {
+        return fit;
+    }
+    // Content box on screen under the plain fit (applyZoomPan's mapping).
+    const minX = anchorBox.x + anchorBox.w / 2 - viewport.w / (2 * fit.zoom) - fit.panX;
+    const minY = anchorBox.y + anchorBox.h / 2 - viewport.h / (2 * fit.zoom) - fit.panY;
+    const left = (content.x - minX) * fit.zoom;
+    const right = (content.x + content.w - minX) * fit.zoom;
+    const top = (content.y - minY) * fit.zoom;
+    const bottom = (content.y + content.h - minY) * fit.zoom;
+    const overlaps = right > obstacle.x && left < obstacle.x + obstacle.w &&
+        bottom > obstacle.y && top < obstacle.y + obstacle.h;
+    if (!overlaps) {
+        return fit;
+    }
+    const inset = viewport.h - obstacle.y + 8;
+    const availH = viewport.h - padding * 2 - inset;
+    const availW = viewport.w - padding * 2;
+    if (availH <= 0 || availW <= 0) {
+        return fit;
+    }
+    const zoom = Math.max(0.2, Math.min(availW / content.w, availH / content.h, 5.0));
+    // Centre the content in the band above the obstacle: shift it up by half the inset.
+    return { zoom, panX: fit.panX, panY: fit.panY - inset / (2 * zoom) };
 }
 
 /**
@@ -801,19 +1014,24 @@ export function pickPersistedEditFields(edit: Record<string, unknown>): Record<s
 
 /**
  * Serialise the current webview state to the shape persisted via vscode.setState().
- * Pure — no DOM access. Exported for unit tests.
+ * `scope` identifies the diagram the draft belongs to (document URI, plus the
+ * fence's content identity for Markdown-bound panels) — the panel is reused
+ * across documents, so a draft without an identity could be restored onto the
+ * wrong diagram. Pure — no DOM access. Exported for unit tests.
  */
 export function serializeDraftState(
     stagedEdits: Record<string, Record<string, unknown>>,
     selectedNodeId: string | null,
     editMode: boolean,
+    scope: string,
     camera?: { zoom?: number; panX?: number; panY?: number },
 ): PersistedDraftState {
     const editsArray = Object.keys(stagedEdits).map(
         id => ({ id, ...pickPersistedEditFields(stagedEdits[id]) }) as PersistedStagedEdit,
     );
     return {
-        schemaVersion: 1,
+        schemaVersion: 2,
+        scope,
         editMode,
         selectedNodeId,
         stagedEdits: editsArray,
@@ -837,27 +1055,113 @@ export function deserializeDraftState(
     return result;
 }
 
+/** Upgrade an unscoped v1 draft once, retaining the current field allowlist. */
+export function migrateLegacyDraftState(
+    value: unknown,
+    scope: string,
+    pick: (edit: Record<string, unknown>) => Record<string, unknown>,
+): unknown {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+    const record = value as Record<string, unknown>;
+    if (record['schemaVersion'] !== 1 || !Array.isArray(record['stagedEdits'])) return value;
+    // Leave malformed entries for the normal validator to reject, never throw.
+    const stagedEdits = record['stagedEdits'].map(entry => {
+        if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return entry;
+        const edit = entry as Record<string, unknown>;
+        if (edit['addRelationship'] !== undefined && !Array.isArray(edit['addRelationship'])) return entry;
+        if (Array.isArray(edit['addRelationship']) && edit['addRelationship'].some(add =>
+            typeof add !== 'object' || add === null || Array.isArray(add))) return entry;
+        return { id: edit['id'], ...pick(edit) };
+    });
+    return { ...record, schemaVersion: 2, scope, stagedEdits };
+}
+
+/** Zero-sized background viewports cannot supply a durable camera. */
+export function isPersistableViewport(width: number, height: number): boolean {
+    return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0;
+}
+
+/**
+ * Runtime validation for a render payload's `scope` field (#167 review). The
+ * TypeScript type requires it, so the boundary guard must too: a non-empty,
+ * bounded string. An unscoped render must be rejected wholesale — never let it
+ * run a settled persist that would overwrite valid persisted state with an
+ * unscoped record. Pure — exported for unit tests.
+ */
+export function isRenderScopeValue(value: unknown): boolean {
+    return typeof value === 'string' && value.trim().length > 0 && value.length <= 2048;
+}
+
+/**
+ * Identity guard for a persisted draft (#167 review). vscode.setState is scoped
+ * to the webview panel, and the singleton preview panel is reused for different
+ * documents and Markdown fences — so a schema-valid state can still belong to a
+ * DIFFERENT diagram than the one now on screen. The stored scope must equal the
+ * scope of the render the panel is showing; any difference (including a missing
+ * current scope) rejects the whole state, camera and edits alike. Element-id
+ * overlap between two diagrams is irrelevant: identical ids across diagrams are
+ * common (`api`, `db`, `Person(User)`), which is exactly why the per-id filter
+ * alone was not enough.
+ *
+ * An ambiguous current scope — two fences in one document with identical
+ * content share one identity — also rejects: the binding cannot be resolved to
+ * exactly one fence, so the draft is discarded rather than guessed onto one of
+ * the twins. The marker literal is duplicated in SaveAnchor.ts, which stamps
+ * it; keep them in sync. Pure — exported for unit tests.
+ */
+export function isDraftStateForCurrentScope(
+    state: PersistedDraftState,
+    currentScope: string | undefined,
+): boolean {
+    return typeof currentScope === 'string' &&
+        !currentScope.includes('#c4x-fence-ambiguous:') &&
+        state.scope === currentScope;
+}
+
+/**
+ * What to tell the user after a reload consumed a persisted draft (#167).
+ *
+ * Staged edits whose element is no longer in the diagram are dropped on
+ * restore. That used to happen in silence: the user came back to a draft that
+ * had quietly lost changes, or to no draft at all and no explanation. Returns
+ * null when there was nothing to restore. Pure — exported for unit tests.
+ */
+export function formatDraftRestoreStatus(
+    restoredCount: number,
+    droppedCount: number,
+): { text: string; tone: 'info'; state: 'dirty' | 'clean' } | null {
+    if (restoredCount === 0 && droppedCount === 0) {
+        return null;
+    }
+    if (restoredCount === 0) {
+        return {
+            text: 'Draft not restored: its ' + droppedCount +
+                (droppedCount === 1 ? ' change refers' : ' changes refer') +
+                ' to elements no longer in the diagram.',
+            tone: 'info',
+            state: 'clean',
+        };
+    }
+    const restored = 'Draft restored — ' + restoredCount + ' staged change' +
+        (restoredCount === 1 ? '' : 's');
+    if (droppedCount === 0) {
+        return { text: restored + '.', tone: 'info', state: 'dirty' };
+    }
+    return {
+        text: restored + '; ' + droppedCount + ' no longer appl' +
+            (droppedCount === 1 ? 'ies' : 'y') + ' and ' +
+            (droppedCount === 1 ? 'was' : 'were') + ' dropped.',
+        tone: 'info',
+        state: 'dirty',
+    };
+}
+
 /**
  * Pure helper: derive conflict banner text from a conflict reason string.
  * Exported for unit tests.
  */
 export function formatConflictBannerMessage(reason: string): string {
     return reason;
-}
-
-/**
- * Format the canvas text content for a staged property edit, mirroring how
- * ElementRenderer renders each field: technology is bracketed, a cleared
- * value renders as empty. The render pipeline applies no truncation, so the
- * live preview does not either — the save-triggered re-render stays
- * authoritative for final layout.
- * Pure — no DOM access. Exported for unit tests.
- */
-export function formatCanvasTextValue(field: string, value: string | null): string {
-    if (value === null || value === '') {
-        return '';
-    }
-    return field === 'technology' ? `[${value}]` : value;
 }
 
 /**
@@ -869,29 +1173,236 @@ export function formatCanvasUpdateAnnouncement(field: string): string {
     return `${name} updated on canvas`;
 }
 
-/** Minimal structural view of a rendered SVG node for canvas text updates. */
-export interface CanvasTextNode {
-    querySelector(selector: string): { textContent: string } | null;
+/**
+ * The one rule for geometry edits (#340 review round 4): a drag, keyboard move,
+ * boundary move or resize may be staged only in edit mode AND while the canvas
+ * shows the edit layout, the standard-size layout a Save of the first move
+ * produces. A render is the edit layout when the host laid it out in edit mode,
+ * or when its view-mode layout grew nothing (then the two are identical).
+ * Pure; exported for tests and embedded in the webview.
+ */
+export function isGeometryEditAllowed(editModeOn: boolean, layoutMode: string, textGrown: boolean): boolean {
+    return editModeOn === true && (layoutMode === 'edit' || textGrown !== true);
 }
 
 /**
- * Locate the `<text data-field="...">` child of a node element and set its
- * content to the staged value. Returns true only when the content actually
- * changed; false when the field has no rendered text element (e.g. it was
- * empty at render time — the save-triggered re-render stays authoritative in
- * that case). DOM access is confined to the passed-in element so unit tests
- * can drive it with a plain fake.
+ * What to do with a persisted draft on a settled render (#340 reviews 4-7). Pure;
+ * exported for tests and embedded in the webview.
+ * - `none`: no draft with staged edits is waiting.
+ * - `hold-other-source`: the draft was made on other source text (its scope is
+ *   not the current one). It is kept, unapplied and untouched in storage, in
+ *   every layout mode; only new staged changes replace it.
+ * - `defer-edit-layout`: the canvas is not the edit layout yet; keep the draft
+ *   and apply it when the edit layout arrives.
+ * - `restore`: apply it now.
  */
-export function updateCanvasTextInNode(nodeEl: CanvasTextNode, field: string, value: string | null): boolean {
-    const textEl = nodeEl.querySelector(`text[data-field="${field}"]`);
-    if (!textEl) {
+export function decideDraftRestore(pending: unknown, currentScope: string | null, editLayoutShown: boolean): 'none' | 'hold-other-source' | 'defer-edit-layout' | 'restore' {
+    if (!pending || typeof pending !== 'object') {
+        return 'none';
+    }
+    const draft = pending as { stagedEdits?: unknown; scope?: unknown };
+    if (!Array.isArray(draft.stagedEdits) || draft.stagedEdits.length === 0) {
+        return 'none';
+    }
+    if (typeof draft.scope === 'string' && draft.scope !== currentScope) {
+        return 'hold-other-source';
+    }
+    return editLayoutShown ? 'restore' : 'defer-edit-layout';
+}
+
+/** What the webview knows about the diagram a render shows (#340 reviews 7-9). */
+export interface RenderedDiagram {
+    /** Document URI, plus the fence ordinal for a Markdown-bound panel; null from an older host. */
+    identity: string | null;
+    /** Draft scope (includes the source fingerprint). */
+    scope: string | null;
+    /** C4 view type; null from an older host. */
+    viewType: string | null;
+    /** The host's render token; null when the host sent none. */
+    token: number | null;
+    /**
+     * The host's proof that every source change since render `since` stayed
+     * inside this diagram (isSameDiagramEdit in sameDiagramEdit.ts); null from an
+     * older host.
+     */
+    sameDiagramEdit: { since: number | null; value: boolean } | null;
+}
+
+/**
+ * Whether a render shows the same diagram as the one before it (#340 review 9).
+ * The webview never infers identity from content: edit mode continues only with
+ * the host's flag that every change since the render on screen stayed inside the
+ * diagram, for that very render (its token), with the same document identity
+ * and the same view type. Without the flag (an older host, an external change,
+ * an edit outside the fence, a fence added, moved or swapped, a document
+ * switch) it is another diagram. Pure; exported for tests and embedded.
+ */
+export function isSameDiagram(previous: RenderedDiagram | null, next: RenderedDiagram): boolean {
+    if (previous === null) {
+        return true;
+    }
+    const flag = next.sameDiagramEdit;
+    if (!flag || flag.value !== true) {
         return false;
     }
-    const next = formatCanvasTextValue(field, value);
-    if (textEl.textContent === next) {
+    if (flag.since !== null && previous.token !== null && flag.since !== previous.token) {
         return false;
     }
-    textEl.textContent = next;
+    if (previous.identity !== next.identity) {
+        return false;
+    }
+    return (previous.viewType || null) === (next.viewType || null);
+}
+
+/**
+ * Whether a pending edit-layout request may be answered by this render (#340
+ * review 8): the diagram stayed the same since the request (every render in
+ * between was the same diagram, or the request would have been cancelled) and
+ * the render came after the one the request was made on. Pure; exported.
+ */
+export function pendingEditMatches(pending: { afterToken: number | null } | null, sameDiagram: boolean, token: number | null): boolean {
+    if (pending === null || !sameDiagram) {
+        return false;
+    }
+    return pending.afterToken === null || token === null || token > pending.afterToken;
+}
+
+/**
+ * What a settled render does to edit mode and to a persisted draft (#340 reviews
+ * 4-8). Pure; exported for tests and embedded in the webview; the webview acts
+ * on `action` and takes `heldForOtherSource` and `deferRestore` from here.
+ * - `enter`: an edit-layout render of the diagram the edit request was for.
+ * - `leave`: an edit-layout render of another diagram (another document, or a
+ *   fence ordinal now showing another diagram), or one for a request that was
+ *   made on another diagram: edit mode is off and the host is told `view`.
+ * - `hold-quiet`: a held draft waits; ask for nothing (after a give-up, or a
+ *   draft made on other source text).
+ * - `request-edit-for-restore`: a draft for this source waits for the edit layout.
+ * - `keep-waiting`: a view render that was in flight when Edit was clicked on
+ *   this same diagram; the edit layout follows.
+ * - `view`: an ordinary render; any pending request is cancelled.
+ */
+export function planRenderEditState(input: {
+    layoutMode: string;
+    reportedLayoutMode: string;
+    sameDiagram: boolean;
+    awaiting: boolean;
+    pendingMatches: boolean;
+    restoreDecision: string;
+    editLayoutAbandoned: boolean;
+}): { action: 'enter' | 'leave' | 'hold-quiet' | 'request-edit-for-restore' | 'keep-waiting' | 'view'; heldForOtherSource: boolean; deferRestore: boolean } {
+    const heldForOtherSource = input.restoreDecision === 'hold-other-source';
+    const deferRestore = heldForOtherSource || input.restoreDecision === 'defer-edit-layout';
+    const plan = (action: 'enter' | 'leave' | 'hold-quiet' | 'request-edit-for-restore' | 'keep-waiting' | 'view') =>
+        ({ action, heldForOtherSource, deferRestore });
+    if (input.layoutMode === 'edit' && input.reportedLayoutMode === 'edit') {
+        if (!input.sameDiagram || (input.awaiting && !input.pendingMatches)) {
+            return plan('leave');
+        }
+        return plan('enter');
+    }
+    if (deferRestore && (input.editLayoutAbandoned || heldForOtherSource)) {
+        return plan('hold-quiet');
+    }
+    if (deferRestore) {
+        return plan('request-edit-for-restore');
+    }
+    if (input.awaiting && input.reportedLayoutMode === 'edit' && input.pendingMatches) {
+        return plan('keep-waiting');
+    }
+    return plan('view');
+}
+
+
+/**
+ * The whole render-time transition of edit mode and of a held draft (#340
+ * reviews 4-9), as one pure step from the webview's state and the render to the
+ * next state and an action. The webview assigns every field of `state` from the
+ * result and performs `action`; nothing at the call site decides on its own.
+ * Pure; exported for tests and embedded in the webview.
+ */
+export function renderTransition(input: {
+    state: { awaiting: boolean; pendingEditFor: { afterToken: number | null } | null; editLayoutAbandoned: boolean; lastRenderDiagram: RenderedDiagram | null };
+    diagram: RenderedDiagram;
+    layoutMode: string;
+    editLayoutShown: boolean;
+    reportedLayoutMode: string;
+    pendingRestoreState: unknown;
+    currentScope: string | null;
+}): {
+    action: 'enter' | 'leave' | 'hold-quiet' | 'request-edit-for-restore' | 'keep-waiting' | 'view';
+    state: { awaiting: boolean; pendingEditFor: { afterToken: number | null } | null; lastRenderDiagram: RenderedDiagram; heldDraftForOtherSource: boolean; restoreDeferred: boolean };
+} {
+    const sameDiagram = isSameDiagram(input.state.lastRenderDiagram, input.diagram);
+    const plan = planRenderEditState({
+        layoutMode: input.layoutMode,
+        reportedLayoutMode: input.reportedLayoutMode,
+        sameDiagram,
+        awaiting: input.state.awaiting,
+        pendingMatches: pendingEditMatches(input.state.pendingEditFor, sameDiagram, input.diagram.token),
+        restoreDecision: decideDraftRestore(input.pendingRestoreState, input.currentScope, input.editLayoutShown),
+        editLayoutAbandoned: input.state.editLayoutAbandoned,
+    });
+    const waiting = plan.action === 'keep-waiting' || plan.action === 'request-edit-for-restore';
+    return {
+        action: plan.action,
+        state: {
+            awaiting: waiting,
+            pendingEditFor: plan.action === 'request-edit-for-restore'
+                ? { afterToken: input.diagram.token }
+                : plan.action === 'keep-waiting' ? input.state.pendingEditFor : null,
+            lastRenderDiagram: input.diagram,
+            heldDraftForOtherSource: plan.heldForOtherSource,
+            restoreDeferred: plan.deferRestore,
+        },
+    };
+}
+
+/** A drawn `<text data-field>` element, as replaceCanvasText reads it. */
+export interface CanvasTextElement {
+    getAttribute(name: string): string | null;
+    readonly textContent: string | null;
+    querySelectorAll(selector: string): ArrayLike<{ readonly textContent: string | null }>;
+    remove(): void;
+}
+
+/** Minimal structural view of a rendered SVG node for live text updates (#340). */
+export interface CanvasTextNode {
+    querySelectorAll(selector: string): ArrayLike<CanvasTextElement>;
+    insertAdjacentHTML(position: 'beforeend', markup: string): void;
+}
+
+/**
+ * What a text layout draws, field by field: first baseline and lines. Equal
+ * signatures mean the canvas already shows the layout. Pure; exported for tests.
+ */
+export function elementTextSignature(layout: { blocks: ReadonlyArray<{ field: string; ys: number[]; lines: string[]; truncated: boolean; full: string }> }): string {
+    // A truncated field also carries its full text: an edit past the cut changes
+    // the tooltip even when the visible lines stay the same.
+    return layout.blocks.map(block => block.field + '@' + block.ys[0].toFixed(2) + ':' + block.lines.join('\n')
+        + (block.truncated ? '#' + block.full : '')).join('|');
+}
+
+/**
+ * Replace a node's drawn text with `markup` (from elementTextMarkup, the
+ * host's own text renderer) unless the canvas already shows `signature`.
+ * Returns true when the text changed. DOM access is confined to the passed-in
+ * node so unit tests can drive it with a plain fake.
+ */
+export function replaceCanvasText(nodeEl: CanvasTextNode, markup: string, signature: string): boolean {
+    const texts = Array.from(nodeEl.querySelectorAll(':scope > text[data-field]'));
+    const current = texts.map(text => {
+        const spans = Array.from(text.querySelectorAll('tspan'));
+        const lines = spans.length > 0 ? spans.map(span => span.textContent || '') : [text.textContent || ''];
+        const titles = Array.from(text.querySelectorAll('title'));
+        return text.getAttribute('data-field') + '@' + text.getAttribute('y') + ':' + lines.join('\n')
+            + (titles.length > 0 ? '#' + (titles[0].textContent || '') : '');
+    }).join('|');
+    if (current === signature) {
+        return false;
+    }
+    texts.forEach(text => text.remove());
+    nodeEl.insertAdjacentHTML('beforeend', markup);
     return true;
 }
 
@@ -932,6 +1443,13 @@ export function shouldAutoFitOnOpen(firstRender: boolean, autoFitOnOpen: boolean
  */
 export const INITIAL_ZOOM_MIN = 0.2;
 export const INITIAL_ZOOM_MAX = 1.0;
+
+/**
+ * How long a wheel gesture must be still before the camera is written to draft
+ * state (#167). Discrete camera actions persist immediately; only the wheel is
+ * debounced, because one gesture fires dozens of events.
+ */
+export const CAMERA_PERSIST_DEBOUNCE_MS = 150;
 
 /**
  * Pure decision helper: resolve the explicit initial zoom carried by a render
@@ -1040,20 +1558,53 @@ export function isValidLegendSwatchColors(value: unknown): boolean {
 }
 
 /**
+ * Render-payload validator for the optional `legendEntries` field (#327): a
+ * bounded list of derived key entries, each a bounded label, a known kind and
+ * a host-drawn standalone `<svg>` swatch. Undefined is accepted so older hosts
+ * keep rendering (the overlay then falls back to the fixed catalogue).
+ * Exported for unit tests.
+ */
+export function isValidLegendEntries(value: unknown): boolean {
+    if (value === undefined) {
+        return true;
+    }
+    if (!Array.isArray(value) || value.length > 128) {
+        return false;
+    }
+    return value.every(entry => entry !== null && typeof entry === 'object' && !Array.isArray(entry) &&
+        typeof entry.label === 'string' && entry.label.length > 0 && entry.label.length <= 300 &&
+        (entry.kind === 'element' || entry.kind === 'boundary' || entry.kind === 'relationship') &&
+        typeof entry.swatch === 'string' && entry.swatch.length <= 8192 &&
+        entry.swatch.indexOf('<svg ') === 0 && entry.swatch.slice(-6) === '</svg>');
+}
+
+/**
+ * Render-payload validator for the optional `legendKeyTheme` field (#327): the
+ * swatch colours and widths the client needs to redraw key swatches after a
+ * staged tag edit. Exported for unit tests.
+ */
+export function isValidLegendKeyTheme(value: unknown): boolean {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+        return false;
+    }
+    const v = value as Record<string, unknown>;
+    const colour = (c: unknown): boolean => typeof c === 'string' && c.length > 0 && c.length <= 64;
+    const num = (x: unknown): boolean => typeof x === 'number' && isFinite(x) && x >= 0 && x <= 100;
+    const b = v.boundary as Record<string, unknown> | undefined;
+    return num(v.borderRadius) && num(v.borderWidth) && colour(v.background) && colour(v.relationshipStroke) &&
+        b !== null && typeof b === 'object' && colour(b.stroke) && num(b.strokeWidth) && num(b.opacity) &&
+        (b.dash === null || (typeof b.dash === 'string' && b.dash.length <= 32));
+}
+
+/**
  * Browser-side preview controller. It is kept separate from PreviewPanel so the
  * extension-host lifecycle and the untrusted webview boundary stay reviewable.
  * The generated script deliberately contains no persistence API.
  */
-export const PREVIEW_CLIENT_SCRIPT = String.raw`
+const PREVIEW_CLIENT_TEMPLATE = String.raw`
     const PROTOCOL_VERSION = ${VISUAL_LAYOUT_PROTOCOL_VERSION};
     // Shown as the tooltip and spoken label of a boundary edit mode will not move (#271).
     const BOUNDARY_FIXED_REASON = 'Cannot be moved or resized here: System_Boundary, Container_Boundary and Enterprise_Boundary have no place in the source for a position or size, so the frame follows its contents. A subgraph boundary can be positioned.';
-    const REJECTION_CODES = new Set([
-      'malformed_message',
-      'layout_unavailable',
-      'stale_revision',
-      'missing_element'
-    ]);
 
     // ── Shared validator constants (from inspectorValidators.ts — single source of truth) ──
     const INSPECTOR_LABEL_MAX = ${INSPECTOR_LABEL_MAX};
@@ -1075,6 +1626,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     ${embedForWebview(isZeroDeltaMove)}
     ${embedForWebview(pointerDownKeepsSelection)}
     ${embedForWebview(settlePointerMove)}
+    ${embedForWebview(planBoundaryMove)}
+    // ── Camera persistence (#167) ────────────────────────────────────────────
+    // How long the wheel has to be still before the camera is written.
+    const CAMERA_PERSIST_DEBOUNCE_MS = ${CAMERA_PERSIST_DEBOUNCE_MS};
+
 
     ${embedForWebview(validateLabel)}
     ${embedForWebview(validateTechnology)}
@@ -1213,12 +1769,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
     function isValidPersistedDraftState(v) {
       return isRecord(v) &&
-        v.schemaVersion === 1 &&
+        v.schemaVersion === 2 &&
+        isBoundedText(v.scope, 2048) &&
         typeof v.editMode === 'boolean' &&
         (v.selectedNodeId === null || typeof v.selectedNodeId === 'string') &&
         Array.isArray(v.stagedEdits) &&
         v.stagedEdits.length <= 500 &&
         v.stagedEdits.every(isPersistedStagedEditEntry) &&
+        new Set(v.stagedEdits.map(entry => entry.id)).size === v.stagedEdits.length &&
         (v.zoom === undefined || (typeof v.zoom === 'number' && Number.isFinite(v.zoom) && v.zoom > 0)) &&
         (v.panX === undefined || (typeof v.panX === 'number' && Number.isFinite(v.panX))) &&
         (v.panY === undefined || (typeof v.panY === 'number' && Number.isFinite(v.panY)));
@@ -1238,17 +1796,36 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     ${embedForWebview(computeContentBounds)}
     ${embedForWebview(computeCentringPan)}
     ${embedForWebview(computeZoomToFit)}
+    ${embedForWebview(computeZoomToFitClearOf)}
     ${embedForWebview(formatEdgePathD)}
     ${embedForWebview(computeExpandedViewBox)}
     ${embedForWebview(applyEdgeGeometry)}
+    ${embedForWebview(rememberEdgeGeometry)}
+    ${embedForWebview(restoreEdgeGeometry)}
     ${embedForWebview(computeOptimalConnectionPoints)}
     ${embedForWebview(computeBoundaryWrap)}
+    ${BOUNDARY_LABEL_CLIENT_FUNCTIONS.map(fn => embedForWebview(fn)).join('\n    ')}
+    ${DEPLOYMENT_NOTATION_CLIENT_FUNCTIONS.map(fn => embedForWebview(fn)).join('\n    ')}
     const BOUNDARY_LABEL_OFFSET_X = ${BOUNDARY_LABEL_OFFSET_X};
     const BOUNDARY_LABEL_OFFSET_Y = ${BOUNDARY_LABEL_OFFSET_Y};
     ${emitLiveRegion.toString()}
-    ${embedForWebview(formatCanvasTextValue)}
     ${embedForWebview(formatCanvasUpdateAnnouncement)}
-    ${embedForWebview(updateCanvasTextInNode)}
+    // ── Element text (#340): the host's wrapping and text markup, embedded verbatim ─
+    ${TEXT_LAYOUT_CLIENT_FUNCTIONS.map(fn => embedForWebview(fn)).join('\n    ')}
+    const C4X_TEXT_METRICS = ${JSON.stringify(TEXT_METRICS)};
+    ${embedForWebview(isGeometryEditAllowed)}
+    ${embedForWebview(decideDraftRestore)}
+    ${embedForWebview(isSameDiagram)}
+    ${embedForWebview(planRenderEditState)}
+    ${embedForWebview(pendingEditMatches)}
+    ${embedForWebview(renderTransition)}
+    ${embedForWebview(elementTextSignature)}
+    ${embedForWebview(replaceCanvasText)}
+    ${embedForWebview(formatDraftRestoreStatus)}
+    ${embedForWebview(isDraftStateForCurrentScope)}
+    ${embedForWebview(isRenderScopeValue)}
+    ${embedForWebview(migrateLegacyDraftState)}
+    ${embedForWebview(isPersistableViewport)}
     ${embedForWebview(shouldConfirmExitEdit)}
     ${embedForWebview(shouldEscapeTriggerExitConfirm)}
     ${embedForWebview(shouldAutoFitOnOpen)}
@@ -1262,9 +1839,62 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     ${embedForWebview(formatLegendMoveAnnouncement)}
     ${embedForWebview(isValidPresentElementTypes)}
     ${embedForWebview(isValidLegendSwatchColors)}
+    ${embedForWebview(isValidLegendEntries)}
+    ${embedForWebview(isValidLegendKeyTheme)}
+
+    // ── Element styles (#322): the host resolver, embedded verbatim ─────────
+    ${ELEMENT_STYLE_CLIENT_FUNCTIONS.map(fn => embedForWebview(fn)).join('\n    ')}
+    // ── Shape geometry (#323): the host's, embedded verbatim ────────────────
+    ${SHAPE_GEOMETRY_CLIENT_FUNCTIONS.map(fn => embedForWebview(fn)).join('\n    ')}
+    // The key's element entries and swatches (#327): a staged tag edit rebuilds
+    // the key with the host's own rule and drawing.
+    ${KEY_CLIENT_FUNCTIONS.map(fn => embedForWebview(fn)).join('\n    ')}
+    ${embedForWebview(paintNodeWithStyle)}
+    ${embedForWebview(draftStyleElements)}
+    ${embedForWebview(isValidElementStyleInputs)}
+    /** Bundled sprite ids: tag-style $sprite values are checked as the host checks them. */
+    const BUNDLED_SPRITE_IDS = ${JSON.stringify(BUNDLED_SPRITE_IDS)};
+    /** Resolver inputs from the last render payload; null from an older host. */
+    let elementStyleInputs = null;
+    // The host's derived key (#327) and the swatch theme, so a staged tag edit
+    // can rebuild the element entries; null for an older host.
+    let hostLegendEntries = null;
+    let legendKeyTheme = null;
+    let lastLegendShow = true;
 
     let editMode = false;
+    /** Layout mode and growth of the last render (#340), from its payload. */
+    let renderLayoutInfo = { layoutMode: 'view', textGrown: false, diagramIdentity: null, viewType: null, sameDiagramEdit: null };
+    /** Last layout mode reported to the host (#340). */
+    let reportedLayoutMode = 'view';
+    /** Waiting for the standard-size layout before edit mode starts (#340). */
+    let awaitingEditLayout = false;
+    let editLayoutTimer = null;
+    /** The last render kept a restored draft back until the edit layout arrives (#340). */
+    let restoreDeferred = false;
+    /** The held draft was made on other source text; only new staged changes replace it (#340). */
+    let heldDraftForOtherSource = false;
+    /** The 15 s wait for the edit layout gave up; ask again only on the next Edit click (#340). */
+    let editLayoutAbandoned = false;
+    /** The diagram the last render showed, to keep edit mode only across re-renders of the same diagram (#340). */
+    let lastRenderDiagram = null;
+    /** The diagram (and render token) an edit-layout request was made on (#340 review 8). */
+    let pendingEditFor = null;
     let dirty = false;
+    // The renderToken of the render or error this webview shows (#439). A
+    // declined refresh names it, so the host restores what is shown here.
+    let shownRenderToken = null;
+    function declineRefresh() {
+      setLayoutStatus('Theme change or refresh will apply after you save or discard.', 'info', 'dirty');
+      vscode.postMessage(typeof shownRenderToken === 'number'
+        ? { type: 'visualLayout.refreshDeclined', shownRenderToken: shownRenderToken }
+        : { type: 'visualLayout.refreshDeclined' });
+    }
+    function noteShownToken(message) {
+      shownRenderToken = typeof message.renderToken === 'number' && Number.isInteger(message.renderToken)
+        ? message.renderToken
+        : null;
+    }
     let inConflict = false;
     let visualLayout = { revision: '', nodes: [], boundaries: [], edges: [] };
     let selectedNode = null;
@@ -1337,6 +1967,8 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         isCoordinate(value.width) && value.width > 0 &&
         isCoordinate(value.height) && value.height > 0 &&
         (value.locked === undefined || typeof value.locked === 'boolean') &&
+        (value.manualX === undefined || typeof value.manualX === 'boolean') &&
+        (value.manualY === undefined || typeof value.manualY === 'boolean') &&
         (value.description === undefined || typeof value.description === 'string') &&
         (value.technology === undefined || typeof value.technology === 'string');
     }
@@ -1391,6 +2023,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         typeof message.payload.svg === 'string' &&
         isMetrics(message.payload.metrics) &&
         isVisualLayoutSnapshot(message.payload.visualLayout) &&
+        // The draft-state identity is required (#167 review): without it the
+        // settled persist would write an UNSCOPED record over valid persisted
+        // state, and the restore guard would have nothing to compare against.
+        isRenderScopeValue(message.payload.scope) &&
         // settings is optional; when present it must carry boolean flags.
         (message.payload.settings === undefined ||
           (isRecord(message.payload.settings) && typeof message.payload.settings.autoFitOnOpen === 'boolean' &&
@@ -1403,7 +2039,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
               typeof message.payload.settings.initialZoom === 'number'))) &&
         // Legend overlay fields (#98) are optional but typed when present.
         isValidPresentElementTypes(message.payload.presentElementTypes) &&
-        isValidLegendSwatchColors(message.payload.legendSwatchColors);
+        isValidLegendSwatchColors(message.payload.legendSwatchColors) &&
+        // legendEntries (#327) is not part of the gate: a malformed key is
+        // dropped in showSvg (the overlay falls back to the catalogue), it
+        // never stops the diagram rendering.
+        isValidElementStyleInputs(message.payload.elementStyleInputs);
     }
 
     function isErrorMessage(message) {
@@ -1419,15 +2059,6 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         isCoordinate(message.x) && isCoordinate(message.y) &&
         (message.input === 'pointer' || message.input === 'keyboard') &&
         typeof message.persisted === 'boolean';
-    }
-
-    function isRejectedMessage(message) {
-      return isRecord(message) &&
-        message.type === 'visualLayout.rejected' &&
-        message.protocolVersion === PROTOCOL_VERSION &&
-        REJECTION_CODES.has(message.code) &&
-        isBoundedText(message.reason, 1024) &&
-        (message.revision === undefined || message.revision === visualLayout.revision);
     }
 
     function setLayoutStatus(message, kind, state) {
@@ -1506,16 +2137,105 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
     let stagedEdits = {};
     let pendingRestoreState = null;
+    // v1 has no document/fence provenance. Keep its original durable record
+    // untouched until the user explicitly restores it here or discards it.
+    let legacyDraft = null;
+    let legacyRestoreAccepted = false;
+
+    function showDraftPersistenceNotice() {
+      const oldNotice = document.getElementById('draft-persistence-notice');
+      if (oldNotice) oldNotice.remove();
+      if (legacyDraft || !currentScope || !currentScope.includes('#c4x-fence-ambiguous:')) return;
+      const notice = document.createElement('div');
+      notice.id = 'draft-persistence-notice';
+      notice.setAttribute('role', 'status');
+      notice.style.cssText = 'position:absolute;top:12px;left:12px;right:12px;z-index:50;padding:12px;background:var(--vscode-editor-background);color:var(--vscode-foreground);border:1px solid var(--vscode-panel-border)';
+      notice.textContent = 'Draft persistence is unavailable: identical C4X fences cannot be distinguished. Save changes before reloading, or make the fences differ.';
+      contentEl.prepend(notice);
+    }
+
+    function showLegacyDraftPrompt() {
+      if (!legacyDraft || document.getElementById('legacy-draft-recovery')) return;
+      const prompt = document.createElement('div');
+      prompt.id = 'legacy-draft-recovery';
+      prompt.style.cssText = 'position:absolute;top:12px;left:12px;right:12px;z-index:50;padding:12px;background:var(--vscode-editor-background);color:var(--vscode-foreground);border:1px solid var(--vscode-panel-border)';
+      prompt.setAttribute('role', 'region');
+      prompt.setAttribute('aria-label', 'Recover legacy draft');
+      const explanation = document.createElement('p');
+      explanation.textContent = 'An older draft has no document or fence identity. It has been kept unchanged. Restore it here only if this is the diagram you were editing.';
+      if (currentScope && currentScope.includes('#c4x-fence-ambiguous:')) explanation.textContent += ' Identical fences cannot be distinguished; make the fences differ before restoring.';
+      const restoreButton = document.createElement('button');
+      restoreButton.textContent = 'Restore legacy draft here';
+      restoreButton.disabled = !isRenderScopeValue(currentScope) || currentScope.includes('#c4x-fence-ambiguous:');
+      restoreButton.addEventListener('click', function() {
+        if (!legacyDraft || !isRenderScopeValue(currentScope) || currentScope.includes('#c4x-fence-ambiguous:')) return;
+        pendingRestoreState = migrateLegacyDraftState(legacyDraft, currentScope, pickPersistedEditFields);
+        legacyDraft = null;
+        legacyRestoreAccepted = true;
+        prompt.remove();
+        vscode.postMessage({ type: 'ready' });
+      });
+      const discardButton = document.createElement('button');
+      discardButton.textContent = 'Discard legacy draft';
+      discardButton.addEventListener('click', function() {
+        legacyDraft = null;
+        restoreDroppedAdds = 0;
+        prompt.remove();
+        vscode.setState(undefined);
+        vscode.postMessage({ type: 'ready' });
+      });
+      prompt.append(explanation, restoreButton, discardButton);
+      contentEl.prepend(prompt);
+    }
+
     /** Staged relationships dropped from the saved draft because they were invalid (#260). */
     let restoreDroppedAdds = 0;
+    /**
+     * Identity of the diagram the panel is currently showing, taken from the
+     * render message's scope field. Persisted with the draft and compared on
+     * restore: the panel is reused across documents, so a draft from another
+     * diagram must be rejected wholesale (#167 review).
+     */
+    let currentScope = undefined;
+    /**
+     * True while showSvg is settling a render. persistState honours it: the
+     * render path clears staging (which would otherwise write a provisional,
+     * default camera) BEFORE the opening camera and the restore/prune decision
+     * are decided, and a reload would then restore that provisional camera
+     * instead of the diagram's own framing (#167 review). Exactly one persist
+     * runs at the end of showSvg, carrying the camera actually in effect.
+     */
+    let renderInFlight = false;
+
 
     function persistState() {
+      if (renderInFlight) {
+        return;
+      }
+      if (legacyDraft) return;
+      // A restored draft held back for the edit layout (#340) stays in storage
+      // untouched: no camera or other write may replace it before it is applied.
+      if (restoreDeferred) return;
+      // Never write an unscoped record: it would overwrite a valid persisted
+      // draft with one that can never restore, destroying it (#167 review).
+      if (!isRenderScopeValue(currentScope)) {
+        return;
+      }
+      if (currentScope.includes('#c4x-fence-ambiguous:')) {
+        showDraftPersistenceNotice();
+        setLayoutStatus('Draft persistence is unavailable: identical C4X fences cannot be distinguished. Save changes before reloading, or make the fences differ.', 'info', dirty ? 'dirty' : 'clean');
+        return;
+      }
+      // A hidden panel must not make its zero-sized opening camera durable.
+      const viewport = document.getElementById('svg-container') || contentEl;
+      if (!viewport || !isPersistableViewport(viewport.clientWidth, viewport.clientHeight)) return;
       try {
         const editsArray = Object.keys(stagedEdits).map(id => {
           return Object.assign({ id: id }, pickPersistedEditFields(stagedEdits[id]));
         });
         vscode.setState({
-          schemaVersion: 1,
+          schemaVersion: 2,
+          scope: currentScope,
           editMode: editMode,
           selectedNodeId: selectedNode ? selectedNode.dataset.id : null,
           stagedEdits: editsArray,
@@ -1528,7 +2248,53 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       }
     }
 
+    /**
+     * Trailing debounce for camera persistence (#167).
+     *
+     * persistState() used to have exactly one caller, updateStagedChangesList,
+     * so the camera was written only when a staged edit changed: a reload
+     * restored where the user was at their last EDIT, not where they were
+     * looking. Pan end, Fit, Reset and the zoom buttons are discrete, so they
+     * call persistState() directly; a wheel gesture fires dozens of events, so
+     * it goes through here and writes once the wheel stops.
+     */
+    let cameraPersistTimer = null;
+    function persistCameraSoon() {
+      if (cameraPersistTimer !== null) {
+        clearTimeout(cameraPersistTimer);
+      }
+      cameraPersistTimer = setTimeout(function() {
+        cameraPersistTimer = null;
+        persistState();
+      }, CAMERA_PERSIST_DEBOUNCE_MS);
+    }
+
+    /**
+     * Drop a pending debounced camera write (#167 review). A wheel gesture's
+     * timer that is still pending when a re-render begins must NOT fire after
+     * it: the render re-derives the camera, and the stale write would put a
+     * pre-render camera into the durable state. The render's one settled
+     * persist carries the camera actually in effect instead.
+     */
+    function cancelPendingCameraPersist() {
+      if (cameraPersistTimer !== null) {
+        clearTimeout(cameraPersistTimer);
+        cameraPersistTimer = null;
+      }
+    }
+
     function notifyDirtyChanged(isDirty) {
+      // Staging new changes is the user's choice to replace a draft held for
+      // other source text (#340 review 6): release it so the new draft persists.
+      if (isDirty && heldDraftForOtherSource) {
+        heldDraftForOtherSource = false;
+        pendingRestoreState = null;
+        restoreDeferred = false;
+        setLayoutStatus('Your earlier draft, made on another version of this diagram, was replaced by these changes.', 'info', 'dirty');
+        // The staging that brought us here persisted nothing while the old draft
+        // was held: write the new draft now that it replaces the old one.
+        setTimeout(persistState, 0);
+      }
       vscode.postMessage({ type: 'dirtyStateChanged', dirty: isDirty });
     }
 
@@ -1583,14 +2349,62 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     /**
-     * Live-update the node's rendered <text> for a staged property edit and
+     * Redraw a node's text from its label, technology and description: the
+     * values in overrides, else the staged edit, else the render snapshot.
+     * Uses the host's own wrapping and markup (#340), so text wraps on the
+     * canvas as the host draws it. The box keeps its rendered size until Save:
+     * text longer than the box holds ends in an ellipsis, and the
+     * save-triggered re-render grows the box. Returns true when the text changed.
+     */
+    function relayoutNodeText(id, overrides) {
+      const nodeEl = findByDataId('g.node', id);
+      const snapshot = nodeSnapshot(id);
+      if (!nodeEl || !snapshot) return false;
+      const drawn = nodeEl.querySelector(':scope > text[data-field]');
+      if (!drawn) return false;
+      const edit = stagedEdits[id] || {};
+      const pick = function(field) {
+        if (Object.prototype.hasOwnProperty.call(overrides, field)) return overrides[field];
+        return edit[field] !== undefined ? edit[field] : snapshot[field];
+      };
+      const fill = drawn.getAttribute('fill') || '';
+      const fontFamily = drawn.getAttribute('font-family') || '';
+      // A named shape (#323) lays text out in its inner box; its outline paths are not a cylinder's.
+      const shape = nodeEl.getAttribute('data-shape');
+      // Deployment notation (#326): a bottom-left label row beside the icon, or
+      // text above an infrastructure node's centred icon, as the host drew it.
+      const labelRow = nodeEl.getAttribute('data-label-row') === 'bottom-left'
+        ? { iconSlot: Number(nodeEl.getAttribute('data-icon-slot')) || 0, maxLines: Number(nodeEl.getAttribute('data-label-lines')) || undefined }
+        : undefined;
+      const iconBelow = nodeEl.getAttribute('data-icon-below') === 'true';
+      const layout = layoutElementText({
+        x: snapshot.x,
+        y: snapshot.y,
+        width: snapshot.width,
+        height: snapshot.height,
+        textBox: shape ? shapeTextBox(shape, snapshot.x, snapshot.y, snapshot.width, snapshot.height)
+          : iconBelow ? infrastructureTextBox(snapshot.x, snapshot.y, snapshot.width, snapshot.height) : undefined,
+        iconLayout: nodeEl.classList.contains('person'),
+        cylinder: !shape && !labelRow && !iconBelow && !!nodeEl.querySelector(':scope > path'),
+        labelRow: labelRow,
+        fontFamily: fontFamily,
+        label: pick('label') || undefined,
+        technology: pick('technology') || undefined,
+        typeLabel: nodeEl.getAttribute('data-type-label') || undefined,
+        description: pick('description') || undefined,
+      }, C4X_TEXT_METRICS);
+      return replaceCanvasText(nodeEl, elementTextMarkup(layout, fill, fontFamily), elementTextSignature(layout));
+    }
+
+    /**
+     * Live-update the node's rendered text for a staged property edit and
      * announce it politely. Cosmetic only — the save-triggered re-render
      * stays authoritative.
      */
     function updateCanvasText(id, field, value) {
-      const nodeEl = findByDataId('g.node', id);
-      if (!nodeEl) return;
-      if (updateCanvasTextInNode(nodeEl, field, value)) {
+      const overrides = {};
+      overrides[field] = value;
+      if (relayoutNodeText(id, overrides)) {
         emitLiveRegion(
           { polite: layoutStatusEl, assertive: layoutErrorEl },
           'polite',
@@ -1620,9 +2434,57 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (!edit) return;
       const snapshot = nodeSnapshot(id);
       if (!snapshot) return;
-      if (edit.label !== undefined) updateCanvasText(id, 'label', snapshot.label);
-      if (edit.technology !== undefined) updateCanvasText(id, 'technology', snapshot.technology || null);
-      if (edit.description !== undefined) updateCanvasText(id, 'description', snapshot.description || null);
+      // All three fields at once: the staged edit is still in stagedEdits here,
+      // so a field-by-field revert would lay out against the other staged values.
+      if (edit.label !== undefined || edit.technology !== undefined || edit.description !== undefined) {
+        relayoutNodeText(id, { label: snapshot.label, technology: snapshot.technology || null, description: snapshot.description || null });
+      }
+      if (edit.tags !== undefined) restyleNodesForTags({ [id]: snapshot.tags || [] });
+    }
+
+    /**
+     * Repaint every node from the host's style resolver with the tags the
+     * draft would save (#322): a staged tag edit recolours the canvas the way
+     * the host draws it after Save, including the external accent order.
+     * The overrides map forces an element's tags (used when reverting a staged edit
+     * before it leaves stagedEdits). Paint only; outline redraws wait for Save.
+     */
+    function restyleNodesForTags(overrides) {
+      if (!elementStyleInputs) return;
+      const inputs = elementStyleInputs;
+      const effective = draftStyleElements(
+        inputs,
+        function(id) { return nodeSnapshot(id); },
+        function(id) { const staged = stagedEdits[id]; return staged && staged.tags !== undefined ? staged.tags : undefined; },
+        overrides
+      );
+      const context = { rules: inputs.rules, accentSlots: computeAccentSlots(effective), brandColors: inputs.brandColors };
+      effective.forEach(function(element) {
+        if (!element.type) return;
+        const nodeEl = findByDataId('g.node', element.id);
+        if (!nodeEl) return;
+        paintNodeWithStyle(nodeEl, resolveElementStyle(element, inputs.theme, context,
+          { isKnownSprite: function(id) { return spriteIdMatches(id, BUNDLED_SPRITE_IDS); } }), inputs.borderWidth);
+      });
+      rebuildKeyForDraft(effective, inputs, context);
+    }
+
+    /**
+     * Rebuild the key's element entries from the draft (#327), with the host's
+     * own rule (computeElementKeyEntries) and swatch drawing, so a staged tag
+     * edit shows its style in the key before Save. Boundary and relationship
+     * entries do not depend on tags and are kept from the host.
+     */
+    function rebuildKeyForDraft(effective, inputs, context) {
+      if (!hostLegendEntries || !legendKeyTheme) return;
+      const swatchTheme = legendKeyTheme;
+      const styleDeps = { resolveElementStyle: resolveElementStyle, orderedStyleTags: orderedStyleTags, styleTypeTag: styleTypeTag };
+      const swatchDeps = { shapeOutlineSvg: shapeOutlineSvg, shapeNum: shapeNum, borderDashArray: borderDashArray };
+      const elementEntries = computeElementKeyEntries(effective, inputs.theme, context, inputs.borderWidth,
+        { isKnownSprite: function(id) { return spriteIdMatches(id, BUNDLED_SPRITE_IDS); } }, styleDeps)
+        .map(function(entry) { return { label: entry.label, kind: entry.kind, swatch: keySwatchImage(entry, swatchTheme, swatchDeps) }; });
+      const others = hostLegendEntries.filter(function(entry) { return entry.kind !== 'element'; });
+      updateLegend(null, null, lastLegendShow, boundLegendEntries(elementEntries.concat(others)));
     }
 
     /**
@@ -1668,6 +2530,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
           if (rect) {
             rect.setAttribute('width', String(snapshot.width));
             rect.setAttribute('height', String(snapshot.height));
+            placeBoundaryLabel(boundaryEl, Number(rect.getAttribute('x')), Number(rect.getAttribute('y')), snapshot.width, snapshot.height);
           }
           boundaryEl.dataset.currentWidth = String(snapshot.width);
           boundaryEl.dataset.currentHeight = String(snapshot.height);
@@ -1860,11 +2723,22 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function sendConflictResolution(action) {
-      vscode.postMessage({
+      const message = {
         type: 'visualLayout.resolveConflict',
         protocolVersion: PROTOCOL_VERSION,
         action: action
-      });
+      };
+      // A rebase names the staged keys so the host can refuse one that would
+      // move a relationship or boundary edit onto another statement (#261).
+      // A list the host would reject is left out, never truncated: without the
+      // list the host counts every unsafe positional id.
+      if (action === 'rebase') {
+        const stagedKeys = Object.keys(stagedEdits);
+        if (stagedKeys.length <= 1000 && stagedKeys.every(function (key) { return key.length > 0 && key.length <= 512; })) {
+          message.stagedKeys = stagedKeys;
+        }
+      }
+      vscode.postMessage(message);
     }
 
     const conflictReloadBtn = document.getElementById('conflict-reload');
@@ -2322,35 +3196,128 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
       const boundaryEl = findByDataId('g.boundary', boundaryId);
       if (boundaryEl) {
+        shiftWrappedFrame(boundaryEl, snapshot, x, y);
         boundaryEl.dataset.currentX = String(x);
         boundaryEl.dataset.currentY = String(y);
         boundaryEl.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')');
       }
 
-      const descendants = collectBoundaryDescendants(boundaryId);
-      for (const nodeId of descendants.nodeIds) {
-        const nodeEl = findByDataId('g.node', nodeId);
-        const nodeSnap = nodeSnapshot(nodeId);
-        if (!nodeEl || !nodeSnap) continue;
-        const nextX = nodeSnap.x + dx;
-        const nextY = nodeSnap.y + dy;
-        nodeEl.dataset.currentX = String(nextX);
-        nodeEl.dataset.currentY = String(nextY);
-        nodeEl.setAttribute('transform', 'translate(' + (nextX - nodeSnap.x) + ' ' + (nextY - nodeSnap.y) + ')');
-        updateConnectedEdges(nodeId);
+      // The host moves a positioned frame's contents with it, axis by axis,
+      // except contents pinned by their own authored (or staged) coordinate;
+      // a pinned nested frame also holds its own contents on that axis
+      // (applyBoundaryManualGeometry). The preview follows the same rules so
+      // it shows what Save will render (#339).
+      const nodeItems = [];
+      for (const node of visualLayout.nodes || []) {
+        const nodeEl = findByDataId('g.node', node.id);
+        const pinned = nodePinned(node);
+        nodeItems.push({
+          id: node.id, x: node.x, y: node.y,
+          currentX: nodeEl ? currentNodeCoordinate(nodeEl, node, 'x') : node.x,
+          currentY: nodeEl ? currentNodeCoordinate(nodeEl, node, 'y') : node.y,
+          pinnedX: pinned.x, pinnedY: pinned.y
+        });
       }
-      for (const childBoundaryId of descendants.boundaryIds) {
-        if (childBoundaryId === boundaryId) continue;
-        const childEl = findByDataId('g.boundary', childBoundaryId);
-        const childSnap = boundarySnapshot(childBoundaryId);
-        if (childEl && childSnap) {
-          childEl.dataset.currentX = String(childSnap.x + dx);
-          childEl.dataset.currentY = String(childSnap.y + dy);
-          childEl.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')');
-        }
+      const boundaryItems = [];
+      for (const b of visualLayout.boundaries || []) {
+        const el = findByDataId('g.boundary', b.id);
+        const pinned = boundaryPinned(b);
+        boundaryItems.push({
+          id: b.id, x: b.x, y: b.y,
+          currentX: el ? currentBoundaryCoordinate(el, b, 'x') : b.x,
+          currentY: el ? currentBoundaryCoordinate(el, b, 'y') : b.y,
+          pinnedX: pinned.x, pinnedY: pinned.y,
+          childNodeIds: b.childNodeIds, childBoundaryIds: b.childBoundaryIds
+        });
+      }
+      const plan = planBoundaryMove(boundaryId, dx, dy, boundaryItems, nodeItems);
+      for (const target of plan.nodes) {
+        const nodeEl = findByDataId('g.node', target.id);
+        const nodeSnap = nodeSnapshot(target.id);
+        if (!nodeEl || !nodeSnap) continue;
+        nodeEl.dataset.currentX = String(target.x);
+        nodeEl.dataset.currentY = String(target.y);
+        nodeEl.setAttribute('transform', 'translate(' + (target.x - nodeSnap.x) + ' ' + (target.y - nodeSnap.y) + ')');
+        updateConnectedEdges(target.id);
+      }
+      for (const target of plan.boundaries) {
+        const childEl = findByDataId('g.boundary', target.id);
+        const childSnap = boundarySnapshot(target.id);
+        if (!childEl || !childSnap) continue;
+        shiftWrappedFrame(childEl, childSnap, target.x, target.y);
+        childEl.dataset.currentX = String(target.x);
+        childEl.dataset.currentY = String(target.y);
+        childEl.setAttribute('transform', 'translate(' + (target.x - childSnap.x) + ' ' + (target.y - childSnap.y) + ')');
       }
       expandCanvasForBoundary(boundaryId, x, y);
+      // Re-wrap as the host does on save: nested frames around their (possibly
+      // pinned) contents, the moved frame at its new authored origin, then
+      // every enclosing frame, so no frame shows a child hanging outside it.
+      rewrapMovedBoundarySubtree(snapshot);
+      updateEnclosingBoundariesForBoundary(boundaryId);
       return { x, y };
+    }
+
+    function nodePinned(nodeSnap) {
+      const staged = stagedEdits[nodeSnap.id];
+      return {
+        x: nodeSnap.manualX === true || (staged !== undefined && staged.x !== undefined),
+        y: nodeSnap.manualY === true || (staged !== undefined && staged.y !== undefined)
+      };
+    }
+
+    function boundaryPinned(b) {
+      const staged = stagedEdits[b.id];
+      return {
+        x: b.manualX === true || (staged !== undefined && staged.x !== undefined),
+        y: b.manualY === true || (staged !== undefined && staged.y !== undefined)
+      };
+    }
+
+    function currentNodeCoordinate(nodeEl, nodeSnap, axis) {
+      const key = axis === 'x' ? 'currentX' : 'currentY';
+      return nodeEl.dataset[key] !== undefined ? Number(nodeEl.dataset[key]) : nodeSnap[axis];
+    }
+
+    function currentBoundaryCoordinate(boundaryEl, b, axis) {
+      const key = axis === 'x' ? 'currentX' : 'currentY';
+      return boundaryEl.dataset[key] !== undefined ? Number(boundaryEl.dataset[key]) : b[axis];
+    }
+
+    /** Innermost first: every nested frame of the moved boundary, then the moved frame itself, pinned. */
+    function rewrapMovedBoundarySubtree(moved) {
+      const order = [];
+      const seen = new Set([moved.id]);
+      const walk = function walk(b) {
+        for (const childId of b.childBoundaryIds || []) {
+          if (seen.has(childId)) continue;
+          seen.add(childId);
+          const child = boundarySnapshot(childId);
+          if (!child) continue;
+          walk(child);
+          order.push(child);
+        }
+      };
+      walk(moved);
+      for (let i = 0; i < order.length; i++) {
+        rewrapBoundary(order[i]);
+      }
+      // A moved frame is saved with $x/$y, so its origin is authored.
+      rewrapBoundary(moved, true);
+    }
+
+    /**
+     * A frame that was live re-wrapped remembers its absolute frame in
+     * dataset.wrap*, which an ancestor's re-wrap reads back. The group
+     * transform carries the frame when the boundary moves, so the remembered
+     * frame moves with it by the same step.
+     */
+    function shiftWrappedFrame(boundaryEl, snapshot, nextX, nextY) {
+      if (boundaryEl.dataset.wrapX === undefined) return;
+      const prevX = boundaryEl.dataset.currentX !== undefined ? Number(boundaryEl.dataset.currentX) : snapshot.x;
+      const prevY = boundaryEl.dataset.currentY !== undefined ? Number(boundaryEl.dataset.currentY) : snapshot.y;
+      boundaryEl.dataset.wrapX = String(Number(boundaryEl.dataset.wrapX) + (nextX - prevX));
+      boundaryEl.dataset.wrapY = String(Number(boundaryEl.dataset.wrapY) + (nextY - prevY));
     }
 
     function expandCanvasForBoundary(boundaryId, nextX, nextY) {
@@ -2372,6 +3339,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function postBoundaryMove(boundaryId, x, y, input) {
+      if (!geometryEditAllowed()) return;
       if (!stagedEdits[boundaryId]) {
         stagedEdits[boundaryId] = {};
       }
@@ -2405,6 +3373,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         if (rect) {
           rect.setAttribute('width', String(nextW));
           rect.setAttribute('height', String(nextH));
+          placeBoundaryLabel(boundaryEl, Number(rect.getAttribute('x')), Number(rect.getAttribute('y')), nextW, nextH);
         }
         boundaryEl.dataset.currentWidth = String(nextW);
         boundaryEl.dataset.currentHeight = String(nextH);
@@ -2417,7 +3386,8 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       const snapshot = boundarySnapshot(boundaryId);
       if (!snapshot) return { width: 60, height: 60 };
       const descendants = collectBoundaryDescendants(boundaryId);
-      let minW = 60;
+      const labelReserve = boundaryLabelReserve(findByDataId('g.boundary', boundaryId));
+      let minW = Math.max(60, labelReserve.minWidth);
       let minH = 60;
       if (descendants.nodeIds.length === 0 && descendants.boundaryIds.length <= 1) {
         return { width: minW, height: minH };
@@ -2439,11 +3409,12 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       }
       return {
         width: Math.max(minW, maxRight + 40),
-        height: Math.max(minH, maxBottom + 40)
+        height: Math.max(minH, maxBottom + labelReserve.paddingBottom)
       };
     }
 
     function postBoundaryResize(boundaryId, width, height) {
+      if (!geometryEditAllowed()) return;
       if (!stagedEdits[boundaryId]) {
         stagedEdits[boundaryId] = {};
       }
@@ -2500,7 +3471,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function onBoundaryPointerDown(event) {
-      if (!editMode || event.button !== 0) return;
+      if (!geometryEditAllowed() || event.button !== 0) return;
       const boundaryEl = event.currentTarget;
       const svg = boundaryEl.ownerSVGElement;
       if (!svg) return;
@@ -2543,7 +3514,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       const dx = point.x - dragState.pointerX;
       const dy = point.y - dragState.pointerY;
       const boundaryId = dragState.nodeEl.dataset.id;
-      // Whole units, as moveNode does for nodes, so a written $x/$y is never a long float (#251).
+      // Whole units, as node moves are, so a written $x/$y is never a long float (#251).
       moveBoundary(boundaryId, Math.round(dragState.startX + dx), Math.round(dragState.startY + dy));
       event.preventDefault();
     }
@@ -2580,7 +3551,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function onBoundaryKeyDown(event) {
-      if (!editMode) return;
+      if (!geometryEditAllowed()) return;
       const boundaryEl = event.currentTarget;
       const boundaryId = boundaryEl.dataset.id;
       const snapshot = boundarySnapshot(boundaryId);
@@ -2646,11 +3617,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (!nodeEl || !snapshot) {
         return null;
       }
+      // The outline the host drew (#323): arrows end on it, as on the host.
+      const shape = nodeEl.getAttribute('data-shape');
       return {
         x: Number(nodeEl.dataset.currentX),
         y: Number(nodeEl.dataset.currentY),
         width: snapshot.width,
-        height: snapshot.height
+        height: snapshot.height,
+        insets: shape ? shapeSideInsets(shape, snapshot.width, snapshot.height) : undefined
       };
     }
 
@@ -2671,6 +3645,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
           continue;
         }
 
+        const fromHome = nodeSnapshot(edge.from);
+        const toHome = nodeSnapshot(edge.to);
+        if (Math.abs(from.x - fromHome.x) < 0.5 && Math.abs(from.y - fromHome.y) < 0.5
+            && Math.abs(to.x - toHome.x) < 0.5 && Math.abs(to.y - toHome.y) < 0.5) {
+          restoreEdgeGeometry(edgeEl); // back where the render drew it: routed geometry (#419)
+          continue;
+        }
+        rememberEdgeGeometry(edgeEl);
         applyEdgeGeometry(edgeEl, connectionPoints(from, to));
       }
     }
@@ -2767,6 +3749,35 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     /**
+     * Put a boundary's name (and type line) where the host draws them for a frame
+     * at (x, y, width, height) in the group's own coordinates (#324). A
+     * bottom-left label (c4-model) follows the frame's bottom edge, so it moves
+     * on resize as well as on re-wrap; a top-left label follows its origin.
+     */
+    function placeBoundaryLabel(boundaryEl, x, y, width, height) {
+      const texts = boundaryEl.querySelectorAll(':scope > text');
+      if (texts.length === 0) return;
+      const position = boundaryEl.getAttribute('data-label-position') === 'bottom-left' ? 'bottom-left' : 'top-left';
+      const place = boundaryLabelPlacement(position, texts.length > 1, x, y, width, height);
+      texts[0].setAttribute('x', String(place.nameX));
+      texts[0].setAttribute('y', String(place.nameY));
+      if (texts.length > 1) {
+        texts[1].setAttribute('x', String(place.typeX));
+        texts[1].setAttribute('y', String(place.typeY));
+      }
+    }
+
+    /** Bottom padding and narrowest width a boundary's label asks of its frame (#324). */
+    function boundaryLabelReserve(boundaryEl) {
+      const reserve = boundaryEl ? Number(boundaryEl.getAttribute('data-label-reserve')) : NaN;
+      const minWidth = boundaryEl ? Number(boundaryEl.getAttribute('data-label-min-width')) : NaN;
+      return {
+        paddingBottom: Number.isFinite(reserve) && reserve > 0 ? reserve : 40,
+        minWidth: Number.isFinite(minWidth) && minWidth > 0 ? minWidth : 0
+      };
+    }
+
+    /**
      * Paint one boundary at the given frame. Only the rect and the text label
      * move;
      * dataset.currentX/currentY stay untouched because boundary drag-start and
@@ -2788,11 +3799,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         rect.setAttribute('width', String(frame.width));
         rect.setAttribute('height', String(frame.height));
       }
-      const text = boundaryEl.querySelector('text');
-      if (text) {
-        text.setAttribute('x', String(frame.x + BOUNDARY_LABEL_OFFSET_X - offsetX));
-        text.setAttribute('y', String(frame.y + BOUNDARY_LABEL_OFFSET_Y - offsetY));
-      }
+      placeBoundaryLabel(boundaryEl, frame.x - offsetX, frame.y - offsetY, frame.width, frame.height);
       boundaryEl.dataset.wrapX = String(frame.x);
       boundaryEl.dataset.wrapY = String(frame.y);
       boundaryEl.dataset.wrapWidth = String(frame.width);
@@ -2800,10 +3807,15 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     /** Re-wrap one boundary around its current children. Returns true if painted. */
-    function rewrapBoundary(b) {
+    function rewrapBoundary(b, originAuthored) {
       const boundaryEl = findByDataId('g.boundary', b.id);
       if (!boundaryEl) return false;
-      const frame = computeBoundaryWrap(boundaryWrapFrame(b), boundaryChildBoxes(b));
+      const base = boundaryWrapFrame(b);
+      if (originAuthored) {
+        base.manualX = true;
+        base.manualY = true;
+      }
+      const frame = computeBoundaryWrap(base, boundaryChildBoxes(b), boundaryLabelReserve(boundaryEl));
       if (!Number.isFinite(frame.x) || !Number.isFinite(frame.y) ||
           !(frame.width > 0) || !(frame.height > 0)) {
         return false;
@@ -2820,14 +3832,35 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     function updateEnclosingBoundariesForNode(nodeId) {
       if (!visualLayout.boundaries || visualLayout.boundaries.length === 0) return;
 
-      let pending = [];
+      const pending = [];
       for (let bi = 0; bi < visualLayout.boundaries.length; bi++) {
         const b = visualLayout.boundaries[bi];
         if (b.childNodeIds && b.childNodeIds.indexOf(nodeId) !== -1) {
           pending.push(b);
         }
       }
+      rewrapBoundariesBottomUp(pending);
+    }
 
+    /**
+     * Re-wrap every frame that encloses a moved boundary, then their
+     * ancestors. The moved frame itself is not re-wrapped: it moved rigidly.
+     */
+    function updateEnclosingBoundariesForBoundary(boundaryId) {
+      if (!visualLayout || !visualLayout.boundaries || visualLayout.boundaries.length === 0) return;
+
+      const pending = [];
+      for (let bi = 0; bi < visualLayout.boundaries.length; bi++) {
+        const b = visualLayout.boundaries[bi];
+        if (b.id !== boundaryId && b.childBoundaryIds && b.childBoundaryIds.indexOf(boundaryId) !== -1) {
+          pending.push(b);
+        }
+      }
+      rewrapBoundariesBottomUp(pending);
+    }
+
+    function rewrapBoundariesBottomUp(initial) {
+      let pending = initial;
       const visited = new Set();
       // Bounded by the boundary count: every level consumes at least one
       // unvisited frame, so a malformed cyclic payload cannot spin here.
@@ -2851,14 +3884,12 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       }
     }
 
-    function moveNode(nodeEl, x, y) {
-      return placeNode(nodeEl, Math.max(0, Math.round(x)), Math.max(0, Math.round(y)));
-    }
-
     /**
-     * Put a node at exactly (x, y), without moveNode's rounding. Only for
-     * restoring a gesture-start position, which may be an unrounded
-     * auto-layout coordinate that must come back unchanged (#251).
+     * Put a node at exactly (x, y), without rounding or clamping. Callers
+     * pass round(start) plus a delta from sharedDragDelta (pointer and
+     * keyboard moves, #254, #423), or restore a gesture-start position, which
+     * may be an unrounded auto-layout coordinate that must come back
+     * unchanged (#251).
      */
     function placeNode(nodeEl, nextX, nextY) {
       const baseX = Number(nodeEl.dataset.baseX);
@@ -2914,6 +3945,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function postMove(nodeEl, input) {
+      if (!geometryEditAllowed()) return;
       const id = nodeEl.dataset.id;
       const x = Number(nodeEl.dataset.currentX);
       const y = Number(nodeEl.dataset.currentY);
@@ -2969,7 +4001,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function onPointerDown(event) {
-      if (!editMode || event.button !== 0) {
+      if (!geometryEditAllowed() || event.button !== 0) {
         return;
       }
       const nodeEl = event.currentTarget;
@@ -3137,7 +4169,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function onNodeKeyDown(event) {
-      if (!editMode) {
+      if (!geometryEditAllowed()) {
         return;
       }
       const nodeEl = event.currentTarget;
@@ -3196,14 +4228,19 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         selectNode(nodeEl);
       }
 
-      // Move ALL selected nodes by the same delta
+      // Move ALL selected nodes by one shared delta, clamped as the pointer
+      // path clamps it, so a group pushed into the left or top edge stops as
+      // a unit instead of squashing against it (#423).
+      const members = [];
       for (const id of selectionSet) {
         const el = findByDataId('g.node', id);
         if (!el) continue;
-        const nx = Number(el.dataset.currentX) + dx;
-        const ny = Number(el.dataset.currentY) + dy;
-        moveNode(el, nx, ny);
-        postMove(el, 'keyboard');
+        members.push({ el: el, start: { x: Number(el.dataset.currentX), y: Number(el.dataset.currentY) } });
+      }
+      const shared = sharedDragDelta(members.map(function(m) { return m.start; }), dx, dy);
+      for (const m of members) {
+        placeNode(m.el, Math.round(m.start.x) + shared.dx, Math.round(m.start.y) + shared.dy);
+        postMove(m.el, 'keyboard');
       }
       event.preventDefault();
     }
@@ -3244,7 +4281,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         return;
       }
       if (openingCamera.kind === 'fit') {
-        const fit = computeZoomToFit(allLayoutBoxes(), baseViewBox, 32, viewportSize());
+        const fit = computeZoomToFitClearOf(allLayoutBoxes(), baseViewBox, 32, viewportSize(), dockedKeyObstacle());
         zoom = fit.zoom;
         panX = fit.panX;
         panY = fit.panY;
@@ -3262,6 +4299,24 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       }
       applyZoomPan();
       updateZoomDisplay();
+    }
+
+    /**
+     * The docked key's box in viewport pixels (#262, #327), or null when the key
+     * is hidden or the user dragged it out of the dock. Fit keeps nodes clear of it.
+     */
+    function dockedKeyObstacle() {
+      const keyEl = document.getElementById('legend-overlay');
+      if (!keyEl || keyEl.hidden || keyEl.classList.contains('legend-floating')) {
+        return null;
+      }
+      const svgContainer = document.getElementById('svg-container') || contentEl;
+      const area = svgContainer.getBoundingClientRect();
+      const box = keyEl.getBoundingClientRect();
+      if (box.width <= 0 || box.height <= 0 || area.width <= 0 || area.height <= 0) {
+        return null;
+      }
+      return { x: box.left - area.left, y: box.top - area.top, w: box.width, h: box.height };
     }
 
     function applyZoomPan() {
@@ -3326,6 +4381,9 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (svgEl && svgEl.hasPointerCapture(event.pointerId)) {
         svgEl.releasePointerCapture(event.pointerId);
       }
+      // Pan end is one discrete action: remember where the user left the
+      // camera, not where they were at their last staged edit (#167).
+      persistState();
     }
 
     function onSvgWheel(event) {
@@ -3335,6 +4393,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       userAdjustedCamera = true;
       applyZoomPan();
       updateZoomDisplay();
+      persistCameraSoon();
     }
 
     /**
@@ -3350,6 +4409,8 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         return;
       }
       viewportResizeObserver = new ResizeObserver(function() {
+        if (legendOverlayEl && !legendOverlayEl.hidden) capLegendHeight();
+        if (renderInFlight || !isPersistableViewport(svgContainer.clientWidth, svgContainer.clientHeight)) return;
         if (viewportWasDegenerate) {
           viewportWasDegenerate = false;
           // The opening framing was computed against a viewport with no size.
@@ -3357,6 +4418,10 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
           // the camera, in which case theirs wins.
           if (!userAdjustedCamera) {
             applyOpeningCamera();
+            // The corrected framing replaces the camera the settled persist
+            // wrote at render time; make the APPLIED camera the durable one
+            // (#167 review).
+            persistState();
             return;
           }
         }
@@ -3873,7 +4938,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       if (userAdjustedCamera || boxes.length === 0) {
         return;
       }
-      const fit = computeZoomToFit(boxes, baseViewBox, 32, viewportSize());
+      const fit = computeZoomToFitClearOf(boxes, baseViewBox, 32, viewportSize(), dockedKeyObstacle());
       if (fit.zoom >= zoom) {
         return;
       }
@@ -3902,8 +4967,71 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       }
     }
 
-    function setEditMode(enabled) {
-      editMode = enabled && (visualLayout.nodes.length > 0 || visualLayout.boundaries.length > 0);
+    /**
+     * Tell the host the layout mode changed (#340), once per change. In edit
+     * mode the host lays the diagram out at the standard box sizes, the layout
+     * a Save of the first move produces.
+     */
+    function postLayoutMode(mode, force) {
+      if (reportedLayoutMode === mode && !force) return;
+      reportedLayoutMode = mode;
+      vscode.postMessage({ type: 'visualLayout.layoutMode', mode: mode });
+    }
+
+    /**
+     * Enter edit mode (#340). When boxes grew for wrapped text, a Save of the
+     * first move would lay the diagram out at the standard sizes and shift what
+     * the user did not move; so ask the host for the standard-size layout first
+     * and enter edit mode when it arrives. The webview is clean here, so that
+     * render is not held (nonSourceRenderGate.ts).
+     */
+    function requestEditMode() {
+      editLayoutAbandoned = false;
+      if (!isGeometryEditAllowed(true, renderLayoutInfo.layoutMode, renderLayoutInfo.textGrown)) {
+        awaitingEditLayout = true;
+        pendingEditFor = { afterToken: shownRenderToken };
+        toggleLayoutEl.disabled = true;
+        setLayoutStatus('Preparing the editor: boxes return to their standard size while you edit.', 'info', 'clean');
+        postLayoutMode('edit');
+        if (editLayoutTimer) clearTimeout(editLayoutTimer);
+        editLayoutTimer = setTimeout(function() {
+          // The edit layout never arrived. Never edit the layout on screen: a
+          // Save would then shift what the user did not move. Leave edit mode
+          // and let the user try again.
+          if (!awaitingEditLayout) return;
+          abandonEditLayout('The editable layout did not arrive, so edit mode was not started. Select Edit C4 Diagram to try again.');
+        }, 15000);
+        return;
+      }
+      setEditMode(true);
+    }
+
+    /** Give up waiting for the edit layout (#340): edit mode stays off, the reason is shown. */
+    function abandonEditLayout(reason) {
+      awaitingEditLayout = false;
+      pendingEditFor = null;
+      if (editLayoutTimer) { clearTimeout(editLayoutTimer); editLayoutTimer = null; }
+      toggleLayoutEl.disabled = visualLayout.nodes.length === 0 && visualLayout.boundaries.length === 0;
+      postLayoutMode('view');
+      setLayoutStatus(reason, 'info', 'clean');
+    }
+
+    /** Geometry edits allowed now: edit mode on and the edit layout on screen (#340). */
+    function geometryEditAllowed() {
+      return isGeometryEditAllowed(editMode, renderLayoutInfo.layoutMode, renderLayoutInfo.textGrown);
+    }
+
+    function setEditMode(enabled, fromRender) {
+      if (enabled && legacyDraft) {
+        setLayoutStatus('Resolve the older draft before editing this diagram. It has been kept unchanged.', 'info', 'clean');
+        showLegacyDraftPrompt();
+        return;
+      }
+      // Edit mode is never on while the canvas shows a layout other than the
+      // edit layout (#340 review round 4): every geometry entry point checks it.
+      editMode = enabled && (visualLayout.nodes.length > 0 || visualLayout.boundaries.length > 0) &&
+        isGeometryEditAllowed(true, renderLayoutInfo.layoutMode, renderLayoutInfo.textGrown);
+      if (!fromRender) postLayoutMode(editMode ? 'edit' : 'view');
       contentEl.classList.toggle('visual-layout-editing', editMode);
       toggleLayoutEl.setAttribute('aria-pressed', String(editMode));
       toggleLayoutEl.textContent = editMode ? 'Exit edit mode' : 'Edit C4 Diagram';
@@ -3982,6 +5110,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     function showError(message) {
       // Dismiss the exit-edit confirmation if it is open — the draft is gone.
       hideExitEditConfirm();
+      // The edit layout we were waiting for failed (#340): edit mode stays off.
+      if (awaitingEditLayout) {
+        awaitingEditLayout = false;
+        if (editLayoutTimer) { clearTimeout(editLayoutTimer); editLayoutTimer = null; }
+      }
       errorEl.textContent = message;
       errorEl.style.display = 'block';
       metricsEl.textContent = '';
@@ -3998,171 +5131,318 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         legendEl.hidden = true;
       }
       visualLayout = { revision: '', nodes: [], boundaries: [], edges: [] };
+      // The canvas the draft was staged on is gone: tear the draft down and
+      // report clean, so the host stops holding renders for it (#408).
+      stagedEdits = {};
+      updateStagedChangesList();
       dirty = false;
       toggleLayoutEl.disabled = true;
       setEditMode(false);
       setLayoutStatus(message, 'error', 'rejected');
     }
 
-    function showSvg(svg, metrics, nextVisualLayout, renderSettings, presentElementTypes, legendSwatchColors) {
-      const discardedDraft = dirty;
-      // Clear conflict state on fresh render (host has resolved the conflict)
-      if (inConflict) {
-        hideConflictBanner();
-      }
-      // Dismiss the exit-edit confirmation too: a re-render resets the draft,
-      // so a stale "unsaved changes" banner must not linger.
-      hideExitEditConfirm();
-      errorEl.style.display = 'none';
-      placeholder.style.display = 'none';
-      const svgContainer = document.getElementById('svg-container');
-      if (svgContainer) {
-        svgContainer.innerHTML = svg;
-      } else {
-        contentEl.innerHTML = svg;
-      }
-      visualLayout = nextVisualLayout;
-      dirty = false;
-      stagedEdits = {};
-      updateStagedChangesList();
-      selectedNode = null;
-      selectionSet = new Set();
-      dragState = null;
-      initZoomPan();
-      prepareVisualLayout();
-      // ── Legend overlay (#98) ─────────────────────────────────────────────
-      // Rebuild the contextual overlay on every render. c4x.legend.show=false
-      // (delivered as settings.legendShow) hides it entirely; an absent
-      // settings object defaults to showing it.
-      const legendShow = !renderSettings || renderSettings.legendShow !== false;
-      updateLegend(presentElementTypes, legendSwatchColors, legendShow);
-      // ── Initial zoom on open (#111 auto-fit / #134 Markdown scale) ────────
-      // A Markdown-originated payload carries settings.initialZoom (resolved
-      // from c4x.markdown.previewScale): apply it exactly once on the first
-      // render, centred like any fixed zoom, and skip the auto-fit path.
-      // Otherwise fit the whole diagram into the viewport exactly once per
-      // webview session, and only when c4x.canvas.autoFitOnOpen is enabled
-      // (the host always sends the flag; an absent settings object defaults
-      // to true). Save-triggered re-renders never re-fit: firstRender is
-      // false by then.
-      const autoFitOnOpen = !renderSettings || renderSettings.autoFitOnOpen !== false;
-      const initialZoom = resolveInitialZoom(renderSettings);
-      let didAutoFit = false;
-      let appliedInitialZoom;
-      // Only the first render frames the diagram. A save-triggered re-render
-      // must leave the camera exactly where the user left it.
-      let opening = null;
-      if (firstRender && initialZoom !== undefined) {
-        opening = { kind: 'fixed', zoom: initialZoom };
-        appliedInitialZoom = initialZoom;
-      } else if (shouldAutoFitOnOpen(firstRender, autoFitOnOpen)) {
-        opening = { kind: 'fit' };
-        didAutoFit = true;
-      } else if (firstRender) {
-        // No auto-fit and no explicit scale: still centre the content so the
-        // diagram opens in the middle of the viewport rather than wherever the
-        // canvas box happens to put it.
-        opening = { kind: 'centre' };
-      }
-      if (opening) {
-        openingCamera = opening;
-        applyOpeningCamera();
-      }
-      firstRender = false;
-      toggleLayoutEl.disabled = visualLayout.nodes.length === 0 && visualLayout.boundaries.length === 0;
-      setEditMode(false);
-
-      // ── Draft restoration on first render after reload ────────────────────
-      // Check once: if getState() has a valid persisted draft, restore it
-      // rather than starting clean. pendingRestoreState is set at init time
-      // and consumed exactly once here.
-      let omittedDraftNotice = null;
-      if (pendingRestoreState !== null) {
-        const restore = pendingRestoreState;
-        pendingRestoreState = null;
-        if (isValidPersistedDraftState(restore)) {
-          if (restore.zoom !== undefined && restore.panX !== undefined && restore.panY !== undefined) {
-            zoom = restore.zoom;
-            panX = restore.panX;
-            panY = restore.panY;
-            userAdjustedCamera = true;
-            applyZoomPan();
-            updateZoomDisplay();
-          }
-          if (restore.stagedEdits.length > 0) {
-            const pickedEdits = {};
-            for (const entry of restore.stagedEdits) {
-              const edit = pickPersistedEditFields(entry);
-              pickedEdits[entry.id] = edit;
-            }
-            // A staged move of a boundary the source cannot position would fail
-            // the whole Save, so it is not restored (#271); the notice below says so.
-            const unmovable = dropUnmovableBoundaryEdits(pickedEdits, visualLayout.boundaries);
-            const restored = unmovable.edits;
-            // Keep only edits that still correspond to nodes, boundaries, or edges in this layout.
-            const activeNodeIds = new Set(visualLayout.nodes.map(function(n) { return n.id; }));
-            const activeBoundaryIds = new Set(visualLayout.boundaries.map(function(b) { return b.id; }));
-            const activeEdgeIds = new Set(visualLayout.edges.map(function(e) { return e.id; }));
-            const validKeys = Object.keys(restored).filter(function(k) {
-              return activeNodeIds.has(k) || activeBoundaryIds.has(k) || activeEdgeIds.has(k);
-            });
-            const omittedCount = Object.keys(restored).length - validKeys.length;
-            if (omittedCount > 0) {
-              omittedDraftNotice = 'Draft restored: ' + validKeys.length + ' staged changes; ' +
-                omittedCount + ' could not be restored because ' +
-                (omittedCount === 1 ? 'its target is' : 'their targets are') + ' no longer present.';
-            }
-            if (unmovable.labels.length > 0) {
-              const unmovableNotice = formatUnmovableBoundaryNotice(unmovable.labels);
-              omittedDraftNotice = omittedDraftNotice ? omittedDraftNotice + ' ' + unmovableNotice : 'Draft restored; ' + unmovableNotice;
-            }
-            if (validKeys.length > 0) {
-              for (const k of validKeys) {
-                stagedEdits[k] = restored[k];
-              }
-              updateStagedChangesList();
-              if (restore.editMode) {
-                setEditMode(true);
-              }
-              const count = validKeys.length;
-              setLayoutStatus('Draft restored — ' + count + ' staged change' + (count === 1 ? '' : 's') + '.', 'info', 'dirty');
-              notifyDirtyChanged(true);
-            }
-          }
+    function showSvg(svg, metrics, nextVisualLayout, renderSettings, presentElementTypes, legendSwatchColors, legendEntries, nextLegendKeyTheme) {
+      renderInFlight = true; // no persists until the render has settled (#167)
+      // A wheel-zoom debounce still pending from BEFORE this render must not
+      // fire after it: it would write a camera the render has already
+      // replaced. The settled persist at the bottom carries the camera
+      // actually in effect (#167 review).
+      cancelPendingCameraPersist();
+      // The flag is released in a finally: a throw anywhere inside the render
+      // must not leave persistence suppressed for the rest of the session
+      // (#167 review). The one persist runs only after a successful settle.
+      let renderSettled = false;
+      try {
+        const discardedDraft = dirty;
+        // Clear conflict state on fresh render (host has resolved the conflict)
+        if (inConflict) {
+          hideConflictBanner();
         }
-      } else if (discardedDraft) {
-        setLayoutStatus('Preview refreshed; the in-memory draft was discarded.', 'info', 'clean');
+        // Dismiss the exit-edit confirmation too: a re-render resets the draft,
+        // so a stale "unsaved changes" banner must not linger.
+        hideExitEditConfirm();
+        errorEl.style.display = 'none';
+        placeholder.style.display = 'none';
+        const svgContainer = document.getElementById('svg-container');
+        if (svgContainer) {
+          svgContainer.innerHTML = svg;
+        } else {
+          contentEl.innerHTML = svg;
+        }
+        visualLayout = nextVisualLayout;
+        dirty = false;
+        stagedEdits = {};
+        updateStagedChangesList();
+        selectedNode = null;
+        selectionSet = new Set();
+        dragState = null;
+        initZoomPan();
+        prepareVisualLayout();
+        // ── Legend overlay (#98) ─────────────────────────────────────────────
+        // Rebuild the contextual overlay on every render. c4x.legend.show=false
+        // (delivered as settings.legendShow) hides it entirely; an absent
+        // settings object defaults to showing it.
+        const legendShow = !renderSettings || renderSettings.legendShow !== false;
+        // A key the validator rejects is dropped, never the render (#327).
+        const keyEntries = isValidLegendEntries(legendEntries) ? legendEntries : undefined;
+        hostLegendEntries = Array.isArray(keyEntries) ? keyEntries : null;
+        legendKeyTheme = isValidLegendKeyTheme(nextLegendKeyTheme) ? nextLegendKeyTheme : null;
+        updateLegend(presentElementTypes, legendSwatchColors, legendShow, keyEntries);
+        // ── Initial zoom on open (#111 auto-fit / #134 Markdown scale) ────────
+        // A Markdown-originated payload carries settings.initialZoom (resolved
+        // from c4x.markdown.previewScale): apply it exactly once on the first
+        // render, centred like any fixed zoom, and skip the auto-fit path.
+        // Otherwise fit the whole diagram into the viewport exactly once per
+        // webview session, and only when c4x.canvas.autoFitOnOpen is enabled
+        // (the host always sends the flag; an absent settings object defaults
+        // to true). Save-triggered re-renders never re-fit: firstRender is
+        // false by then.
+        const autoFitOnOpen = !renderSettings || renderSettings.autoFitOnOpen !== false;
+        const initialZoom = resolveInitialZoom(renderSettings);
+        let didAutoFit = false;
+        let appliedInitialZoom;
+        // Only the first render frames the diagram. A save-triggered re-render
+        // must leave the camera exactly where the user left it.
+        let opening = null;
+        if (firstRender && initialZoom !== undefined) {
+          opening = { kind: 'fixed', zoom: initialZoom };
+          appliedInitialZoom = initialZoom;
+        } else if (shouldAutoFitOnOpen(firstRender, autoFitOnOpen)) {
+          opening = { kind: 'fit' };
+          didAutoFit = true;
+        } else if (firstRender) {
+          // No auto-fit and no explicit scale: still centre the content so the
+          // diagram opens in the middle of the viewport rather than wherever the
+          // canvas box happens to put it.
+          opening = { kind: 'centre' };
+        }
+        if (opening) {
+          openingCamera = opening;
+          applyOpeningCamera();
+        }
+        firstRender = false;
+        toggleLayoutEl.disabled = visualLayout.nodes.length === 0 && visualLayout.boundaries.length === 0;
+        setEditMode(false, true);
+        // Layout mode (#340): the standard-size layout asked for on entering
+        // edit mode has arrived, so edit mode starts now, from the layout a
+        // Save produces. A render in the other mode leaves edit mode off and
+        // tells the host so.
+        if (editLayoutTimer) { clearTimeout(editLayoutTimer); editLayoutTimer = null; }
+        // A draft restored after a reload (#340 review round 4) is applied only
+        // to the edit layout: when this render is the view layout of a diagram
+        // whose boxes grew, keep the draft (in memory and in the persisted
+        // state, untouched) and ask for the edit layout first. The webview
+        // stays clean until then, so that render is an ordinary non-source
+        // render reaching a clean webview: nothing is discarded.
+        // A persisted draft made against other source text is held, unapplied and
+        // untouched in storage, in every layout mode: nothing discards it except
+        // the user staging new changes (#340 review 6).
+        const thisDiagram = {
+          identity: renderLayoutInfo.diagramIdentity,
+          scope: currentScope,
+          viewType: renderLayoutInfo.viewType,
+          token: shownRenderToken,
+          sameDiagramEdit: renderLayoutInfo.sameDiagramEdit,
+        };
+        const reportedBeforeRender = reportedLayoutMode;
+        const editPlan = renderTransition({
+          state: { awaiting: awaitingEditLayout, pendingEditFor: pendingEditFor, editLayoutAbandoned: editLayoutAbandoned, lastRenderDiagram: lastRenderDiagram },
+          diagram: thisDiagram,
+          layoutMode: renderLayoutInfo.layoutMode,
+          editLayoutShown: isGeometryEditAllowed(true, renderLayoutInfo.layoutMode, renderLayoutInfo.textGrown),
+          reportedLayoutMode: reportedLayoutMode,
+          pendingRestoreState: pendingRestoreState,
+          currentScope: currentScope,
+        });
+        // Every transition field comes from the pure step (#340 review 9).
+        awaitingEditLayout = editPlan.state.awaiting;
+        pendingEditFor = editPlan.state.pendingEditFor;
+        lastRenderDiagram = editPlan.state.lastRenderDiagram;
+        heldDraftForOtherSource = editPlan.state.heldDraftForOtherSource;
+        const heldForOtherSource = editPlan.state.heldDraftForOtherSource;
+        const deferRestore = editPlan.state.restoreDeferred;
+        if (editPlan.action === 'leave') {
+          postLayoutMode('view');
+        } else if (editPlan.action === 'enter') {
+          setEditMode(true, true);
+          if (editMode) setLayoutStatus('Edit mode: boxes keep their standard size; long text is shortened, with the full text on hover.', 'info', 'clean');
+        } else if (editPlan.action === 'request-edit-for-restore') {
+          toggleLayoutEl.disabled = true;
+          postLayoutMode('edit');
+          if (editLayoutTimer) clearTimeout(editLayoutTimer);
+          editLayoutTimer = setTimeout(function() {
+            if (!awaitingEditLayout) return;
+            editLayoutAbandoned = true;
+            abandonEditLayout('The editable layout did not arrive. Your draft is kept: select Edit C4 Diagram to restore it.');
+          }, 15000);
+        } else if (editPlan.action === 'keep-waiting') {
+          // A view render that was already in flight when Edit was clicked: the
+          // edit layout follows it, so keep waiting and say so.
+          setLayoutStatus('Preparing the editor: boxes return to their standard size while you edit.', 'info', 'clean');
+          toggleLayoutEl.disabled = true;
+          editLayoutTimer = setTimeout(function() {
+            if (!awaitingEditLayout) return;
+            abandonEditLayout('The editable layout did not arrive, so edit mode was not started. Select Edit C4 Diagram to try again.');
+          }, 15000);
+        } else if (editPlan.action === 'view') {
+          postLayoutMode('view');
+        }
+        // An edit-layout render reaching a webview that is not editing or waiting
+        // (a reloaded webview, say) means the host still thinks it is in edit
+        // mode: tell it, so the next render grows boxes again (#340 review 8).
+        if (reportedBeforeRender === 'view' && !editMode && !awaitingEditLayout && renderLayoutInfo.layoutMode === 'edit') {
+          postLayoutMode('view', true);
+        }
+
+        // ── Draft restoration on first render after reload ────────────────────
+        // Check once: if getState() has a valid persisted draft, restore it
+        // rather than starting clean. pendingRestoreState is set at init time
+        // and consumed exactly once here.
+        let restoreStatus = null;
+        restoreDeferred = deferRestore;
+        if (heldForOtherSource) {
+          restoreStatus = { text: 'Your draft was made on an earlier version of this diagram and has not been applied. It is kept: restore the earlier source text to get it back. Staging new changes replaces it.', tone: 'info', state: 'clean' };
+        } else if (deferRestore && editLayoutAbandoned) {
+          restoreStatus = { text: 'Your draft is kept: select Edit C4 Diagram to restore it.', tone: 'info', state: 'clean' };
+        } else if (deferRestore) {
+          restoreStatus = { text: 'Restoring your draft: preparing the editor at standard box sizes first.', tone: 'info', state: 'clean' };
+        } else if (pendingRestoreState !== null) {
+          const legacy = legacyRestoreAccepted;
+          legacyRestoreAccepted = false;
+          const restore = migrateLegacyDraftState(pendingRestoreState, currentScope, pickPersistedEditFields);
+          pendingRestoreState = null;
+          // The state must belong to the diagram now on screen (#167 review):
+          // setState is panel-scoped and this panel is reused across documents
+          // and fences, so a schema-valid draft can still be another diagram's.
+          // A scope mismatch — or an ambiguous fence identity — rejects the
+          // WHOLE state, camera and edits alike, even edits whose ids happen
+          // to exist in both diagrams.
+          if (isValidPersistedDraftState(restore) && isDraftStateForCurrentScope(restore, currentScope)) {
+            {
+              const pickedEdits = {};
+              for (const entry of restore.stagedEdits) {
+                pickedEdits[entry.id] = pickPersistedEditFields(entry);
+              }
+              const unmovable = dropUnmovableBoundaryEdits(pickedEdits, visualLayout.boundaries);
+              const restored = unmovable.edits;
+              const activeNodeIds = new Set(visualLayout.nodes.map(function(n) { return n.id; }));
+              const activeBoundaryIds = new Set(visualLayout.boundaries.map(function(b) { return b.id; }));
+              const activeEdgeIds = new Set(visualLayout.edges.map(function(e) { return e.id; }));
+              const restoredKeys = Object.keys(restored);
+              const validKeys = restoredKeys.filter(function(k) {
+                return activeNodeIds.has(k) || activeBoundaryIds.has(k) || activeEdgeIds.has(k);
+              });
+              const missingCount = restoredKeys.length - validKeys.length;
+              const droppedCount = missingCount + unmovable.labels.length;
+              // ── Camera (#167) ───────────────────────────────────────────────
+              // A remembered camera is only trustworthy next to the edits it was
+              // framing. If any of them names an element the diagram no longer
+              // has, the document moved on underneath the draft and the saved
+              // viewport probably points at nothing; leave the opening camera
+              // (auto-fit, or centred) to frame the diagram as it now is. With
+              // no staged edits at all there is nothing to be stale against —
+              // the camera is simply where the user was looking, so restore it.
+              //
+              // A restored camera sets userAdjustedCamera, which is what makes
+              // it win over c4x.canvas.autoFitOnOpen: coming back to where you
+              // were beats re-framing a diagram you had already framed.
+              const cameraSaved = restore.zoom !== undefined &&
+                restore.panX !== undefined && restore.panY !== undefined;
+              if (cameraSaved && droppedCount === 0) {
+                zoom = restore.zoom;
+                panX = restore.panX;
+                panY = restore.panY;
+                userAdjustedCamera = true;
+                applyZoomPan();
+                updateZoomDisplay();
+                // The opening camera was only provisional. Do not announce an
+                // auto-fit or fixed initial zoom that the restored camera has
+                // just replaced.
+                didAutoFit = false;
+                appliedInitialZoom = undefined;
+                // The single persist at the end of showSvg writes the restored
+                // camera back, so a camera-only draft stays durable across
+                // repeated reloads without a dedicated write here.
+
+              }
+
+              if (validKeys.length > 0) {
+                for (const k of validKeys) {
+                  stagedEdits[k] = restored[k];
+                }
+                updateStagedChangesList();
+                restyleNodesForTags();
+                if (restore.editMode) {
+                  setEditMode(true);
+                }
+                notifyDirtyChanged(true);
+              }
+              // Say what happened. Dropping edits used to be silent, so a user
+              // came back to a draft that had quietly lost changes — or to no
+              // draft and no explanation (#167). Emitted below, after the
+              // auto-fit announcement, which would otherwise overwrite it.
+              restoreStatus = formatDraftRestoreStatus(validKeys.length, missingCount);
+              const notices = [];
+              if (legacy) notices.push('Legacy draft restored once for this diagram; its old format did not record a source identity. Check the staged changes before saving.');
+              if (unmovable.labels.length) notices.push(formatUnmovableBoundaryNotice(unmovable.labels));
+              if (restoreDroppedAdds) notices.push(restoreDroppedAdds + (restoreDroppedAdds === 1 ? ' staged relationship was invalid and could not be restored.' : ' staged relationships were invalid and could not be restored.'));
+              restoreDroppedAdds = 0;
+              if (notices.length) {
+                restoreStatus = { text: (restoreStatus ? restoreStatus.text + ' ' : '') + notices.join(' '), tone: 'info', state: validKeys.length ? 'dirty' : 'clean' };
+              }
+            }
+          } else {
+            restoreStatus = { text: 'Draft not restored: the diagram source changed or its fence identity is ambiguous. This includes whitespace changes. The saved camera and staged changes were discarded.', tone: 'info', state: 'clean' };
+          }
+        } else if (discardedDraft) {
+          setLayoutStatus('Preview refreshed; the in-memory draft was discarded.', 'info', 'clean');
+        }
+        // Announce after all other first-render status messages so the polite
+        // live region is not immediately overwritten. The announcement must
+        // reflect what actually happened (#134): a fixed scale was applied for
+        // Markdown-originated editors, not a zoom-to-fit.
+        if (didAutoFit) {
+          emitLiveRegion(
+            { polite: layoutStatusEl, assertive: layoutErrorEl },
+            'polite',
+            'Diagram zoomed to fit'
+          );
+        } else if (appliedInitialZoom !== undefined) {
+          emitLiveRegion(
+            { polite: layoutStatusEl, assertive: layoutErrorEl },
+            'polite',
+            formatInitialZoomAnnouncement(appliedInitialZoom)
+          );
+        }
+        // What happened to the draft is the last word on first render. Said
+        // earlier it was overwritten by the auto-fit announcement above, so the
+        // user was never told that staged changes had been dropped (#167).
+        if (restoreStatus) {
+          setLayoutStatus(restoreStatus.text, restoreStatus.tone, restoreStatus.state);
+        }
+        renderMetricsTable(metrics);
+        renderSettled = true;
+      } finally {
+        // Always lift the suspension, settled or not (#167 review).
+        renderInFlight = false;
       }
-      // Announce after all other first-render status messages so the polite
-      // live region is not immediately overwritten. The announcement must
-      // reflect what actually happened (#134): a fixed scale was applied for
-      // Markdown-originated editors, not a zoom-to-fit.
-      if (didAutoFit) {
-        emitLiveRegion(
-          { polite: layoutStatusEl, assertive: layoutErrorEl },
-          'polite',
-          'Diagram zoomed to fit'
-        );
-      } else if (appliedInitialZoom !== undefined) {
-        emitLiveRegion(
-          { polite: layoutStatusEl, assertive: layoutErrorEl },
-          'polite',
-          formatInitialZoomAnnouncement(appliedInitialZoom)
-        );
+      // The render has settled: the opening camera, the restore/prune decision
+      // and the status are all final. Run the render's one persist, carrying
+      // the camera actually in effect — the applied opening framing, or the
+      // restored camera that replaced it. A render that threw reaches here
+      // with renderSettled false and persists nothing (#167 review).
+      if (renderSettled) showDraftPersistenceNotice();
+      if (renderSettled && legacyDraft) {
+        const oldPrompt = document.getElementById('legacy-draft-recovery');
+        if (oldPrompt) oldPrompt.remove();
+        showLegacyDraftPrompt();
       }
-      renderMetricsTable(metrics);
-      if (restoreDroppedAdds > 0) {
-        const droppedNotice = restoreDroppedAdds + (restoreDroppedAdds === 1
-          ? ' staged relationship was invalid and could not be restored.'
-          : ' staged relationships were invalid and could not be restored.');
-        omittedDraftNotice = omittedDraftNotice ? omittedDraftNotice + ' ' + droppedNotice : 'Draft restored; ' + droppedNotice;
-        restoreDroppedAdds = 0;
+      // A deferred draft restore (#340) persists nothing yet: the stored draft
+      // must survive until the edit layout arrives and it is applied.
+      if (renderSettled && !restoreDeferred) {
+        persistState();
       }
-      // Opening-camera announcements use the same live region. Report lost
-      // entries afterwards so even a completely unrestorable draft is visible.
-      if (omittedDraftNotice) {
-        setLayoutStatus(omittedDraftNotice, 'info', dirty ? 'dirty' : 'clean');
-      }
+
     }
 
     /**
@@ -4196,7 +5476,11 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         showExitEditConfirm();
         return;
       }
-      setEditMode(!editMode);
+      if (editMode) {
+        setEditMode(false);
+      } else if (!awaitingEditLayout) {
+        requestEditMode();
+      }
     });
 
     const zoomInBtn = document.getElementById('zoom-in');
@@ -4210,6 +5494,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         userAdjustedCamera = true;
         applyZoomPan();
         updateZoomDisplay();
+        persistState();
       });
     }
     if (zoomOutBtn) {
@@ -4218,6 +5503,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         userAdjustedCamera = true;
         applyZoomPan();
         updateZoomDisplay();
+        persistState();
       });
     }
     if (zoomResetBtn) {
@@ -4231,17 +5517,21 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         userAdjustedCamera = true;
         applyZoomPan();
         updateZoomDisplay();
+        persistState();
       });
     }
     if (zoomFitBtn) {
       zoomFitBtn.addEventListener('click', () => {
-        const result = computeZoomToFit(allLayoutBoxes(), baseViewBox, 32, viewportSize());
+        const result = computeZoomToFitClearOf(allLayoutBoxes(), baseViewBox, 32, viewportSize(), dockedKeyObstacle());
         zoom = result.zoom;
         panX = result.panX;
         panY = result.panY;
         userAdjustedCamera = false;
         applyZoomPan();
         updateZoomDisplay();
+        // Fit is a camera the user chose, even though it clears
+        // userAdjustedCamera: persist it so a reload comes back fitted (#167).
+        persistState();
         emitLiveRegion(
           { polite: layoutStatusEl, assertive: layoutErrorEl },
           'polite',
@@ -4353,23 +5643,68 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     /**
+     * Keep the key to at most 40% of the canvas height (#327): a long key
+     * scrolls inside the overlay instead of overflowing a short view, and Fit
+     * clears the capped box. The list is its own focusable scroll region.
+     */
+    function capLegendHeight() {
+      if (!legendItemsEl) return;
+      const svgContainer = document.getElementById('svg-container') || contentEl;
+      const areaHeight = svgContainer.getBoundingClientRect().height || contentEl.clientHeight || 0;
+      const cap = Math.max(60, Math.floor(areaHeight * 0.4) - 40);
+      legendItemsEl.style.maxHeight = cap + 'px';
+      legendItemsEl.style.overflowY = 'auto';
+      const scrolls = legendItemsEl.scrollHeight > legendItemsEl.clientHeight + 1;
+      if (scrolls) {
+        legendItemsEl.setAttribute('tabindex', '0');
+        legendItemsEl.setAttribute('aria-label', 'Key entries, scrollable');
+      } else {
+        legendItemsEl.removeAttribute('tabindex');
+        legendItemsEl.removeAttribute('aria-label');
+      }
+    }
+
+    /**
      * Rebuild the overlay content for the current diagram. Contextual: only
      * the element types the host reported in presentElementTypes appear. The
      * overlay stays hidden when c4x.legend.show is false or when there is
      * nothing to list.
      */
-    function updateLegend(presentElementTypes, swatchColors, legendShow) {
+    function updateLegend(presentElementTypes, swatchColors, legendShow, legendEntries) {
       if (!legendOverlayEl || !legendItemsEl) return;
+      lastLegendShow = legendShow !== false;
       if (legendShow === false) {
         legendOverlayEl.hidden = true;
         return;
       }
-      const items = filterLegendItems(LEGEND_CATALOG, presentElementTypes || []);
-      if (items.length === 0) {
+      // The derived key (#327): one entry per distinct style, with the
+      // host-drawn shape swatch. An older host sends no entries; the fixed
+      // catalogue below then applies, as before.
+      const derived = Array.isArray(legendEntries) ? legendEntries : null;
+      const items = derived ? [] : filterLegendItems(LEGEND_CATALOG, presentElementTypes || []);
+      if ((derived ? derived.length : items.length) === 0) {
         legendOverlayEl.hidden = true;
         return;
       }
       legendItemsEl.innerHTML = '';
+      for (const entry of derived || []) {
+        const li = document.createElement('li');
+        li.className = 'legend-entry legend-entry-' + entry.kind;
+        // A list item takes no name from its content; name it, so a screen
+        // reader announces each entry's label (NR-N4).
+        li.setAttribute('aria-label', entry.label);
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch legend-swatch-shape';
+        swatch.setAttribute('aria-hidden', 'true');
+        // Host-drawn markup from validated colours; decorative, hidden from assistive tech.
+        swatch.innerHTML = entry.swatch;
+        const label = document.createElement('span');
+        label.className = 'legend-label';
+        label.textContent = entry.label;
+        li.appendChild(swatch);
+        li.appendChild(label);
+        legendItemsEl.appendChild(li);
+      }
       for (const item of items) {
         const li = document.createElement('li');
         const swatch = document.createElement('span');
@@ -4387,6 +5722,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         legendItemsEl.appendChild(li);
       }
       legendOverlayEl.hidden = false;
+      capLegendHeight();
       // A re-render can shrink the canvas; keep a dragged legend reachable.
       if (legendPosition) {
         const legendRect = legendOverlayEl.getBoundingClientRect();
@@ -4404,6 +5740,8 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
     function onLegendPointerDown(event) {
       if (event.button !== 0 || !legendOverlayEl || legendOverlayEl.hidden) return;
+      // A press on the list itself (its scrollbar) scrolls, it does not drag (#327).
+      if (event.target === legendItemsEl && legendItemsEl.scrollHeight > legendItemsEl.clientHeight + 1) return;
       const legendRect = legendOverlayEl.getBoundingClientRect();
       legendDrag = {
         pointerId: event.pointerId,
@@ -4452,6 +5790,8 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
     }
 
     function onLegendKeyDown(event) {
+      // Arrow keys in the focused, scrollable key list scroll it (#327).
+      if (event.target === legendItemsEl) return;
       // Match the node-movement pattern: arrows nudge 10px, Shift+arrow 25px.
       const delta = event.shiftKey ? 25 : 10;
       let dx = 0, dy = 0;
@@ -4604,6 +5944,7 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         }
         const rawTags = tagsField.value.trim() === '' ? [] : tagsField.value.split(',').map(function(tag) { return tag.trim(); });
         stageInspectorProperty(id, 'tags', rawTags, snapshot.tags || []);
+        restyleNodesForTags();
       });
     }
 
@@ -4764,6 +6105,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       });
     }
 
+    /** The way out after a refused Save, chosen by what the user can see. */
+    function refusedSaveHint() {
+      if (inConflict) {
+        return 'Your edits are kept; use the banner above to reload or rebase.';
+      }
+      return Object.keys(stagedEdits).length > 0 ? 'Your edits are kept. Discard to reload from source.' : '';
+    }
+
     /**
      * Discard all staged edits: revert canvas state, clear the staging state
      * and leave edit mode. Shared by the Discard button and the exit-edit
@@ -4793,28 +6142,47 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       });
     }
 
+    /*C4X_SMOKE_DECLARATIONS*/
+
     window.addEventListener('message', event => {
       if (!event || !event.data || typeof event.data !== 'object') return;
       const message = event.data;
+      if (typeof c4xSmokeMessage === 'function' && c4xSmokeMessage(message)) return;
+      // Decline before validating (#439): a marked render or error that
+      // reaches a webview holding staged edits is declined whether or not the
+      // rest of it validates, so an invalid payload cannot tear the draft
+      // down either. Only the type and the mark are read here.
+      if ((message.type === 'render' || message.type === 'error') && message.refresh === true && dirty) {
+        declineRefresh();
+        return;
+      }
       if (isRenderMessage(message)) {
-        showSvg(message.payload.svg, message.payload.metrics, message.payload.visualLayout, message.payload.settings, message.payload.presentElementTypes, message.payload.legendSwatchColors);
-        if (typeof message.smokeRequest === 'string' && message.smokeRequest.length <= 64) {
-          // Test-only challenge supplied by the host. Report the actual DOM
-          // after rendering, never the incoming layout or the earlier ready event.
-          // getBoundingClientRect forces layout even when a background Electron
-          // window suspends animation frames; no paint callback is required.
-          const svg = contentEl.querySelector('svg');
-          if (!svg || svg.getBoundingClientRect().width <= 0 || svg.getBoundingClientRect().height <= 0) {
-            vscode.postMessage({ type: 'smoke.renderFailed', token: message.smokeRequest });
-            return;
-          }
-          const nodes = svg.querySelectorAll('g.node');
-          vscode.postMessage({
-            type: 'smoke.rendered', token: message.smokeRequest,
-            nodeCount: nodes.length,
-            text: Array.from(nodes).map(function(node) { return node.textContent || ''; }).join(' ').slice(0, 20000)
-          });
+        // A theme or refresh render (#408) that arrives while this webview
+        // holds staged edits would discard them: the host had not yet heard
+        // the draft was dirty. Keep the draft and ask for it after Save or
+        // Discard.
+        if (message.refresh === true && dirty) {
+          declineRefresh();
+          return;
         }
+        noteShownToken(message);
+        // Diagram identity for draft-state scoping (#167 review): required by
+        // the guard above, so a render without a valid scope never reaches
+        // here — it falls through to the rejection branch and leaves both
+        // currentScope and the persisted state untouched.
+        currentScope = message.payload.scope;
+        elementStyleInputs = message.payload.elementStyleInputs || null;
+        renderLayoutInfo = {
+          layoutMode: message.payload.layoutMode === 'edit' ? 'edit' : 'view',
+          textGrown: message.payload.textGrown === true,
+          diagramIdentity: typeof message.payload.diagramIdentity === 'string' ? message.payload.diagramIdentity : null,
+          viewType: typeof message.payload.viewType === 'string' ? message.payload.viewType : null,
+          sameDiagramEdit: isRecord(message.payload.sameDiagramEdit) && typeof message.payload.sameDiagramEdit.value === 'boolean'
+            ? { since: typeof message.payload.sameDiagramEdit.since === 'number' ? message.payload.sameDiagramEdit.since : null, value: message.payload.sameDiagramEdit.value }
+            : null,
+        };
+        showSvg(message.payload.svg, message.payload.metrics, message.payload.visualLayout, message.payload.settings, message.payload.presentElementTypes, message.payload.legendSwatchColors, message.payload.legendEntries, message.payload.legendKeyTheme);
+        if (typeof c4xSmokeRendered === 'function') c4xSmokeRendered(message);
         return;
       }
       if (message && message.type === 'render') {
@@ -4823,6 +6191,14 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         return;
       }
       if (isErrorMessage(message)) {
+        // A theme or refresh render that failed (#408) must not replace the
+        // canvas of a webview holding staged edits: decline it like a
+        // marked render, and the host owes it.
+        if (message.refresh === true && dirty) {
+          declineRefresh();
+          return;
+        }
+        noteShownToken(message);
         showError(message.message);
         return;
       }
@@ -4865,26 +6241,20 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         return;
       }
       if (message && message.type === 'visualLayout.rejected') {
+        // A refused Save never discards the draft (#439, any code, including
+        // codes this client does not know). Leave the saving state, keep the
+        // staged edits and edit mode, say why, and leave the way out to the
+        // user: Discard, Reload from the conflict banner, or close and reopen.
+        // No 'ready' is posted, so nothing replaces the canvas. A message
+        // without this protocol's version is not the host's and is ignored.
+        if (!isRecord(message) || message.protocolVersion !== PROTOCOL_VERSION) return;
         if (window.__c4xClearSaveWatchdog) window.__c4xClearSaveWatchdog();
-        if (isRejectedMessage(message)) {
-          // Revert all visual translations on nodes and boundaries to their baseline positions
-          Object.keys(stagedEdits).forEach(id => {
-            const edit = stagedEdits[id];
-            if (edit && edit.boundaryId !== undefined) {
-              revertBoundaryCanvasState(id, edit);
-            } else {
-              revertNodeCanvasState(id, edit);
-            }
-          });
-          stagedEdits = {};
-          updateStagedChangesList();
-          clearSelection();
-          clearInspector();
-          setEditMode(false);
-          setLayoutStatus(message.reason + ' Draft discarded; refreshing from source.', 'error', 'rejected');
-          toggleLayoutEl.focus();
-          vscode.postMessage({ type: 'ready' });
-        }
+        const reason = isRecord(message) && typeof message.reason === 'string' &&
+          message.reason.length > 0 && message.reason.length <= 1024
+          ? message.reason
+          : 'The staged changes could not be saved.';
+        updateStagedChangesList();
+        setLayoutStatus(reason + ' ' + refusedSaveHint(), 'error', 'rejected');
         return;
       }
       if (message && message.type === 'visualLayout.externalChangeConflict') {
@@ -4893,10 +6263,24 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
         }
         return;
       }
+      if (message && message.type === 'visualLayout.refreshDeferred') {
+        // The host held back a theme change or refresh: a render would clear
+        // the staged draft (#408). Say so without touching the draft.
+        if (dirty) {
+          setLayoutStatus('Theme change or refresh will apply after you save or discard.', 'info', 'dirty');
+        }
+        return;
+      }
       if (message && message.type === 'visualLayout.conflictActionAcknowledged') {
         if (message.action === 'rebaseAccepted') {
           hideConflictBanner();
-          setLayoutStatus('Rebase accepted. Your draft has been updated to the new source baseline.', 'info', 'dirty');
+          setLayoutStatus(
+            typeof message.reason === 'string' && message.reason.length > 0 && message.reason.length <= 1024
+              ? message.reason
+              : 'Rebase accepted. Your draft has been updated to the new source baseline.',
+            'info',
+            'dirty'
+          );
         } else if (message.action === 'rebaseFailed') {
           const failReason = typeof message.reason === 'string' ? message.reason : 'Rebase failed.';
           setLayoutStatus(failReason, 'error', 'rejected');
@@ -4911,8 +6295,13 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
       // One invalid staged relationship must not discard the rest of the draft:
       // drop just that add, and say so once the draft is restored.
       const repaired = dropInvalidPersistedAdds(saved, isPersistedAddRelationshipList);
-      if (repaired.state && isValidPersistedDraftState(repaired.state)) {
-        pendingRestoreState = repaired.state;
+      const candidate = migrateLegacyDraftState(repaired.state, 'legacy-validation-only', pickPersistedEditFields);
+      if (candidate && isValidPersistedDraftState(candidate)) {
+        if (repaired.state.schemaVersion === 1) {
+          legacyDraft = repaired.state;
+        } else {
+          pendingRestoreState = repaired.state;
+        }
         restoreDroppedAdds = repaired.dropped;
       }
     } catch (_e) {
@@ -4921,3 +6310,79 @@ export const PREVIEW_CLIENT_SCRIPT = String.raw`
 
     vscode.postMessage({ type: 'ready' });
 `;
+
+const SMOKE_PLACEHOLDER = '/*C4X_SMOKE_DECLARATIONS*/';
+
+/**
+ * Test-only client code, spliced into the webview script ONLY when the host
+ * runs under C4X_VSIX_SMOKE=1. In a normal session this text does not exist
+ * in the webview at all, so no page script can reach these handlers. The
+ * session token is generated by the host per panel and compared exactly.
+ */
+const SMOKE_CLIENT_CODE = String.raw`
+    const C4X_SMOKE_SESSION = __SESSION__;
+    function smokeNodeReport(svg) {
+      return Array.from(svg.querySelectorAll('g.node')).slice(0, 500).map(function(node) {
+        const bbox = node.getBBox();
+        const shape = node.querySelector('rect, path, ellipse, circle, polygon');
+        const style = shape ? window.getComputedStyle(shape) : null;
+        return {
+          id: node.getAttribute('data-id') || '',
+          x: Math.round((bbox.x + (node.transform.baseVal.numberOfItems ? node.transform.baseVal.getItem(0).matrix.e : 0)) * 10) / 10,
+          y: Math.round((bbox.y + (node.transform.baseVal.numberOfItems ? node.transform.baseVal.getItem(0).matrix.f : 0)) * 10) / 10,
+          w: Math.round(bbox.width * 10) / 10, h: Math.round(bbox.height * 10) / 10,
+          fill: style ? style.fill : '', stroke: style ? style.stroke : ''
+        };
+      });
+    }
+    // Drives the packaged client's own edit and Discard handlers: 'stage' enters
+    // edit mode and sends a real ArrowRight keydown to the node; 'discard' presses
+    // the real Discard button. Replies with what the DOM shows afterwards.
+    function c4xSmokeMessage(message) {
+      if (message.type !== 'smoke.act' || message.session !== C4X_SMOKE_SESSION) return false;
+      const svg = contentEl.querySelector('svg');
+      if (message.action === 'stage' && svg) {
+        setEditMode(true);
+        const nodeEl = findByDataId('g.node', String(message.id));
+        if (nodeEl) {
+          nodeEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true, cancelable: true }));
+        }
+      } else if (message.action === 'discard') {
+        const button = document.getElementById('discard-staged-changes');
+        if (button) button.click();
+      }
+      vscode.postMessage({
+        type: 'smoke.acted', session: C4X_SMOKE_SESSION, token: String(message.token), action: String(message.action),
+        staged: Object.keys(stagedEdits).length, editMode: !!editMode,
+        nodes: svg ? smokeNodeReport(svg) : []
+      });
+      return true;
+    }
+    // Reports the actual DOM after a render the host asked to have acknowledged.
+    function c4xSmokeRendered(message) {
+      if (typeof message.smokeRequest !== 'string' || message.smokeRequest.length > 64) return;
+      const svg = contentEl.querySelector('svg');
+      if (!svg || svg.getBoundingClientRect().width <= 0 || svg.getBoundingClientRect().height <= 0) {
+        vscode.postMessage({ type: 'smoke.renderFailed', session: C4X_SMOKE_SESSION, token: message.smokeRequest });
+        return;
+      }
+      const nodes = svg.querySelectorAll('g.node');
+      vscode.postMessage({
+        type: 'smoke.rendered', session: C4X_SMOKE_SESSION, token: message.smokeRequest,
+        nodeCount: nodes.length,
+        text: Array.from(nodes).map(function(node) { return node.textContent || ''; }).join(' ').slice(0, 20000),
+        nodes: smokeNodeReport(svg)
+      });
+    }
+`;
+
+/**
+ * The webview script. With no argument it is the normal script, which holds no
+ * smoke handler. A session token adds the test-only block (host: C4X_VSIX_SMOKE=1).
+ */
+export function buildPreviewClientScript(smokeSession?: string): string {
+    const inject = smokeSession === undefined ? '' : SMOKE_CLIENT_CODE.replace('__SESSION__', () => JSON.stringify(smokeSession));
+    return PREVIEW_CLIENT_TEMPLATE.replace(SMOKE_PLACEHOLDER, () => inject);
+}
+
+export const PREVIEW_CLIENT_SCRIPT = buildPreviewClientScript();

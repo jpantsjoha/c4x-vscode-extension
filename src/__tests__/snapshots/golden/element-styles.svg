@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1010 1220" role="img">
+  <rect x="0" y="0" width="1010" height="1220" fill="#FFFFFF" />
+  
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+          <feOffset in="blur" dx="3" dy="3" result="offsetBlur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#707070" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#707070" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#707070" fill-opacity="1" />
+        </marker>
+      </defs>
+  
+  <g class="diagram-content" transform="translate(0, 0)">
+    <g class="boundaries">
+<g class="boundary" data-id="internet-banking-system-boundary-0">
+    <rect x="40.00" y="300.00" width="920.00" height="650.00"
+          rx="8" ry="8"
+          fill="none"
+          stroke="#707070"
+          stroke-width="2"
+          stroke-dasharray="8,4"
+          opacity="0.7" />
+    <text x="50.00" y="320.00"
+          fill="#707070"
+          font-size="14"
+          font-family="Arial, sans-serif"
+          font-weight="bold">Internet Banking System</text>
+  </g>
+    </g>
+    <g class="nodes">
+<g class="node" data-id="WebApp" >
+    <rect x="230.00" y="360.00" width="240.00" height="130.00" rx="10" ry="10" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+<text data-field="label" x="350.00" y="425.00" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Web Application</text>
+    <text data-field="technology" x="350.00" y="441.00" fill="#2B76BF" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java and Spring MVC]</text>
+  </g>
+<g class="node" data-id="API" >
+    <rect x="380.00" y="529.00" width="240.00" height="130.00" rx="0" ry="0" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+<text data-field="label" x="500.00" y="594.00" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">API Application</text>
+    <text data-field="technology" x="500.00" y="610.00" fill="#2B76BF" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Java and Spring Boot]</text>
+  </g>
+<g class="node" data-id="Broker" >
+    <rect x="80.00" y="780.00" width="240.00" height="130.00" rx="0" ry="0" fill="#F5F5F5" stroke="#438DD5" stroke-width="3" />
+<text data-field="label" x="200.00" y="845.00" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Message Broker</text>
+    <text data-field="technology" x="200.00" y="861.00" fill="#2B76BF" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[RabbitMQ]</text>
+  </g>
+<g class="node database" data-id="Store" >
+    <path d="M 408.20 701.00 L 408.20 807.00 A 120.00 12 0 0 0 648.20 807.00 L 648.20 701.00 A 120.00 12 0 0 0 408.20 701.00 Z" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+    <path d="M 408.20 701.00 A 120.00 12 0 0 1 648.20 701.00" fill="none" stroke="#438DD5" stroke-width="2" />
+<text data-field="label" x="528.20" y="754.00" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Document Store</text>
+    <text data-field="technology" x="528.20" y="770.00" fill="#2B76BF" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[S3]</text>
+  </g>
+<g class="node database" data-id="DB" >
+    <path d="M 680.00 792.00 L 680.00 898.00 A 120.00 12 0 0 0 920.00 898.00 L 920.00 792.00 A 120.00 12 0 0 0 680.00 792.00 Z" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+    <path d="M 680.00 792.00 A 120.00 12 0 0 1 920.00 792.00" fill="none" stroke="#438DD5" stroke-width="2" />
+<text data-field="label" x="800.00" y="845.00" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Database</text>
+    <text data-field="technology" x="800.00" y="861.00" fill="#2B76BF" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[PostgreSQL]</text>
+  </g>
+<g class="node person" data-id="Admin" >
+    <rect x="530.00" y="360.00" width="240.00" height="130.00" rx="0" ry="0" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+    <g class="element-icon">
+      <g transform="translate(630.00, 370.00) scale(0.4000)" fill="#438DD5" stroke="none"><circle cx="0" cy="0" r="2.05" fill="#61dafb"/><g stroke="#61dafb" stroke-width="1" fill="none"><ellipse rx="11" ry="4.2"/><ellipse rx="11" ry="4.2" transform="rotate(60)"/><ellipse rx="11" ry="4.2" transform="rotate(120)"/></g></g>
+    </g>
+<text data-field="label" x="650.00" y="448.00" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Admin Console</text>
+    <text data-field="technology" x="650.00" y="463.00" fill="#2B76BF" text-anchor="middle" font-size="11" font-family="Arial, sans-serif" font-style="italic">[React]</text>
+  </g>
+<g class="node person" data-id="Customer" >
+    <rect x="400.00" y="40.00" width="200.00" height="160.00" rx="10" ry="10" fill="#FFFFFF" stroke="#438DD5" stroke-width="2" />
+    <g class="element-icon">
+      <g transform="translate(480.00, 50.00) scale(0.4000)" fill="#438DD5" stroke="none"><circle cx="50" cy="25" r="15" fill="currentColor"/><path d="M 25 80 Q 25 45 50 45 Q 75 45 75 80 Z" fill="currentColor"/></g>
+    </g>
+<text data-field="label" x="500.00" y="150.50" fill="#2B76BF" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Customer</text>
+  </g>
+<g class="node" data-id="MainframeSystem" >
+    <rect x="210.00" y="1030.00" width="260.00" height="140.00" rx="10" ry="10" fill="#FFFFFF" stroke="#BF101D" stroke-width="2" />
+<text data-field="label" x="340.00" y="1108.00" fill="#BF101D" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Mainframe Banking System</text>
+  </g>
+<g class="node" data-id="MailSystem" >
+    <rect x="530.00" y="1030.00" width="260.00" height="140.00" rx="10" ry="10" fill="#FFFFFF" stroke="#ED8609" stroke-width="2" stroke-dasharray="8,4" />
+<text data-field="label" x="660.00" y="1108.00" fill="#B35F00" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">E-Mail System</text>
+  </g>
+    </g>
+    <g class="edges">
+<g class="edge" data-id="rel-0">
+    <path class="edge-hit-area" d="M500.00,200.00 L350.00,360.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M500.00,200.00 L350.00,360.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="425.00" y="274.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Uses</text>
+  </g>
+<g class="edge" data-id="rel-1">
+    <path class="edge-hit-area" d="M350.00,490.00 L500.00,529.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M350.00,490.00 L500.00,529.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="425.00" y="503.50" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Calls</text>
+  </g>
+<g class="edge" data-id="rel-2">
+    <path class="edge-hit-area" d="M380.00,594.00 L200.00,594.00 L200.00,780.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M380.00,594.00 L200.00,594.00 L200.00,780.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="200.00" y="681.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Publishes to</text>
+  </g>
+<g class="edge" data-id="rel-3">
+    <path class="edge-hit-area" d="M500.00,659.00 L528.20,689.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M500.00,659.00 L528.20,689.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="514.10" y="668.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Stores files in</text>
+  </g>
+<g class="edge" data-id="rel-4">
+    <path class="edge-hit-area" d="M620.00,594.00 L800.00,594.00 L800.00,780.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M620.00,594.00 L800.00,594.00 L800.00,780.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="800.00" y="681.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reads from and writes to</text>
+  </g>
+<g class="edge" data-id="rel-5">
+    <path class="edge-hit-area" d="M650.00,490.00 L500.00,529.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M650.00,490.00 L500.00,529.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="575.00" y="503.50" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Manages</text>
+  </g>
+<g class="edge" data-id="rel-6">
+    <path class="edge-hit-area" d="M380.00,594.00 L350.00,594.00 L350.00,970.00 L340.00,970.00 L340.00,1030.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M380.00,594.00 L350.00,594.00 L350.00,970.00 L340.00,970.00 L340.00,1030.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="340.00" y="994.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reads accounts from</text>
+  </g>
+<g class="edge" data-id="rel-7">
+    <path class="edge-hit-area" d="M380.00,594.00 L350.00,594.00 L350.00,970.00 L660.00,970.00 L660.00,1030.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M380.00,594.00 L350.00,594.00 L350.00,970.00 L660.00,970.00 L660.00,1030.00" fill="none" stroke="#707070" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="505.00" y="964.00" fill="#707070" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends e-mails using</text>
+  </g>
+    </g>
+  </g>
+</svg>

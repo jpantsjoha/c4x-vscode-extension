@@ -1,7 +1,8 @@
 # Quick Start Guide
 
 **Time to Complete**: 5 minutes
-**Last Updated**: 2025-11-24
+**Version**: 1.8.0
+**Last Updated**: 2026-11-13
 
 Welcome to C4X! This guide will get you creating your first C4 diagram in VS Code in just a few minutes.
 
@@ -18,6 +19,8 @@ Welcome to C4X! This guide will get you creating your first C4 diagram in VS Cod
 
 ### Option B: Install from Source
 
+Prerequisites: Node.js 20.20.2 (`.nvmrc`), pnpm 10.18.3 and `make`. [run_instruction.md](../run_instruction.md) lists every pin.
+
 1. **Clone the repository**:
 
     ```bash
@@ -33,19 +36,38 @@ Welcome to C4X! This guide will get you creating your first C4 diagram in VS Cod
 3. **Install and build**:
 
     ```bash
-    # install pnpm if needed, and fix npm cache ownership on macOS
-    brew install pnpm || true
-    sudo chown -R "$USER:staff" ~/.npm || true
-    pnpm install
+    nvm use                        # reads .nvmrc
+    corepack enable
+    corepack prepare pnpm@10.18.3 --activate
+    pnpm install --frozen-lockfile
     make build
     ```
 
 ---
 
-## Step 2: Launch the Extension
+## Step 2: Launch the Extension (installed from source only)
+
+If you installed from the Marketplace in Option A, skip to Step 3 and use your own folder.
 
 1. Open the `c4x-vscode-extension` folder in VS Code.
-2. Press `F5` (or run the debug task “Run C4X Extension”) to open an **Extension Development Host** window with C4X enabled.
+2. Create `.vscode/launch.json` once. It is not tracked in Git, so a fresh clone has none and `F5` has nothing to run:
+
+    ```json
+    {
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Run C4X Extension",
+          "type": "extensionHost",
+          "request": "launch",
+          "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+          "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+        }
+      ]
+    }
+    ```
+
+3. Build (`make build`; or leave `pnpm run watch` running so edits rebuild), then press `F5` and choose **Run C4X Extension**. VS Code opens an **Extension Development Host** window with C4X enabled.
 
 ---
 
@@ -87,7 +109,7 @@ graph TB
 
 ---
 
-## Step 6: Next Steps (Save and Preview)
+## Step 5: Next Steps (Save and Preview)
 
 1. Save the file.
 2. If the preview panel is not already open, press `Ctrl+K V` (or `Cmd+K V` on Mac) to see your diagram.
@@ -101,5 +123,6 @@ You're set up with the C4X extension baseline.
 
 ### Next Steps
 
-- Follow progress in [ROADMAP.md](./ROADMAP.md) and the E2E gates.
+- Follow progress in [ROADMAP.md](./ROADMAP.md) and the [changelog](../CHANGELOG.md).
+- Run the checks before you push: `make quick-check`, then `make check` (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 - See [USER-GUIDE.md](./USER-GUIDE.md) for feature overview (marked for current vs planned).

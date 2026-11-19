@@ -1,0 +1,24 @@
+%%{ c4: container }%%
+graph TB
+    Person(customer, "Customer", "A bank customer", $shape="Person")
+    System_Boundary(bank, "Internet Banking System") {
+        Container(static, "Static Content", "Directory", "HTML and CSS", $shape="Folder")
+        Container(ui, "UI", "Angular", "Single-page app", $shape="WebBrowser")
+        Container(backend, "Backend", "Spring Boot", "JSON/HTTPS API", $shape="Terminal")
+        Container(statements, "Statement Store", "Amazon S3", "PDF statements", $shape="Bucket")
+        Container(db, "Database", "MySQL", "User accounts", $shape="Cylinder")
+        Container(admin, "Admin", "React", "Back office", $shape="Box")
+        Container(mailer, "Mailer", "Go", "E-mail relay", $shape="RoundedBox")
+        Container(worker, "Worker", "Kotlin", "Batch jobs", $shape="Terminal", $sprite="react")
+        Container(agent, "Agent", "Java", "Support desk", $shape="Person")
+    }
+    customer -->|Loads the UI from| static
+    customer -->|Uses| ui
+    static -->|Delivers| ui
+    ui -->|Calls| backend
+    backend -->|Writes| statements
+    backend -->|Reads| db
+    admin -->|Manages| backend
+    backend -->|Sends with| mailer
+    worker -->|Reads| db
+    agent -->|Helps| customer

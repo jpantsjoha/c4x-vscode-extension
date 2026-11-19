@@ -18,6 +18,13 @@ import { C4ModelBuilder } from '../../model/C4ModelBuilder';
 import { DagreLayoutEngine, LayoutResult } from '../../layout/DagreLayoutEngine';
 import { SvgBuilder } from '../../render/SvgBuilder';
 import { ClassicTheme } from '../../themes/ClassicTheme';
+import { C4ModelTheme } from '../../themes/C4ModelTheme';
+import { C4StandardTheme } from '../../themes/C4StandardTheme';
+import { ModernTheme } from '../../themes/ModernTheme';
+import { MutedTheme } from '../../themes/MutedTheme';
+import { HighContrastTheme } from '../../themes/HighContrastTheme';
+import type { C4Theme } from '../../themes/Theme';
+import { LightTheme, DarkTheme } from '../../themes/AutoTheme';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -35,12 +42,14 @@ const svgBuilder = new SvgBuilder();
  * Render a C4X DSL string through the full pipeline to SVG.
  * Uses the ClassicTheme for deterministic output.
  */
-function renderToSvg(dsl: string): string {
+function renderToSvg(dsl: string, theme: C4Theme = ClassicTheme): string {
     const parsed = parser.parse(dsl);
     const model = modelBuilder.build(parsed, 'snapshot-test');
     const view = model.views[0];
-    const layout = layoutEngine.layoutSync(view);
-    return svgBuilder.build(layout, { theme: ClassicTheme });
+    // The theme's font decides where element text wraps and how tall boxes are (#340).
+    const layout = layoutEngine.layoutSync(view, { theme });
+    // The view supplies elementStyle rules and the external accent order (#322).
+    return svgBuilder.build(layout, { theme, view });
 }
 
 /**
@@ -87,6 +96,8 @@ describe('Diagram Snapshot Tests', () => {
         'complex-component',
         'horizontal-layout',
         'dynamic-sequence',
+        // elementStyle and $shape with today's drawable shapes (#322).
+        'element-styles',
     ];
 
     // Ensure the golden directory exists before any test writes to it
@@ -130,6 +141,153 @@ describe('Diagram Snapshot Tests', () => {
                 `SVG output for "${name}" does not match golden file.\n` +
                 'If the change is intentional, run with UPDATE_SNAPSHOTS=1 to regenerate.'
             );
+        });
+    });
+
+    // The same styled fixture in the c4-model theme: tag styles over the
+    // external accents, assigned in declaration order (#322).
+    it('renders "element-styles" consistently in the c4-model theme', () => {
+        const dsl = readFileSync(path.join(FIXTURES_DIR, 'element-styles.c4x'), 'utf-8');
+        const svg = renderToSvg(dsl, C4ModelTheme);
+        const goldenPath = path.join(GOLDEN_DIR, 'element-styles.c4-model.svg');
+        if (process.env.UPDATE_SNAPSHOTS) {
+            writeFileSync(goldenPath, svg, 'utf-8');
+            return;
+        }
+        assert.ok(existsSync(goldenPath), `Golden file not found: ${goldenPath}. Run with UPDATE_SNAPSHOTS=1.`);
+        assert.strictEqual(normalizeSvg(svg), normalizeSvg(readFileSync(goldenPath, 'utf-8')));
+    });
+
+    // The C4 shape set (#323): every shape, one with an icon inside, in every
+    // theme. `auto` is golden'd as both of its variants, since it follows the
+    // editor's colour scheme.
+    const SHAPE_THEMES: ReadonlyArray<[string, C4Theme]> = [
+        ['classic', ClassicTheme],
+        ['c4-standard', C4StandardTheme],
+        ['modern', ModernTheme],
+        ['muted', MutedTheme],
+        ['high-contrast', HighContrastTheme],
+        ['auto-light', LightTheme],
+        ['auto-dark', DarkTheme],
+        ['c4-model', C4ModelTheme],
+    ];
+    SHAPE_THEMES.forEach(([themeName, theme]) => {
+        it(`renders "shapes" consistently in the ${themeName} theme`, () => {
+            const dsl = readFileSync(path.join(FIXTURES_DIR, 'shapes.c4x'), 'utf-8');
+            const svg = renderToSvg(dsl, theme);
+            for (const shape of ['person', 'folder', 'webBrowser', 'terminal', 'bucket']) {
+                assert.ok(svg.includes(`data-shape="${shape}"`), `${themeName}: ${shape} drawn`);
+            }
+            const goldenDir = path.join(GOLDEN_DIR, 'shapes');
+            const goldenPath = path.join(goldenDir, `${themeName}.svg`);
+            if (process.env.UPDATE_SNAPSHOTS) {
+                mkdirSync(goldenDir, { recursive: true });
+                writeFileSync(goldenPath, svg, 'utf-8');
+                return;
+            }
+            assert.ok(existsSync(goldenPath), `Golden file not found: ${goldenPath}. Run with UPDATE_SNAPSHOTS=1.`);
+            assert.strictEqual(normalizeSvg(svg), normalizeSvg(readFileSync(goldenPath, 'utf-8')));
+        });
+    });
+
+    // Person, Person_Ext, System, SystemDb, System_Ext and SystemDb_Ext with a
+    // description as their third argument, in every fixed theme: the description
+    // is drawn as plain description text, never as `[technology]` (#420).
+    const descriptionThemes: Record<string, C4Theme> = {
+        classic: ClassicTheme,
+        'c4-model': C4ModelTheme,
+        'c4-standard': C4StandardTheme,
+        modern: ModernTheme,
+        muted: MutedTheme,
+        'high-contrast': HighContrastTheme,
+    };
+    for (const [themeName, theme] of Object.entries(descriptionThemes)) {
+        it(`renders "descriptions" consistently in the ${themeName} theme`, () => {
+            const dsl = readFileSync(path.join(FIXTURES_DIR, 'descriptions.c4x'), 'utf-8');
+            const svg = renderToSvg(dsl, theme);
+            if (theme.showElementType) {
+                // The type line (#348) is the only technology-field text: `[Person]`, `[Software System]` and the like.
+                const lines = [...svg.matchAll(/<text data-field="technology"[^>]*>(.*?)<\/text>/gs)].map(m => m[1].replace(/<[^>]+>/g, ''));
+                assert.ok(lines.length > 0 && lines.every(l => /^\[(Person|Software System|Container|Component|Deployment Node)\b/.test(l)), `a description is drawn as technology: ${lines.join(' | ')}`);
+            } else {
+                assert.ok(!svg.includes('data-field="technology"'), 'a description is drawn as technology');
+            }
+            const goldenPath = path.join(GOLDEN_DIR, `descriptions.${themeName}.svg`);
+            if (process.env.UPDATE_SNAPSHOTS) {
+                writeFileSync(goldenPath, svg, 'utf-8');
+                return;
+            }
+            assert.ok(existsSync(goldenPath), `Golden file not found: ${goldenPath}. Run with UPDATE_SNAPSHOTS=1.`);
+            assert.strictEqual(normalizeSvg(svg), normalizeSvg(readFileSync(goldenPath, 'utf-8')));
+        });
+    }
+
+    // Short, medium and long label, technology and description in every element
+    // kind (box, person, icon, cylinder, external), in every fixed theme: text
+    // that does not fit wraps inside its shape, boxes grow, the caps cut with an
+    // ellipsis and a tooltip (#340).
+    for (const [themeName, theme] of Object.entries(descriptionThemes)) {
+        it(`renders "text-wrapping" consistently in the ${themeName} theme`, () => {
+            const dsl = readFileSync(path.join(FIXTURES_DIR, 'text-wrapping.c4x'), 'utf-8');
+            const svg = renderToSvg(dsl, theme);
+            assert.ok(svg.includes('<tspan '), 'long text is wrapped into tspan lines');
+            assert.ok(svg.includes('<title>'), 'text past the cap carries a tooltip');
+            const goldenPath = path.join(GOLDEN_DIR, `text-wrapping.${themeName}.svg`);
+            if (process.env.UPDATE_SNAPSHOTS) {
+                writeFileSync(goldenPath, svg, 'utf-8');
+                return;
+            }
+            assert.ok(existsSync(goldenPath), `Golden file not found: ${goldenPath}. Run with UPDATE_SNAPSHOTS=1.`);
+            assert.strictEqual(normalizeSvg(svg), normalizeSvg(readFileSync(goldenPath, 'utf-8')));
+        });
+    }
+
+    // Labels and descriptions in Arabic, Hebrew, Thai, Devanagari, Greek, Cyrillic,
+    // CJK, Hangul, Vietnamese, Romanian, emoji, ZWJ sequences, flags and symbols
+    // (#340 review 6). Both goldens are byte-identical to origin/main be0d34a's
+    // render (checked when captured): short text fits, and long text in scripts the
+    // model does not measure exactly is drawn exactly as before.
+    for (const [themeName, theme] of Object.entries(descriptionThemes)) {
+        for (const fixture of ['scripts-short', 'scripts-long']) {
+            it(`renders "${fixture}" consistently in the ${themeName} theme`, () => {
+                const dsl = readFileSync(path.join(FIXTURES_DIR, `${fixture}.c4x`), 'utf-8');
+                const svg = renderToSvg(dsl, theme);
+                // Neither fixture is ever wrapped: only exactly measured text wraps (#340 review 6).
+                assert.ok(!svg.includes('<tspan'), 'text in these scripts is never wrapped');
+                const goldenPath = path.join(GOLDEN_DIR, `${fixture}.${themeName}.svg`);
+                if (process.env.UPDATE_SNAPSHOTS) {
+                    writeFileSync(goldenPath, svg, 'utf-8');
+                    return;
+                }
+                assert.ok(existsSync(goldenPath), `Golden file not found: ${goldenPath}. Run with UPDATE_SNAPSHOTS=1.`);
+                assert.strictEqual(normalizeSvg(svg), normalizeSvg(readFileSync(goldenPath, 'utf-8')));
+            });
+        }
+    }
+
+    // Deployment notation (#326): the c4model.com AWS deployment example, four
+    // nested nodes, two infrastructure nodes, AWS icons. c4-model light and dark
+    // draw the notation (icons bottom left, label rows, brand tints); modern is
+    // the control, drawn as every other theme draws deployment nodes.
+    const DEPLOYMENT_THEMES: ReadonlyArray<[string, C4Theme]> = [
+        ['c4-model', C4ModelTheme],
+        ['c4-model-dark', C4ModelTheme.dark!],
+        ['modern', ModernTheme],
+    ];
+    DEPLOYMENT_THEMES.forEach(([themeName, theme]) => {
+        it(`renders "deployment-aws" consistently in the ${themeName} theme`, () => {
+            const dsl = readFileSync(path.join(FIXTURES_DIR, 'deployment-aws.c4x'), 'utf-8');
+            const svg = renderToSvg(dsl, theme);
+            assert.strictEqual(svg.includes('data-icon-placement="label-row"'), !!theme.deploymentNotation, `${themeName}: label-row icons`);
+            const goldenDir = path.join(GOLDEN_DIR, 'deployment');
+            const goldenPath = path.join(goldenDir, `aws.${themeName}.svg`);
+            if (process.env.UPDATE_SNAPSHOTS) {
+                mkdirSync(goldenDir, { recursive: true });
+                writeFileSync(goldenPath, svg, 'utf-8');
+                return;
+            }
+            assert.ok(existsSync(goldenPath), `Golden file not found: ${goldenPath}. Run with UPDATE_SNAPSHOTS=1.`);
+            assert.strictEqual(normalizeSvg(svg), normalizeSvg(readFileSync(goldenPath, 'utf-8')));
         });
     });
 

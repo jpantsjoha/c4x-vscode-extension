@@ -19,6 +19,7 @@ import {
     clampLegendPosition,
     filterLegendItems,
     formatLegendMoveAnnouncement,
+    isValidLegendEntries,
     isValidLegendSwatchColors,
     isValidPresentElementTypes,
 } from '../../webview/previewClientScript';
@@ -262,7 +263,7 @@ describe('legend overlay wiring pins (#98)', () => {
             'function onLegendPointerMove(event)',
             'function onLegendPointerUp(event)',
             'function onLegendKeyDown(event)',
-            'function updateLegend(presentElementTypes, swatchColors, legendShow)',
+            'function updateLegend(presentElementTypes, swatchColors, legendShow, legendEntries)',
             "legendOverlayEl.addEventListener('keydown', onLegendKeyDown)",
             'filterLegendItems(LEGEND_CATALOG',
         ]) {
@@ -329,5 +330,59 @@ describe('legend overlay wiring pins (#98)', () => {
         assert.ok(setting, 'c4x.legend.show must be registered in package.json');
         assert.strictEqual(setting.type, 'boolean');
         assert.strictEqual(setting.default, true);
+    });
+});
+
+/**
+ * Derived key entries in the overlay (#327): the host sends the same entries
+ * the exports draw; the client lists them instead of the fixed catalogue.
+ */
+describe('derived key in the overlay (#327)', () => {
+    const entry = { label: 'Container, Folder', kind: 'element', swatch: '<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>' };
+
+    it('the payload validator accepts undefined and well-formed entries', () => {
+        assert.ok(isValidLegendEntries(undefined));
+        assert.ok(isValidLegendEntries([]));
+        assert.ok(isValidLegendEntries([entry]));
+    });
+
+    it('the payload validator rejects malformed entries', () => {
+        assert.ok(!isValidLegendEntries('x'));
+        assert.ok(!isValidLegendEntries([{ ...entry, label: '' }]));
+        assert.ok(!isValidLegendEntries([{ ...entry, kind: 'other' }]));
+        assert.ok(!isValidLegendEntries([{ ...entry, swatch: '<img src=x onerror=alert(1)>' }]));
+        assert.ok(!isValidLegendEntries([{ ...entry, swatch: '<svg ' + 'x'.repeat(9000) + '</svg>' }]));
+        assert.ok(!isValidLegendEntries(Array.from({ length: 129 }, () => entry)));
+    });
+
+    it('the client lists derived entries when sent and keeps the catalogue for older hosts', () => {
+        // A malformed key is dropped, never the render (#327 review P2a).
+        assert.ok(!PREVIEW_CLIENT_SCRIPT.includes('isValidLegendEntries(message.payload.legendEntries)'));
+        assert.ok(PREVIEW_CLIENT_SCRIPT.includes('isValidLegendEntries(legendEntries) ? legendEntries : undefined'));
+        assert.ok(PREVIEW_CLIENT_SCRIPT.includes('const derived = Array.isArray(legendEntries) ? legendEntries : null;'));
+        assert.ok(PREVIEW_CLIENT_SCRIPT.includes("label.textContent = entry.label;"));
+    });
+
+    it('PreviewPanel sends the derived entries in the render payload', () => {
+        const panelSrc = fs.readFileSync(path.resolve(__dirname, '../../webview/PreviewPanel.ts'), 'utf8');
+        assert.ok(panelSrc.includes('legendEntries: computeLegendEntries(layout, theme, elementStyleContextFor(layout, view, theme))'));
+    });
+
+    it('computeLegendEntries returns the export key with overlay swatches', () => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { computeLegendEntries } = require('../../webview/legendCatalog');
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { ClassicTheme } = require('../../themes/ClassicTheme');
+        const layout = {
+            width: 400, height: 200, boundaries: [],
+            elements: [
+                { id: 'p', x: 0, y: 0, width: 160, height: 120, element: { id: 'p', label: 'P', type: 'Person' } },
+                { id: 's', x: 200, y: 0, width: 160, height: 120, element: { id: 's', label: 'S', type: 'SoftwareSystem', tags: ['External'], impliedTags: ['External'] } },
+            ],
+            relationships: [{ id: 'r', points: [], relationship: { id: 'r', from: 'p', to: 's', label: 'Uses', relType: 'uses' } }],
+        };
+        const entries = computeLegendEntries(layout, ClassicTheme, { rules: [], accentSlots: { s: 0 } });
+        assert.deepStrictEqual(entries.map((e: { label: string }) => e.label), ['Person', 'Software System', 'Relationship']);
+        assert.ok(entries.every((e: { swatch: string }) => isValidLegendEntries([e])));
     });
 });

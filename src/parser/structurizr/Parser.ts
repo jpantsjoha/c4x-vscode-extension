@@ -4,6 +4,7 @@
  */
 
 import { Token, TokenType } from './tokens';
+import { MAX_NESTING_DEPTH, nestingDepthMessage } from '../nestingDepth';
 import {
     WorkspaceNode,
     ModelNode,
@@ -19,6 +20,40 @@ import {
     ShapeType,
 } from './ast';
 
+interface ElementBody {
+    description?: string;
+    technology?: string;
+    tags?: string[];
+    url?: string;
+    properties?: Record<string, string>;
+    children?: ElementNode[];
+}
+
+interface ElementFrame {
+    typeToken: Token;
+    elementType: 'person' | 'softwareSystem' | 'container' | 'component';
+    identifier: string;
+    name: string;
+    hasTechnologySlot: boolean;
+    hasBody: boolean;
+    groupDepth: number;
+    body: ElementBody;
+}
+
+const GROUP_KEYWORDS = new Set(['group', 'enterprise']);
+
+/** Valid Structurizr constructs this parser does not model; skipped, brace-balanced. */
+const UNMODELLED = new Set([
+    'deploymentEnvironment', 'deploymentNode', 'infrastructureNode', 'containerInstance',
+    'softwareSystemInstance', 'healthCheck', 'archetypes', 'perspectives', 'properties',
+    'instances', 'configuration', 'name', 'description', 'themes', 'theme', 'branding',
+    'terminology', 'users', 'visibility', 'scope',
+]);
+
+function splitTags(value: string): string[] {
+    return value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+}
+
 /**
  * Parser for Structurizr DSL
  * Builds an Abstract Syntax Tree from token stream
@@ -26,6 +61,10 @@ import {
 export class StructurizrParser {
     private tokens: Token[];
     private current: number = 0;
+    /** A `views` block found inside a block that is otherwise skipped (model, element, unmodelled). */
+    private collectedViews: ViewsNode[] = [];
+    private modelDepth = 0;
+    private recovering = false;
 
     constructor(tokens: Token[]) {
         // Filter out comments and newlines for easier parsing
@@ -58,7 +97,6 @@ export class StructurizrParser {
         this.expect(TokenType.BRACE_OPEN);
 
         let model: ModelNode | undefined;
-        let views: ViewsNode | undefined;
         let styles: StylesNode | undefined;
 
         while (!this.check(TokenType.BRACE_CLOSE) && !this.isAtEnd()) {
@@ -67,16 +105,34 @@ export class StructurizrParser {
             if (token.type === TokenType.MODEL) {
                 model = this.parseModel();
             } else if (token.type === TokenType.VIEWS) {
-                views = this.parseViews();
+                this.acceptViews(this.parseViews(), false);
             } else if (token.type === TokenType.STYLES) {
                 styles = this.parseStyles();
             } else {
-                // Skip unknown tokens
-                this.advance();
+                // Directives, `configuration { }`, `name`, ... : valid but unmodelled.
+                this.skipStatement();
             }
         }
 
         this.expect(TokenType.BRACE_CLOSE);
+        // The workspace closed early (an unbalanced brace): a section that
+        // follows would be dropped without a trace. A lone stray `}` is
+        // tolerated, as before, because styles nested in views end that way.
+        const views: ViewsNode | undefined = this.collectedViews.length === 0 ? undefined : {
+            type: 'views',
+            views: this.collectedViews.flatMap(v => v.views),
+            location: this.collectedViews[0].location,
+        };
+        for (let i = this.current; i < this.tokens.length; i++) {
+            const stray = this.tokens[i];
+            if ((stray.type === TokenType.VIEWS && (!views || views.views.length === 0)) ||
+                (stray.type === TokenType.MODEL && (!model || model.elements.length === 0))) {
+                throw new StructurizrParserError(
+                    `Unexpected "${stray.value}" after the workspace closing brace; check for an unbalanced brace`,
+                    { line: stray.line, column: stray.column }
+                );
+            }
+        }
 
         return {
             type: 'workspace',
@@ -99,39 +155,11 @@ export class StructurizrParser {
         const elements: ElementNode[] = [];
         const relationships: RelationshipNode[] = [];
 
-        while (!this.check(TokenType.BRACE_CLOSE) && !this.isAtEnd()) {
-            const token = this.peek();
-
-            if (this.isElementType(token.type)) {
-                elements.push(this.parseElement());
-            } else if (token.type === TokenType.IDENTIFIER || token.type === TokenType.STRING) {
-                // Check for assignment: identifier = type ...
-                if (this.peekAhead(1)?.type === TokenType.EQUALS) {
-                    const id = this.advance().value; // Consume identifier
-                    this.advance(); // Consume =
-
-                    // Now expect element type
-                    if (this.isElementType(this.peek().type)) {
-                        elements.push(this.parseElement(id));
-                    } else {
-                        // Invalid assignment
-                        throw new StructurizrParserError(
-                            `Expected element type after assignment, got ${this.peek().type}`,
-                            { line: token.line, column: token.column }
-                        );
-                    }
-                }
-                // Check for relationship: identifier -> identifier
-                else if (this.peekAhead(1)?.type === TokenType.ARROW) {
-                    relationships.push(this.parseRelationship());
-                } else {
-                    // Unknown identifier, skip
-                    this.advance();
-                }
-            } else {
-                // Skip unknown tokens
-                this.advance();
-            }
+        this.modelDepth++;
+        try {
+            this.parseModelItems(elements, relationships);
+        } finally {
+            this.modelDepth--;
         }
 
         this.expect(TokenType.BRACE_CLOSE);
@@ -144,10 +172,183 @@ export class StructurizrParser {
         };
     }
 
+
+    /**
+     * Parse the statements of a `model` or `group` block up to (not including)
+     * the closing brace. Valid constructs the parser does not model (deployment,
+     * archetypes, directives) are skipped brace-balanced; anything else is an error.
+     */
+    private parseModelItems(elements: ElementNode[], relationships: RelationshipNode[]): void {
+        let groupDepth = 0; // group/enterprise blocks are tracked here, not by recursion
+        while (!this.isAtEnd()) {
+            if (this.check(TokenType.BRACE_CLOSE)) {
+                if (groupDepth === 0) { break; }
+                this.advance();
+                groupDepth--;
+                continue;
+            }
+            const token = this.peek();
+            const next = this.peekAhead(1);
+
+            if (this.isElementType(token.type)) {
+                elements.push(this.parseElement());
+            } else if ((token.type === TokenType.IDENTIFIER || token.type === TokenType.STRING) &&
+                next?.type === TokenType.EQUALS) {
+                const id = this.advance().value;
+                this.advance(); // =
+                if (this.isElementType(this.peek().type)) {
+                    elements.push(this.parseElement(id));
+                } else if (this.isUnmodelled(this.peek())) {
+                    this.skipStatement();
+                } else {
+                    throw new StructurizrParserError(
+                        `Expected element type after assignment, got ${this.peek().type}`,
+                        { line: token.line, column: token.column }
+                    );
+                }
+            } else if ((token.type === TokenType.IDENTIFIER || token.type === TokenType.STRING) &&
+                next?.type === TokenType.ARROW) {
+                relationships.push(this.parseRelationship());
+            } else if (token.type === TokenType.IDENTIFIER && GROUP_KEYWORDS.has(token.value) &&
+                (next?.type === TokenType.BRACE_OPEN || next?.type === TokenType.STRING)) {
+                this.advance();
+                if (this.check(TokenType.STRING)) { this.advance(); }
+                this.expect(TokenType.BRACE_OPEN);
+                groupDepth++;
+            } else if (this.isUnmodelled(token)) {
+                this.skipStatement();
+            } else {
+                this.skipUnplaced(token); // valid-but-unmodelled or unknown: ignored, as before
+            }
+        }
+        if (groupDepth > 0) { this.expect(TokenType.BRACE_CLOSE); } // unterminated group: located error
+    }
+
+    private isSectionKeyword(type: TokenType): boolean {
+        return type === TokenType.VIEWS || type === TokenType.STYLES ||
+            type === TokenType.MODEL || type === TokenType.WORKSPACE;
+    }
+
+    /** A valid construct this parser does not model: skipped, never an error. */
+    private isUnmodelled(token: Token): boolean {
+        return token.type === TokenType.IDENTIFIER &&
+            (token.value.startsWith('!') || UNMODELLED.has(token.value));
+    }
+
+    /**
+     * Ignore a token the model/element parsers do not place. Origin/main skipped
+     * these and still rendered. A misplaced `views { }` block is parsed rather
+     * than skipped, so the diagram is kept.
+     */
+    private skipUnplaced(_token: Token): void {
+        if (this.recoverViews()) { return; }
+        this.skipStatement();
+    }
+
+    /** Parse a `views { ... }` block met where the grammar does not expect one. */
+    private recoverViews(): boolean {
+        // One level of recovery only: a views block inside a recovered views block
+        // is skipped flat, so nesting depth cannot grow the call stack.
+        if (!this.recovering && this.check(TokenType.VIEWS) && this.peekAhead(1)?.type === TokenType.BRACE_OPEN) {
+            this.recovering = true;
+            try {
+                this.acceptViews(this.parseViews(), this.modelDepth > 0);
+            } finally {
+                this.recovering = false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * A workspace has one `views` block, but origin/main kept whichever block its
+     * miscounted braces happened to leave last, and some inputs have several (a
+     * misplaced copy inside `!ref`, a model body, ...). Collect every block's
+     * views in source order so the result is a superset of what main rendered.
+     */
+    private acceptViews(parsed: ViewsNode, _fallback: boolean): void {
+        this.collectedViews.push(parsed);
+    }
+
+    /** True when the token begins a statement the parser models. */
+    private startsKnownStatement(t: Token): boolean {
+        return this.isElementType(t.type) || this.isViewType(t.type) ||
+            this.isSectionKeyword(t.type) || t.type === TokenType.INCLUDE ||
+            t.type === TokenType.EXCLUDE || t.type === TokenType.AUTOLAYOUT;
+    }
+
+    /**
+     * Skip one statement: its keyword, its same-line arguments, and an attached
+     * `{ ... }` block (balanced, however deeply nested). Arguments end at the
+     * end of the line or at the next recognised statement keyword, so
+     * `theme "x" systemContext s { }` on one line keeps the view, and a
+     * `->`/`=` statement is never swallowed.
+     */
+    private skipStatement(): void {
+        if (this.check(TokenType.BRACE_OPEN)) { this.skipBlock(); return; }
+        const first = this.advance();
+        while (!this.isAtEnd() && this.peek().line === first.line &&
+            !this.check(TokenType.BRACE_OPEN) && !this.check(TokenType.BRACE_CLOSE) &&
+            !this.startsKnownStatement(this.peek()) && !this.startsAssignmentOrRelationship()) {
+            this.advance();
+        }
+        if (this.check(TokenType.BRACE_OPEN)) { this.skipBlock(); }
+    }
+
+    private startsAssignmentOrRelationship(): boolean {
+        const t = this.peek().type;
+        const n = this.peekAhead(1)?.type;
+        return (t === TokenType.IDENTIFIER || t === TokenType.STRING) &&
+            (n === TokenType.EQUALS || n === TokenType.ARROW);
+    }
+
+    /** Skip a balanced `{ ... }` block; an unterminated one is an error. */
+    private skipBlock(): void {
+        const open = this.expect(TokenType.BRACE_OPEN);
+        let depth = 1;
+        while (depth > 0) {
+            if (this.isAtEnd()) {
+                throw new StructurizrParserError(
+                    'Unterminated block: missing closing brace',
+                    { line: open.line, column: open.column }
+                );
+            }
+            if (this.recoverViews()) { continue; }
+            const t = this.advance();
+            if (t.type === TokenType.BRACE_OPEN) { depth++; }
+            else if (t.type === TokenType.BRACE_CLOSE) { depth--; }
+        }
+    }
+
     /**
      * Parse element (person, softwareSystem, container, component)
      */
     private parseElement(explicitIdentifier?: string): ElementNode {
+        // Iterative, with an explicit stack: nesting depth is bounded by the heap,
+        // not by the call stack.
+        const stack: ElementFrame[] = [this.openElement(explicitIdentifier)];
+        for (;;) {
+            const frame = stack[stack.length - 1];
+            const child = this.stepElementBody(frame);
+            if (child) {
+                // The same nesting bound as C4X (#362): the parse is iterative, but the
+                // adapter, layout and renderer that follow recurse once per level.
+                if (stack.length >= MAX_NESTING_DEPTH) {
+                    const at = this.peek();
+                    throw new StructurizrParserError(nestingDepthMessage(), { line: at.line, column: at.column });
+                }
+                stack.push(this.openElement(child.id));
+                continue;
+            }
+            const node = this.closeElement(frame);
+            stack.pop();
+            if (stack.length === 0) { return node; }
+            (stack[stack.length - 1].body.children ??= []).push(node);
+        }
+    }
+
+    private openElement(explicitIdentifier?: string): ElementFrame {
         const typeToken = this.advance();
         const elementType = this.getElementType(typeToken.type);
 
@@ -163,121 +364,166 @@ export class StructurizrParser {
                 name = identifier;
             }
         } else {
-            // Identifier
             if (this.check(TokenType.STRING)) {
+                // Structurizr form `person "Name" ...`: the string is the name; the
+                // strings after it are positional, so none is taken as a second name.
                 identifier = this.advance().value;
+                name = identifier;
             } else {
+                // Legacy `person ident "Name"` form.
                 identifier = this.expect(TokenType.IDENTIFIER).value;
-            }
-
-            // Optional name (string)
-            name = identifier;
-            if (this.check(TokenType.STRING)) {
-                name = this.advance().value;
+                name = identifier;
+                if (this.check(TokenType.STRING)) {
+                    name = this.advance().value;
+                }
             }
         }
 
-        let description: string | undefined;
         let technology: string | undefined;
         let tags: string[] | undefined;
-        let url: string | undefined;
-        let properties: Record<string, string> | undefined;
-        let children: ElementNode[] | undefined;
+
+        // Positional arguments after the name, per the Structurizr DSL:
+        //   person         <name> [description] [tags]
+        //   softwareSystem <name> [description] [tags]
+        //   container      <name> [description] [technology] [tags]
+        //   component      <name> [description] [technology] [tags]
+        const hasTechnologySlot = elementType === 'container' || elementType === 'component';
+        const positional: string[] = [];
+        const maxPositional = hasTechnologySlot ? 3 : 2;
+        while (positional.length < maxPositional && this.check(TokenType.STRING) &&
+            !this.startsStatement()) {
+            positional.push(this.advance().value);
+        }
+        // Surplus strings are ignored (origin/main ignored them too).
+        while (this.check(TokenType.STRING) && !this.startsStatement()) { this.advance(); }
+        const [posDescription, ...posRest] = positional;
+        const description = posDescription || undefined;
+        if (hasTechnologySlot) {
+            technology = posRest[0] || undefined;
+            if (posRest[1]) { tags = splitTags(posRest[1]); }
+        } else if (posRest[0]) {
+            tags = splitTags(posRest[0]);
+        }
 
         // Optional body with properties and nested elements
+        let hasBody = false;
         if (this.check(TokenType.BRACE_OPEN)) {
             this.advance();
-
-            while (!this.check(TokenType.BRACE_CLOSE) && !this.isAtEnd()) {
-                const token = this.peek();
-
-                // Nested elements with assignment: identifier = type ...
-                if ((token.type === TokenType.IDENTIFIER || token.type === TokenType.STRING) &&
-                    this.peekAhead(1)?.type === TokenType.EQUALS) {
-                    const id = this.advance().value;
-                    this.advance(); // Consume =
-
-                    if (this.isElementType(this.peek().type)) {
-                        if (!children) { children = []; }
-                        children.push(this.parseElement(id));
-                    } else {
-                        // Invalid assignment or unknown token, backtrack/skip?
-                        // For now, let's assume valid assignment if we see =
-                        // But if type is not element type, it might be property?
-                        // Properties are usually key value. key = value?
-                        // Structurizr DSL properties are `key value`.
-                        // So `id = type` is likely element assignment.
-                        throw new StructurizrParserError(
-                            `Expected element type after assignment, got ${this.peek().type}`,
-                            { line: token.line, column: token.column }
-                        );
-                    }
-                }
-                // Nested elements (direct)
-                else if (this.isElementType(token.type)) {
-                    if (!children) { children = []; }
-                    children.push(this.parseElement());
-                }
-                // Description (first string)
-                else if (token.type === TokenType.STRING && !description) {
-                    description = this.advance().value;
-                }
-                // Technology (second string or after description)
-                else if (token.type === TokenType.STRING && description && !technology) {
-                    technology = this.advance().value;
-                }
-                // Tags
-                else if (token.type === TokenType.TAG ||
-                    (token.type === TokenType.IDENTIFIER && token.value === 'tags')) {
-                    this.advance(); // Skip 'tags' keyword if present
-                    if (this.check(TokenType.STRING)) {
-                        tags = this.advance().value.split(',').map(t => t.trim());
-                    }
-                }
-                // URL
-                else if (token.type === TokenType.URL ||
-                    (token.type === TokenType.IDENTIFIER && token.value === 'url')) {
-                    if (token.type === TokenType.IDENTIFIER) {
-                        this.advance(); // Skip 'url' keyword
-                    }
-                    if (this.check(TokenType.URL) || this.check(TokenType.STRING)) {
-                        url = this.advance().value;
-                    }
-                }
-                // properties { "key" "value" ... } — must be consumed as a block,
-                // or its strings are misread as description and technology.
-                else if (token.type === TokenType.IDENTIFIER && token.value === 'properties' &&
-                    this.peekAhead(1)?.type === TokenType.BRACE_OPEN) {
-                    this.advance(); // 'properties'
-                    properties = { ...(properties ?? {}), ...this.parsePropertiesBlock() };
-                }
-                // Relationships inside elements
-                else if (token.type === TokenType.IDENTIFIER &&
-                    this.peekAhead(1)?.type === TokenType.ARROW) {
-                    // Skip relationships for now (handled at model level)
-                    this.parseRelationship();
-                }
-                else {
-                    this.advance(); // Skip unknown
-                }
-            }
-
-            this.expect(TokenType.BRACE_CLOSE);
+            hasBody = true;
         }
 
         return {
-            type: 'element',
-            elementType,
-            identifier,
-            name,
-            description,
-            technology,
-            tags,
-            url,
-            properties,
-            children,
-            location: { line: typeToken.line, column: typeToken.column },
+            typeToken, elementType, identifier, name, hasTechnologySlot, hasBody, groupDepth: 0,
+            body: { description, technology, tags },
         };
+    }
+
+    private closeElement(f: ElementFrame): ElementNode {
+        return {
+            type: 'element',
+            elementType: f.elementType,
+            identifier: f.identifier,
+            name: f.name,
+            description: f.body.description,
+            technology: f.body.technology,
+            tags: f.body.tags,
+            url: f.body.url,
+            properties: f.body.properties,
+            children: f.body.children,
+            location: { line: f.typeToken.line, column: f.typeToken.column },
+        };
+    }
+
+    /**
+     * True when the current STRING begins the next statement (it is an
+     * identifier of a relationship or assignment), not a positional argument.
+     */
+    private startsStatement(): boolean {
+        const next = this.peekAhead(1)?.type;
+        return next === TokenType.ARROW || next === TokenType.EQUALS;
+    }
+
+
+    /**
+     * Parse an element body (or a `group` inside one) up to the closing brace.
+     * Valid constructs not modelled here are skipped brace-balanced; a token
+     * that cannot be placed raises StructurizrParserError.
+     */
+    private stepElementBody(f: ElementFrame): { id?: string } | undefined {
+        if (!f.hasBody) { return undefined; }
+        const ctx = f.body;
+        while (!this.isAtEnd()) {
+            if (this.check(TokenType.BRACE_CLOSE)) {
+                if (f.groupDepth === 0) { break; }
+                this.advance();
+                f.groupDepth--;
+                continue;
+            }
+            const inGroup = f.groupDepth > 0;
+            const token = this.peek();
+            const next = this.peekAhead(1);
+
+            if ((token.type === TokenType.IDENTIFIER || token.type === TokenType.STRING) &&
+                next?.type === TokenType.EQUALS) {
+                const id = this.advance().value;
+                this.advance(); // =
+                if (this.isElementType(this.peek().type)) {
+                    return { id };
+                } else if (this.isUnmodelled(this.peek())) {
+                    this.skipStatement();
+                } else {
+                    throw new StructurizrParserError(
+                        `Expected element type after assignment, got ${this.peek().type}`,
+                        { line: token.line, column: token.column }
+                    );
+                }
+            } else if (this.isElementType(token.type)) {
+                return {};
+            } else if (token.type === TokenType.IDENTIFIER && GROUP_KEYWORDS.has(token.value) &&
+                (next?.type === TokenType.BRACE_OPEN || next?.type === TokenType.STRING)) {
+                this.advance();
+                if (this.check(TokenType.STRING)) { this.advance(); }
+                this.expect(TokenType.BRACE_OPEN);
+                f.groupDepth++;
+            } else if (token.type === TokenType.IDENTIFIER &&
+                (token.value === 'description' || token.value === 'technology') &&
+                next?.type === TokenType.STRING) {
+                // Explicit keywords win over any positional value already read.
+                this.advance();
+                const value = this.advance().value;
+                if (token.value === 'description') { ctx.description = value; } else { ctx.technology = value; }
+            } else if (token.type === TokenType.STRING && !inGroup && !ctx.description) {
+                ctx.description = this.advance().value;
+            } else if (token.type === TokenType.STRING && !inGroup && ctx.description && !ctx.technology) {
+                ctx.technology = this.advance().value;
+            } else if (token.type === TokenType.TAG ||
+                (token.type === TokenType.IDENTIFIER && token.value === 'tags')) {
+                const kw = this.advance();
+                if (this.check(TokenType.STRING)) {
+                    ctx.tags = this.advance().value.split(',').map(t => t.trim());
+                    while (this.check(TokenType.STRING) && this.peek().line === kw.line) {
+                        ctx.tags.push(...this.advance().value.split(',').map(t => t.trim()));
+                    }
+                }
+            } else if (token.type === TokenType.URL ||
+                (token.type === TokenType.IDENTIFIER && token.value === 'url')) {
+                if (token.type === TokenType.IDENTIFIER) { this.advance(); }
+                if (this.check(TokenType.URL) || this.check(TokenType.STRING)) {
+                    ctx.url = this.advance().value;
+                }
+            } else if (token.type === TokenType.IDENTIFIER && token.value === 'properties' &&
+                next?.type === TokenType.BRACE_OPEN) {
+                this.advance();
+                ctx.properties = { ...(ctx.properties ?? {}), ...this.parsePropertiesBlock() };
+            } else if (token.type === TokenType.IDENTIFIER && next?.type === TokenType.ARROW) {
+                this.parseRelationship(); // handled at model level
+            } else {
+                this.skipUnplaced(token); // `-> x`, perspectives, directives, unknown: ignored, as before
+            }
+        }
+        if (f.groupDepth > 0) { this.expect(TokenType.BRACE_CLOSE); } // unterminated group: located error
+        this.expect(TokenType.BRACE_CLOSE);
+        return undefined;
     }
 
     /**
@@ -332,14 +578,15 @@ export class StructurizrParser {
         let tags: string[] | undefined;
         let url: string | undefined;
 
-        // Optional description
-        if (this.check(TokenType.STRING)) {
+        // Positional: <description> [technology] [tags]
+        if (this.check(TokenType.STRING) && !this.startsStatement()) {
             description = this.advance().value;
         }
-
-        // Optional technology (second string)
-        if (this.check(TokenType.STRING)) {
+        if (this.check(TokenType.STRING) && !this.startsStatement()) {
             technology = this.advance().value;
+        }
+        if (this.check(TokenType.STRING) && !this.startsStatement()) {
+            tags = splitTags(this.advance().value);
         }
 
         // Optional body with properties
@@ -363,6 +610,8 @@ export class StructurizrParser {
                     if (this.check(TokenType.URL) || this.check(TokenType.STRING)) {
                         url = this.advance().value;
                     }
+                } else if (token.type === TokenType.BRACE_OPEN) {
+                    this.skipBlock();
                 } else {
                     this.advance(); // Skip unknown
                 }
@@ -397,8 +646,11 @@ export class StructurizrParser {
 
             if (this.isViewType(token.type)) {
                 views.push(this.parseView());
+            } else if (token.type === TokenType.STYLES) {
+                this.parseStyles(); // styles nested in views: consumed whole, not modelled here
             } else {
-                this.advance(); // Skip unknown
+                // dynamic / deployment / filtered views, themes, branding, ...
+                this.skipStatement();
             }
         }
 
@@ -458,6 +710,8 @@ export class StructurizrParser {
                     if (this.check(TokenType.STRING)) {
                         description = this.advance().value;
                     }
+                } else if (this.check(TokenType.BRACE_OPEN)) {
+                    this.skipBlock(); // animation { ... }, ...
                 } else {
                     this.advance(); // Skip unknown
                 }

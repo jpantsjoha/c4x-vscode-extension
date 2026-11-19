@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 990 710" role="img">
+  <rect x="0" y="0" width="990" height="710" fill="#FFFFFF" />
+  
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+          <feOffset in="blur" dx="3" dy="3" result="offsetBlur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <marker id="c4x-arrow-uses" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-async" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+        <marker id="c4x-arrow-sync" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,3.5 L0,7 z" fill="#444444" fill-opacity="1" />
+        </marker>
+      </defs>
+  
+  <g class="diagram-content" transform="translate(0, 0)">
+    <g class="boundaries">
+
+    </g>
+    <g class="nodes">
+<g class="node" data-id="customer" data-shape="person" data-type-label="Person" >
+    <rect x="390.00" y="101.60" width="200.00" height="98.40" rx="36.00" ry="36.00" fill="#FFFFFF" stroke="#297E06" stroke-width="2" />
+    <circle cx="490.00" cy="75.20" r="35.20" fill="#FFFFFF" stroke="#297E06" stroke-width="2" />
+<text data-field="label" x="490.00" y="142.80" fill="#297E06" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Customer</text>
+    <text data-field="technology" x="490.00" y="158.80" fill="#297E06" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Person]</text>
+    <text data-field="description" x="490.00" y="174.80" fill="#297E06" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Pays bills online</text>
+  </g>
+<g class="node" data-id="auditor" data-shape="person" data-type-label="Person" >
+    <rect x="60.00" y="341.60" width="200.00" height="98.40" rx="36.00" ry="36.00" fill="#FFFFFF" stroke="#BF101D" stroke-width="2" />
+    <circle cx="160.00" cy="315.20" r="35.20" fill="#FFFFFF" stroke="#BF101D" stroke-width="2" />
+<text data-field="label" x="160.00" y="382.80" fill="#BF101D" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Auditor</text>
+    <text data-field="technology" x="160.00" y="398.80" fill="#BF101D" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Person]</text>
+    <text data-field="description" x="160.00" y="414.80" fill="#BF101D" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reviews payments</text>
+  </g>
+<g class="node" data-id="bank" data-type-label="Software System" >
+    <rect x="360.00" y="290.00" width="260.00" height="140.00" rx="6" ry="6" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="490.00" y="352.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Online Banking</text>
+    <text data-field="technology" x="490.00" y="368.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="490.00" y="384.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Lets customers pay bills</text>
+  </g>
+<g class="node database" data-id="ledger" data-type-label="Software System" >
+    <path d="M 40.00 532.00 L 40.00 648.00 A 130.00 12 0 0 0 300.00 648.00 L 300.00 532.00 A 130.00 12 0 0 0 40.00 532.00 Z" fill="#FFFFFF" stroke="#1168BD" stroke-width="2" />
+    <path d="M 40.00 532.00 A 130.00 12 0 0 1 300.00 532.00" fill="none" stroke="#1168BD" stroke-width="2" />
+<text data-field="label" x="170.00" y="582.00" fill="#1168BD" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Ledger</text>
+    <text data-field="technology" x="170.00" y="598.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="170.00" y="614.00" fill="#1168BD" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Records every payment</text>
+  </g>
+<g class="node" data-id="email" data-type-label="Software System" >
+    <rect x="360.00" y="520.00" width="260.00" height="140.00" rx="6" ry="6" fill="#FFFFFF" stroke="#ED8609" stroke-width="2" />
+<text data-field="label" x="490.00" y="582.00" fill="#B35F00" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Email Service</text>
+    <text data-field="technology" x="490.00" y="598.00" fill="#B35F00" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="490.00" y="614.00" fill="#B35F00" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends receipts</text>
+  </g>
+<g class="node database" data-id="rates" data-type-label="Software System" >
+    <path d="M 680.00 532.00 L 680.00 648.00 A 130.00 12 0 0 0 940.00 648.00 L 940.00 532.00 A 130.00 12 0 0 0 680.00 532.00 Z" fill="#FFFFFF" stroke="#1A849C" stroke-width="2" />
+    <path d="M 680.00 532.00 A 130.00 12 0 0 1 940.00 532.00" fill="none" stroke="#1A849C" stroke-width="2" />
+<text data-field="label" x="810.00" y="582.00" fill="#197F96" text-anchor="middle" font-size="14" font-family="Arial, sans-serif" font-weight="bold">Rates Feed</text>
+    <text data-field="technology" x="810.00" y="598.00" fill="#197F96" text-anchor="middle" font-size="12" font-family="Arial, sans-serif" font-style="italic">[Software System]</text>
+    <text data-field="description" x="810.00" y="614.00" fill="#197F96" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Publishes exchange rates</text>
+  </g>
+    </g>
+    <g class="edges">
+<g class="edge" data-id="rel-0">
+    <path class="edge-hit-area" d="M490.00,200.00 L490.00,290.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M490.00,200.00 L490.00,290.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="490.00" y="239.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Pays bills using</text>
+  </g>
+<g class="edge" data-id="rel-1">
+    <path class="edge-hit-area" d="M160.00,440.00 L170.00,520.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M160.00,440.00 L170.00,520.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="165.00" y="474.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reviews</text>
+  </g>
+<g class="edge" data-id="rel-2">
+    <path class="edge-hit-area" d="M490.00,430.00 L170.00,520.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M490.00,430.00 L170.00,520.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="330.00" y="469.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Records payments in</text>
+  </g>
+<g class="edge" data-id="rel-3">
+    <path class="edge-hit-area" d="M490.00,430.00 L490.00,520.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M490.00,430.00 L490.00,520.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="490.00" y="469.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Sends receipts using</text>
+  </g>
+<g class="edge" data-id="rel-4">
+    <path class="edge-hit-area" d="M490.00,430.00 L810.00,520.00" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" />
+    <path d="M490.00,430.00 L810.00,520.00" fill="none" stroke="#444444" stroke-width="2" marker-end="url(#c4x-arrow-uses)" stroke-dasharray="8,4" />
+    <text x="650.00" y="469.00" fill="#444444" stroke="#FFFFFF" stroke-width="2" paint-order="stroke" text-anchor="middle" font-size="12" font-family="Arial, sans-serif">Reads rates from</text>
+  </g>
+    </g>
+  </g>
+</svg>

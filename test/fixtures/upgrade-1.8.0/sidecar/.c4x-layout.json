@@ -1,0 +1,31 @@
+{
+  "$schema": "https://c4model.com/schemas/c4x-layout.schema.json",
+  "layouts": {
+    "diagrams/architecture.c4x": {
+      "elements": {
+        "api": {
+          "locked": true,
+          "x": 300,
+          "y": 80.1
+        },
+        "db": {
+          "x": 300,
+          "y": 240
+        },
+        "web": {
+          "x": 120.46,
+          "y": 80
+        }
+      }
+    },
+    "other.c4x": {
+      "elements": {
+        "solo": {
+          "x": 10,
+          "y": 20
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -5,7 +5,7 @@
  */
 
 import * as vscode from 'vscode';
-import { C4Theme } from './Theme';
+import { C4Theme, legacyThemeTokens } from './Theme';
 
 /**
  * Dark variant for dark VS Code themes
@@ -59,6 +59,7 @@ const DarkTheme: C4Theme = {
         fontFamily: 'Consolas, monospace',
         shadowEnabled: false,
     },
+    ...legacyThemeTokens({ stroke: '#858585', text: '#D4D4D4' }),
 };
 
 /**
@@ -113,6 +114,7 @@ const LightTheme: C4Theme = {
         fontFamily: 'Consolas, monospace',
         shadowEnabled: false,
     },
+    ...legacyThemeTokens({ stroke: '#666666', text: '#000000' }),
 };
 
 /**

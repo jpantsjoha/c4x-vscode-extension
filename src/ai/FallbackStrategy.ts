@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { C4XParser } from '../parser/C4XParser';
 import { DEFAULT_MODEL, PRO_MODEL } from './models';
 import type { ModelResolution } from './modelResolution';
+import { ATTEMPTS_PER_MODEL } from './generationLoop';
 import { executeWithRetry } from './SyntaxValidator';
 
 // BUILD_ID for debugging version issues
@@ -41,8 +42,9 @@ export interface FallbackOptions {
  *   3. If it failed for any other reason, elevate to PRO_MODEL (unless already on it).
  *   4. If that also fails, surface a clear error.
  *
- * Each model attempt includes up to `maxRetries` self-correction passes
- * via the parser-driven retry loop in SyntaxValidator.
+ * Each model runs the provider-neutral loop (`generationLoop.runRepairLoop`,
+ * bound to Gemini by `executeWithRetry`): one attempt plus up to two repairs.
+ * Heal and failover are Gemini's own and stay here, around that loop.
  */
 export async function generateWithFallback(
     client: GenerateContentClient,
@@ -53,7 +55,8 @@ export async function generateWithFallback(
     console.log(`[FallbackStrategy] BUILD_ID: ${BUILD_ID}`);
 
     const parser = new C4XParser();
-    const maxRetries = 3; // Integrated self-correction
+    // One initial attempt plus two repairs per model.
+    const maxRetries = ATTEMPTS_PER_MODEL;
 
     const config = vscode.workspace.getConfiguration('c4x.ai');
     // Default to gemini-3-flash-preview (fast, free-tier). User can override via settings.

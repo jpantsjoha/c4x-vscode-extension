@@ -104,6 +104,99 @@ async function main() {
       throw new Error('Invalid extension-host test receipt');
     }
     console.log(`✅ Extension-host receipt: ${receipt.passes} passed, ${receipt.pending} pending.`);
+
+    // Upgrade proof (#366), a second short launch so the suite above keeps its
+    // workspace: a temporary workspace and a user profile seeded BEFORE the
+    // extension first activates, as for someone updating from 1.8.0. See
+    // test/upgrade-activation/index.ts for what it asserts.
+    if (testArgs.length === 0) {
+      const upgradeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-upgrade-'));
+      try {
+        const upgradeReceipt = path.join(upgradeDir, 'receipt.json');
+        const upgradeToken = randomUUID();
+        const workspaceDir = path.join(upgradeDir, 'workspace');
+        const userDataDir = path.join(upgradeDir, 'user-data');
+        fs.mkdirSync(path.join(workspaceDir, '.vscode'), { recursive: true });
+        fs.mkdirSync(path.join(userDataDir, 'User'), { recursive: true });
+        fs.mkdirSync(path.join(upgradeDir, 'extensions'), { recursive: true });
+        const fixtureDir = [
+          path.resolve(__dirname, '../../test/fixtures/upgrade-1.8.0'),
+          path.resolve(__dirname, 'fixtures/upgrade-1.8.0'),
+        ].find(candidate => fs.existsSync(candidate));
+        if (!fixtureDir) { throw new Error('upgrade-1.8.0 fixtures not found'); }
+        const userSettings = path.join(userDataDir, 'User', 'settings.json');
+        const workspaceSettings = path.join(workspaceDir, '.vscode', 'settings.json');
+        fs.copyFileSync(path.join(fixtureDir, 'user-settings.json'), userSettings);
+        fs.copyFileSync(path.join(fixtureDir, 'workspace-settings.json'), workspaceSettings);
+        const upgradeTests = path.join(path.dirname(effectiveTestsPath), '..', 'upgrade-activation', 'index');
+        await runTests({
+          extensionDevelopmentPath: effectiveExtensionPath,
+          extensionTestsPath: path.resolve(upgradeTests),
+          vscodeExecutablePath,
+          version: vscodeVersion,
+          launchArgs: [workspaceDir, '--disable-extensions', '--disable-gpu', '--disable-dev-shm-usage', '--no-sandbox',
+            `--extensions-dir=${path.join(upgradeDir, 'extensions')}`, `--user-data-dir=${userDataDir}`],
+          extensionTestsEnv: {
+            C4X_UPGRADE_USER_SETTINGS: userSettings,
+            C4X_UPGRADE_WORKSPACE_SETTINGS: workspaceSettings,
+            C4X_UPGRADE_FIXTURES: fixtureDir,
+            C4X_UPGRADE_RECEIPT: upgradeReceipt,
+            C4X_UPGRADE_RECEIPT_TOKEN: upgradeToken,
+          },
+        });
+        // Electron exiting 0 proves nothing: the entry writes this receipt only
+        // after every one of its assertions has passed.
+        if (!fs.existsSync(upgradeReceipt)) {
+          throw new Error('Upgrade activation launch exited without a completed receipt; nothing is proven.');
+        }
+        const upgradeResult = JSON.parse(fs.readFileSync(upgradeReceipt, 'utf8'));
+        if (upgradeResult.token !== upgradeToken || upgradeResult.passed !== true) {
+          throw new Error('Invalid upgrade activation receipt');
+        }
+        console.log('✅ Upgrade activation launch passed.');
+      } finally {
+        removeQuietly(upgradeDir);
+      }
+    }
+
+    // Change Theme with no folder open (#479, R181-02): a third launch with no
+    // workspace, so the real settings API rejects a workspace-scope write.
+    if (testArgs.length === 0) {
+      const noFolderDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4x-nofolder-'));
+      try {
+        const receipt = path.join(noFolderDir, 'receipt.json');
+        const token = randomUUID();
+        const userDataDir = path.join(noFolderDir, 'user-data');
+        fs.mkdirSync(path.join(userDataDir, 'User'), { recursive: true });
+        fs.mkdirSync(path.join(noFolderDir, 'extensions'), { recursive: true });
+        const userSettings = path.join(userDataDir, 'User', 'settings.json');
+        fs.writeFileSync(userSettings, '{}\n');
+        const noFolderTests = path.join(path.dirname(effectiveTestsPath), '..', 'no-folder-theme', 'index');
+        await runTests({
+          extensionDevelopmentPath: effectiveExtensionPath,
+          extensionTestsPath: path.resolve(noFolderTests),
+          vscodeExecutablePath,
+          version: vscodeVersion,
+          launchArgs: ['--disable-extensions', '--disable-gpu', '--disable-dev-shm-usage', '--no-sandbox',
+            `--extensions-dir=${path.join(noFolderDir, 'extensions')}`, `--user-data-dir=${userDataDir}`],
+          extensionTestsEnv: {
+            C4X_NOFOLDER_USER_SETTINGS: userSettings,
+            C4X_NOFOLDER_RECEIPT: receipt,
+            C4X_NOFOLDER_RECEIPT_TOKEN: token,
+          },
+        });
+        if (!fs.existsSync(receipt)) {
+          throw new Error('No-folder launch exited without a completed receipt; nothing is proven.');
+        }
+        const result = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+        if (result.token !== token || result.passed !== true) {
+          throw new Error('Invalid no-folder theme receipt');
+        }
+        console.log('✅ No-folder Change Theme launch passed.');
+      } finally {
+        removeQuietly(noFolderDir);
+      }
+    }
   } catch (err) {
     console.error('❌ Failed to run tests:', err);
     // Not process.exit: that terminates synchronously and the finally below

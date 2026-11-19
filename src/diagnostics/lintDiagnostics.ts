@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { c4ModelBuilder } from '../model/C4ModelBuilder';
-import type { C4Model } from '../model/C4Model';
+import { C4ModelBuilder } from '../model/C4ModelBuilder';
+import type { C4Model, C4ModelDiagnostic } from '../model/C4Model';
+import { isBundledSprite } from '../render/ElementRenderer';
 import type { ParseResult } from '../parser/types';
 import {
     findingAnchor,
@@ -13,6 +14,9 @@ import {
 
 /** Shown next to the rule id in the Problems panel, e.g. `C4X lint(C4X-L003)`. */
 export const LINT_DIAGNOSTIC_SOURCE = 'C4X lint';
+
+/** The editor's builder: the shared bundled sprite check, as in c4x-lint and lint_c4x. */
+const editorModelBuilder = new C4ModelBuilder({ isKnownSprite: isBundledSprite });
 
 /** Read `c4x.lint.enabled` and `c4x.lint.rules` for a document, dropping malformed values. */
 export function readLintOptions(scope?: vscode.Uri): LintOptions {
@@ -63,12 +67,15 @@ function toRange(finding: LintFinding, model: C4Model, lineOffset: number): vsco
  * exception.
  */
 export function lintDiagnostics(parsed: ParseResult, options: LintOptions, lineOffset: number): vscode.Diagnostic[] {
-    if (options.enabled === false) {
-        return [];
-    }
     try {
-        const model = c4ModelBuilder.build(parsed, 'diagnostics');
-        return lintModel(model, options).map(finding => {
+        const model = editorModelBuilder.build(parsed, 'diagnostics');
+        // Element style diagnostics (#322) are model checks, not notation
+        // rules: `c4x.lint.enabled: false` does not hide them.
+        const styleDiagnostics = (model.diagnostics ?? []).map(entry => toModelDiagnostic(entry, lineOffset));
+        if (options.enabled === false) {
+            return styleDiagnostics;
+        }
+        return [...lintModel(model, options).map(finding => {
             const diagnostic = new vscode.Diagnostic(
                 toRange(finding, model, lineOffset),
                 `${finding.message} ${finding.hint}`,
@@ -77,8 +84,25 @@ export function lintDiagnostics(parsed: ParseResult, options: LintOptions, lineO
             diagnostic.code = finding.ruleId;
             diagnostic.source = LINT_DIAGNOSTIC_SOURCE;
             return diagnostic;
-        });
+        }), ...styleDiagnostics];
     } catch {
         return [];
     }
+}
+
+function toModelDiagnostic(entry: C4ModelDiagnostic, lineOffset: number): vscode.Diagnostic {
+    let range: vscode.Range;
+    if (entry.range) {
+        const { start, end } = entry.range;
+        const line = lineOffset + start.line - 1;
+        range = end.line === start.line
+            ? new vscode.Range(line, start.column - 1, line, end.column - 1)
+            : new vscode.Range(line, start.column - 1, line, Number.MAX_VALUE);
+    } else {
+        range = new vscode.Range(lineOffset, 0, lineOffset, Number.MAX_VALUE);
+    }
+    const diagnostic = new vscode.Diagnostic(range, entry.message, toDiagnosticSeverity(entry.severity));
+    diagnostic.code = entry.code;
+    diagnostic.source = LINT_DIAGNOSTIC_SOURCE;
+    return diagnostic;
 }

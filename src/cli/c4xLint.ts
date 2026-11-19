@@ -12,6 +12,7 @@ import * as path from 'path';
 import type { LintSeverity } from '../model/lint';
 import { ConfigError, DEFAULT_CONFIG_FILE, loadConfig } from './config';
 import { expandInputs, sourceKindOf } from './files';
+import { MAX_CLI_FILE_BYTES } from './limits';
 import { LintEngineError, SEVERITY_ORDER, atOrAbove, lintFileText, type HeadlessFinding } from './lintSource';
 import {
     OUTPUT_FORMATS,
@@ -21,6 +22,7 @@ import {
     formatJson,
     formatStepSummary,
     formatText,
+    safeJsonStringify,
     summaryLine,
     type FileReport,
     type OutputFormat,
@@ -32,8 +34,6 @@ export const EXIT_OK = 0;
 export const EXIT_FINDINGS = 1;
 export const EXIT_USAGE = 2;
 
-/** A source file larger than this is refused: no diagram is that big. */
-const MAX_SOURCE_BYTES = 4 * 1024 * 1024;
 
 /** Everything the CLI touches outside its arguments, so tests can run it in-process. */
 export interface CliIo {
@@ -67,7 +67,8 @@ Options:
 
 Exit codes: 0 clean, 1 findings at or above --max-severity, 2 usage, input or
 internal error. Every argument must match a file, or the run exits 2.
-Syntax errors (C4X-SYNTAX) and model errors (C4X-MODEL) are always errors.
+Syntax errors (C4X-SYNTAX), model errors (C4X-MODEL) and input-limit errors
+(C4X-LIMIT) are always errors.
 Rules: https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/C4X-LINT-RULES.md
 CLI:   https://github.com/jpantsjoha/c4x-vscode-extension/blob/main/docs/C4X-LINT-CLI.md
 `;
@@ -165,7 +166,7 @@ function render(format: OutputFormat, reports: readonly FileReport[], fileCount:
         case 'json':
             return formatJson(reports, fileCount, counts);
         case 'sarif':
-            return `${JSON.stringify(toSarif(reports), null, 2)}\n`;
+            return `${safeJsonStringify(toSarif(reports))}\n`;
         default:
             return formatText(reports, fileCount, counts);
     }
@@ -223,7 +224,7 @@ export function runLint(argv: readonly string[], io: CliIo): number {
         let text: string;
         try {
             // eslint-disable-next-line security/detect-non-literal-fs-filename -- a file the user asked to lint
-            if (fs.statSync(absolute).size > MAX_SOURCE_BYTES) {
+            if (fs.statSync(absolute).size > MAX_CLI_FILE_BYTES) {
                 warn(`${file}: larger than 4 MiB, not linted`);
                 inputError = true;
                 continue;

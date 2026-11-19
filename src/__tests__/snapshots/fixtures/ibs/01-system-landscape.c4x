@@ -1,0 +1,22 @@
+%%{ c4: system-landscape }%%
+graph TB
+    Person(customer, "Personal Banking Customer", "A customer of the bank with one or more personal bank accounts.")
+    Enterprise_Boundary(bigbank, "Big Bank") {
+        Person(csstaff, "Customer Service Staff", "Customer service staff within the bank.", $tags="Bank Staff")
+        Person(bostaff, "Back Office Staff", "Administration and support staff within the bank.", $tags="Bank Staff")
+        System(atm, "ATM", "Allows customers to withdraw cash and check bank account balances.", $tags="ATM")
+        System(ibs, "Internet Banking System", "Allows customers to view information about their bank accounts and make payments via the web.")
+        System(core, "Core Banking System", "Handles core banking functions including customer information, bank account management, transactions, etc.", $tags="Core Banking")
+    }
+    System_Boundary(aws, "Amazon Web Services") {
+        System_Ext(email, "Amazon Web Services Simple Email Service", "Cloud-based email service provider.", $tags="External Email")
+    }
+    customer -->|Asks questions to| "Telephone" csstaff
+    customer -->|Withdraws cash using| atm
+    customer -->|Views account balances and makes payments using| ibs
+    email -->|Sends e-mails to| customer
+    ibs -->|Sends e-mails to customers using| email
+    ibs -->|Gets bank account information from and makes payments using| core
+    atm -->|Makes transactions using| core
+    csstaff -->|Support customers using| core
+    bostaff -->|Investigate and troubleshoot problems using| core

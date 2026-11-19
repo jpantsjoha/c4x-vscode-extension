@@ -2,6 +2,12 @@
 
 **System Context diagrams** represent the "big picture". They show the software system you are building, who uses it (people), and what external systems it interacts with.
 
+## Person and system descriptions
+
+[`person-and-system-descriptions.c4x`](person-and-system-descriptions.c4x) gives each person and
+system a description as its third argument, `Person(id, "Label", "Description")`. C4X draws it as
+plain text under the name; only containers and components have a `[Technology]` line.
+
 ## 🏦 Banking System
 A standard enterprise architecture example showing a Banking System interacting with legacy mainframes and email services.
 

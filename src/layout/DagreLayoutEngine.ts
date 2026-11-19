@@ -1,5 +1,26 @@
 import * as dagre from 'dagre';
 import { C4Element, C4Rel, C4View, C4Boundary } from '../model/C4Model';
+import { routeAroundObstacles, findReversePairIds, BIDIRECTIONAL_EDGE_OFFSET, type Box } from '../render/EdgeRouter';
+import type { C4Theme } from '../themes/Theme';
+import { ClassicTheme } from '../themes/ClassicTheme';
+import { isBundledSpriteId, resolveElementStyle, type ElementStyleContext } from '../render/elementStyle';
+import { layoutElementText, TEXT_METRICS } from '../render/textLayout';
+import { shapeMinSize, shapeTextBox } from '../render/shapeGeometry';
+import { boundaryBottomPadding, boundaryLabelInkBox, boundaryLabelMinWidth } from '../render/boundaryLabel';
+import {
+  DEPLOYMENT_GROUP_MARGIN,
+  deploymentIconSlot,
+  deploymentLabelInkBox,
+  deploymentLabelLineCount,
+  deploymentLabelMinWidth,
+  deploymentLabelReserve,
+  deploymentLabelText,
+  deploymentTypeLabel,
+  infrastructureTextBox,
+  isInfrastructureNode,
+  usesDeploymentNotation,
+  type DeploymentLabelText,
+} from '../render/deploymentNotation';
 
 type LayoutWarningReporter = (message: string) => void;
 
@@ -32,7 +53,7 @@ export interface LayoutSpacing {
  * nodesep/ranksep (px) per `c4x.layout.spacing` preset. `balanced` matches the
  * historical hardcoded values (60/80), so the default layout is unchanged.
  */
-const LAYOUT_SPACING_PRESETS: Record<LayoutSpacingPreset, LayoutSpacing> = {
+export const LAYOUT_SPACING_PRESETS: Readonly<Record<LayoutSpacingPreset, LayoutSpacing>> = {
   compact: { nodesep: 40, ranksep: 60 },
   balanced: { nodesep: 60, ranksep: 80 },
   spacious: { nodesep: 90, ranksep: 120 },
@@ -65,6 +86,59 @@ export function resolveLayoutSpacing(): LayoutSpacing {
  * larger ones keep the historical 50px. Deterministic and configuration-free —
  * same spirit as the `tighten` multiplier in layoutRecursive.
  */
+/** Options for one layout pass. */
+export interface LayoutOptions {
+  /**
+   * The theme the result will be drawn with. Its font decides where element
+   * text wraps and so how tall a box must be (#340). Defaults to the current
+   * theme, as SvgBuilder does, or classic where no theme manager is available.
+   */
+  theme?: C4Theme;
+  /**
+   * Let boxes grow in height for wrapped text (#340). Defaults to true, and
+   * growth still applies only to a diagram with no saved geometry (see
+   * hasSavedGeometry). False gives the pre-#340 sizes; tests compare the two.
+   */
+  growText?: boolean;
+  /**
+   * Node and rank separations. Defaults to the `c4x.layout.spacing` setting;
+   * headless callers pass the default preset explicitly (#353, #352).
+   */
+  spacing?: LayoutSpacing;
+}
+
+/**
+ * True when the view carries any saved geometry: an element with `$x`, `$y`
+ * or `locked` (inline, or merged from the sidecar layout file before layout),
+ * or a boundary with `$x`, `$y`, `$w` or `$h`. In such a diagram no box grows
+ * for wrapped text (#340 review): every size is the standard one, so the
+ * layout is exactly the growth-free layout and no saved position, frame edge
+ * or gap can change. Long text is cut to the box with an ellipsis and the full
+ * text in a tooltip instead.
+ */
+export function hasSavedGeometry(view: Pick<C4View, 'elements' | 'boundaries'>): boolean {
+  const saved = (metadata: Record<string, string | undefined> | undefined, keys: string[]): boolean =>
+    !!metadata && keys.some(key => metadata[key] !== undefined);
+  const walk = (elements: C4Element[]): boolean => elements.some(element =>
+    saved(element.metadata as Record<string, string | undefined> | undefined, ['x', 'y', 'locked'])
+    || (!!element.children && walk(element.children)));
+  return walk(view.elements)
+    || (view.boundaries ?? []).some(b => saved(b.metadata as Record<string, string | undefined> | undefined, ['x', 'y', 'w', 'h']));
+}
+
+/** The theme SvgBuilder would draw with when given none. */
+function defaultLayoutTheme(): C4Theme {
+  try {
+    // Loaded lazily: the theme manager reads VS Code settings, and this layout
+    // module also runs in standalone scripts without the VS Code runtime.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { themeManager } = require('../themes/ThemeManager') as { themeManager: { getCurrentTheme(): C4Theme } };
+    return themeManager.getCurrentTheme();
+  } catch {
+    return ClassicTheme;
+  }
+}
+
 export function resolveCanvasPadding(elementCount: number): number {
   return elementCount < 5 ? 30 : 50;
 }
@@ -105,6 +179,11 @@ export interface PositionedElement {
 
 export interface RoutedRelationship {
   id: string;
+  /**
+   * The drawn polyline (#419): first point on the source element's border,
+   * last on the target's, routed around unrelated elements, bidirectional
+   * offset applied. Empty when an endpoint is not in the view.
+   */
   points: Point[];
   relationship: C4Rel;
 }
@@ -114,7 +193,22 @@ export interface Point {
   y: number;
 }
 
+/** Layouts made with text growth that made some leaf taller than its base size (#340, #323). */
+const grewText = new WeakMap<object, boolean>();
+
 export class DagreLayoutEngine {
+  /** Side padding between a boundary frame and its contents (step 4.6). */
+  private static readonly boundaryPaddingX = 40;
+  /** Top padding of a boundary frame: room for its label (step 4.6). */
+  private static readonly boundaryPaddingTop = 60;
+
+  /**
+   * Deployment nodes drawn with a bottom-left label row in this layout (#326):
+   * element id -> the row's text and icon slot. Set per layout; empty unless
+   * the theme has `deploymentNotation`.
+   */
+  private deploymentRows = new Map<string, { text: DeploymentLabelText; iconSlot: number; reserve: number }>();
+
   constructor(private readonly reportWarning: LayoutWarningReporter = reportLayoutWarning) {}
 
   /**
@@ -126,24 +220,137 @@ export class DagreLayoutEngine {
       case 'SoftwareSystem': return { width: 260, height: 140 };
       case 'Container': return { width: 240, height: 130 };
       case 'Component': return { width: 220, height: 120 };
-      case 'DeploymentNode': return { width: 300, height: 200 };
+      // An infrastructure node (#326) is a single service box, container sized.
+      case 'DeploymentNode': return isInfrastructureNode(element) ? { width: 240, height: 140 } : { width: 300, height: 200 };
       default: return { width: 260, height: 140 };
     }
   }
 
   /**
+   * The size an element has before text growth: its type's standard box, raised
+   * to the minimum its resolved shape needs so text stays inside the outline
+   * (#323). The theme rectangle, box, rounded box and cylinder add no minimum,
+   * so diagrams without a named shape keep their layout.
+   */
+  private getBaseSize(element: C4Element, theme: C4Theme, styles: ElementStyleContext): { width: number; height: number } {
+    const size = this.getStandardElementSize(element);
+    if (element.children && element.children.length > 0) {
+      return size; // a group's size comes from its children
+    }
+    const style = resolveElementStyle(element, theme, styles, { isKnownSprite: isBundledSpriteId });
+    // A deployment node in the notation (#326) draws its icon beside or under its text, not top centre.
+    const notation = usesDeploymentNotation(theme, element, style.outline);
+    const min = shapeMinSize(style.outline, !notation && !!(style.iconLayout && style.icon));
+    return { width: Math.max(size.width, min.width), height: Math.max(size.height, min.height) };
+  }
+
+  /**
+   * Size of a leaf element: its base size, taller when its wrapped text needs
+   * more room (#340). Width never changes. Text that fits on one line keeps the
+   * base size, so diagrams whose text fits lay out exactly as before. Growth is
+   * bounded by the text caps in layoutElementText (label 3 lines, technology 2,
+   * description 6), and applies only to a diagram with no saved geometry
+   * (hasSavedGeometry). A named shape's text area is its inner box (#323), so
+   * its growth is solved against the box at the grown height.
+   */
+  private getElementSize(element: C4Element, theme: C4Theme, styles: ElementStyleContext): { width: number; height: number } {
+    const size = this.getBaseSize(element, theme, styles);
+    if (element.children && element.children.length > 0) {
+      return size; // a group's size comes from its children
+    }
+    const style = resolveElementStyle(element, theme, styles, { isKnownSprite: isBundledSpriteId });
+    const named = style.outline === 'person' || style.outline === 'bucket' || style.outline === 'folder'
+      || style.outline === 'webBrowser' || style.outline === 'terminal';
+    // Deployment notation (#326): label row bottom left, or text above a centred icon.
+    const notation = usesDeploymentNotation(theme, element, style.outline);
+    const infrastructure = notation && isInfrastructureNode(element);
+    const labelRow = notation && !infrastructure ? { iconSlot: deploymentIconSlot(style.icon) } : undefined;
+    let height = size.height;
+    // The box's chrome (head, lid, tab, bar) can change with height: iterate to a fixed point.
+    for (let pass = 0; pass < 4; pass++) {
+      const text = layoutElementText({
+        x: 0,
+        y: 0,
+        width: size.width,
+        height,
+        textBox: named ? shapeTextBox(style.outline, 0, 0, size.width, height)
+          : infrastructure ? infrastructureTextBox(0, 0, size.width, height) : undefined,
+        iconLayout: !notation && !!(style.iconLayout && style.icon),
+        cylinder: style.outline === 'cylinder',
+        fontFamily: theme.styles.fontFamily,
+        label: element.label,
+        technology: element.technology,
+        typeLabel: theme.showElementType ? deploymentTypeLabel(element) : undefined,
+        description: element.description,
+        ...(labelRow ? { labelRow } : {}),
+      }, TEXT_METRICS);
+      const next = Math.max(size.height, text.requiredHeight);
+      if (next <= height) { break; }
+      height = next;
+    }
+    return { width: size.width, height };
+  }
+
+  /**
+   * True when a layout made with growth has a leaf taller than its standard size:
+   * the same answer as wouldGrowText for that view and theme, read off the
+   * layout instead of laying the text out again (#340 review 5, render cost).
+   */
+  layoutGrewText(layout: LayoutResult): boolean {
+    return grewText.get(layout) === true;
+  }
+
+  /**
+   * True when laying `view` out with growth would make some box taller than its
+   * standard size (#340): no saved geometry, and some leaf's wrapped text needs
+   * more than its standard height. The preview tells the webview, which then
+   * asks for the standard-size layout before edit mode starts.
+   */
+  wouldGrowText(view: C4View, options: LayoutOptions = {}): boolean {
+    if (options.growText === false || hasSavedGeometry(view)) {
+      return false;
+    }
+    const theme = options.theme ?? defaultLayoutTheme();
+    const styles: ElementStyleContext = { rules: view.elementStyles ?? [], accentSlots: {} };
+    const walk = (elements: C4Element[]): boolean => elements.some(element =>
+      (element.children && element.children.length > 0)
+        ? walk(element.children)
+        : this.getElementSize(element, theme, styles).height > this.getBaseSize(element, theme, styles).height);
+    return walk(view.elements);
+  }
+
+  /**
    * Layout the view using a recursive strategy to support nested directions and manual positioning.
    */
-  layoutSync(view: C4View): LayoutResult {
+  layoutSync(view: C4View, options: LayoutOptions = {}): LayoutResult {
+    const theme = options.theme ?? defaultLayoutTheme();
+    // Shapes (icon, cylinder) come from the theme and the view's element styles.
+    const styles: ElementStyleContext = { rules: view.elementStyles ?? [], accentSlots: {} };
+
     // 1. Build a Unified Hierarchy (Nodes + Boundaries)
     // We treat Boundaries as "Cluster Nodes" that contain other nodes.
-    const hierarchy = this.buildHierarchy(view);
+    // Boxes grow for wrapped text only when nothing in the diagram is pinned or
+    // framed by hand: Dagre then places everything from the grown sizes.
+    const grow = options.growText !== false && !hasSavedGeometry(view);
+    let grew = false;
+    // Nested deployment nodes with a bottom-left label row (#326).
+    this.deploymentRows = this.collectDeploymentRows(view, theme, styles);
+    const hierarchy = this.buildHierarchy(view, element => {
+      if (!grow) {
+        return this.getBaseSize(element, theme, styles);
+      }
+      const size = this.getElementSize(element, theme, styles);
+      if (size.height > this.getBaseSize(element, theme, styles).height) {
+        grew = true;
+      }
+      return size;
+    });
 
     // 2. Recursive Layout (Bottom-Up)
     // This calculates sizes for clusters based on their inner layout.
     // And determines relative positions of children within their parent.
     // Node/rank separations come from the `c4x.layout.spacing` preset.
-    this.layoutRecursive(hierarchy, view.relationships, resolveLayoutSpacing());
+    this.layoutRecursive(hierarchy, view.relationships, options.spacing ?? resolveLayoutSpacing(), theme);
 
     // 3. Flatten and Calculate Absolute Positions
     const elements: PositionedElement[] = [];
@@ -181,7 +388,7 @@ export class DagreLayoutEngine {
     });
 
     // 4.5. Overlap Prevention & Coordinate Nudging
-    this.preventOverlapsAndClipLabels(elements, view.relationships, this.buildAncestorMap(view));
+    this.preventOverlapsAndClipLabels(elements, view.relationships, this.buildAncestorMap(view), !!theme.deploymentNotation);
 
     // 4.5.5. Honor manual boundary geometry ($x/$y/$w/$h) authored on subgraphs.
     // This must run before auto-wrapping so that a manual position shifts the
@@ -191,26 +398,17 @@ export class DagreLayoutEngine {
 
     // 4.6. Adjust boundaries to wrap their nested elements
     if (boundaries && boundaries.length > 0) {
-      this.adjustBoundariesToContainChildren(elements, boundaries);
+      this.adjustBoundariesToContainChildren(elements, boundaries, theme);
     }
 
     // 4.7. Re-wrap nested element groups around manually positioned descendants
-    this.rewrapNestedGroups(elements, view);
+    // (and, in the deployment notation, around any descendant the nudge moved, #326)
+    this.rewrapNestedGroups(elements, view, !!theme.deploymentNotation);
 
     // 4.8. Normalize origin: re-wrapping can push a parent container left of
     // or above the canvas origin (child.x - pad < 0). The SVG viewBox and the
     // webview payload validator both require non-negative coordinates.
     this.normalizeOrigin(elements, boundaries);
-
-    // 5. Route Relationships
-    // For the final diagram, we need edge points.
-    // Since we composited the layout, we don't have a single global graph with all points.
-    // We can use a final global Dagre pass with "fixed" node positions to route edges?
-    // OR we can just draw straight lines for now (simpler for V1 of strict nested).
-    // Dagre's edge routing is nice. 
-    // Let's try to run a "Routing Only" pass on the valid global graph?
-    // That involves creating a graph with nodes at fixed positions.
-    const relationships = this.routeEdges(view.relationships, elements);
 
     // Calculate bounding box
     let width = 0;
@@ -223,17 +421,54 @@ export class DagreLayoutEngine {
       width = Math.max(width, b.x + b.width);
       height = Math.max(height, b.y + b.height);
     });
+    // Adaptive breathing room on each dimension: 30px for small diagrams
+    // (< 5 elements), 50px otherwise (was a flat 50px — audit finding:
+    // excessive canvas white space)
+    const canvasWidth = width + resolveCanvasPadding(elements.length);
+    const canvasHeight = height + resolveCanvasPadding(elements.length);
 
-    return {
+    // 5. Route Relationships (#419): every edge gets the polyline that is
+    // drawn, from the source border to the target border, around unrelated
+    // boxes, inside the canvas. Node positions are final at this point.
+    const relationships = this.routeEdges(view.relationships, elements, { width: canvasWidth, height: canvasHeight }, boundaries, theme);
+
+    const result: LayoutResult = {
       elements,
       relationships,
       boundaries,
-      // Adaptive breathing room on each dimension: 30px for small diagrams
-      // (< 5 elements), 50px otherwise (was a flat 50px — audit finding:
-      // excessive canvas white space)
-      width: width + resolveCanvasPadding(elements.length),
-      height: height + resolveCanvasPadding(elements.length)
+      width: canvasWidth,
+      height: canvasHeight
     };
+    grewText.set(result, grew);
+    return result;
+  }
+
+  /**
+   * Nested deployment nodes the notation draws with a bottom-left label row
+   * (#326): every DeploymentNode with children whose outline is the theme
+   * rectangle or a box, when the theme has `deploymentNotation`. Infrastructure
+   * nodes are leaves and never listed. The reserve is filled in by
+   * layoutRecursive once the node's width is known.
+   */
+  private collectDeploymentRows(view: C4View, theme: C4Theme, styles: ElementStyleContext): Map<string, { text: DeploymentLabelText; iconSlot: number; reserve: number }> {
+    const rows = new Map<string, { text: DeploymentLabelText; iconSlot: number; reserve: number }>();
+    if (!theme.deploymentNotation) {
+      return rows;
+    }
+    const walk = (elements: C4Element[]): void => {
+      for (const element of elements) {
+        if (element.children && element.children.length > 0) {
+          const style = resolveElementStyle(element, theme, styles, { isKnownSprite: isBundledSpriteId });
+          if (usesDeploymentNotation(theme, element, style.outline) && !isInfrastructureNode(element)) {
+            const iconSlot = deploymentIconSlot(style.icon);
+            rows.set(element.id, { text: deploymentLabelText(element, theme), iconSlot, reserve: deploymentLabelReserve(2, iconSlot) });
+          }
+          walk(element.children);
+        }
+      }
+    };
+    walk(view.elements);
+    return rows;
   }
 
   /**
@@ -256,7 +491,7 @@ export class DagreLayoutEngine {
     return map;
   }
 
-  private preventOverlapsAndClipLabels(elements: PositionedElement[], relationships: C4Rel[], ancestors?: Map<string, Set<string>>): void {
+  private preventOverlapsAndClipLabels(elements: PositionedElement[], relationships: C4Rel[], ancestors?: Map<string, Set<string>>, labelsInsideGroups = false): void {
     const padding = 30; // Minimum distance between elements
     const labelPadding = 15; // Minimum distance between elements and labels
     const maxIterations = 50;
@@ -386,6 +621,14 @@ export class DagreLayoutEngine {
         elements.forEach(el => {
           // If the element is src or dst, we don't nudge it away from its own relationship label midpoint.
           if (el.id === src.id || el.id === dst.id) {
+            return;
+          }
+          // Deployment notation (#326): neither a node that holds other nodes
+          // nor anything inside one is pushed by a label estimate. Moving a
+          // node's box alone pulls it off its children; moving a child makes
+          // its parent re-wrap into its siblings. The renderer places the
+          // label clear of node outlines and label rows instead.
+          if (labelsInsideGroups && ((el.element.children?.length ?? 0) > 0 || (ancestors?.get(el.id)?.size ?? 0) > 0)) {
             return;
           }
 
@@ -556,7 +799,7 @@ export class DagreLayoutEngine {
    * Groups with no manual positioning keep their computed geometry exactly
    * (auto-layout output is unchanged).
    */
-  private rewrapNestedGroups(elements: PositionedElement[], view: C4View): void {
+  private rewrapNestedGroups(elements: PositionedElement[], view: C4View, always = false): void {
     const byId = new Map(elements.map(el => [el.id, el]));    const headerPad = 40; // space for the group label (mirrors layoutRecursive)
     const pad = 30;       // side/bottom breathing room
 
@@ -570,10 +813,12 @@ export class DagreLayoutEngine {
       if (!element.children || element.children.length === 0) {
         return;
       }
-      if (!subtreeHasManualPosition(element)) {
+      if (!always && !subtreeHasManualPosition(element)) {
         return;
       }
       const parent = byId.get(element.id);
+      // A bottom-left label row (#326) is reserved under the children, not on top.
+      const bottomPad = this.deploymentRows.get(element.id)?.reserve ?? pad;
       if (!parent) {
         return;
       }
@@ -587,7 +832,7 @@ export class DagreLayoutEngine {
           minX = Math.min(minX, positioned.x - pad);
           minY = Math.min(minY, positioned.y - headerPad);
           maxX = Math.max(maxX, positioned.x + positioned.width + pad);
-          maxY = Math.max(maxY, positioned.y + positioned.height + pad);
+          maxY = Math.max(maxY, positioned.y + positioned.height + bottomPad);
         }
         (el.children ?? []).forEach(include);
       };
@@ -661,16 +906,45 @@ export class DagreLayoutEngine {
       }
     };
 
+    // An authored $x/$y names the frame's DISPLAYED top-left, so the contents
+    // move by the distance from where the frame would be painted without it:
+    // the origin step 4.6 wraps around the contents, not the raw cluster
+    // origin from the recursive layout. The editor drags from the painted
+    // frame; measuring from the raw origin moved the contents by the
+    // difference on the first pin (#346). A pinned descendant (frame or node)
+    // is painted at its own coordinate, so that is what it contributes.
+    const wrappedOrigin = (b: PositionedBoundary): { x: number; y: number } => {
+      let minX = Infinity;
+      let minY = Infinity;
+      for (const el of childElements.get(b.id) ?? []) {
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y);
+      }
+      for (const child of childBoundaries.get(b.id) ?? []) {
+        const origin = wrappedOrigin(child);
+        minX = Math.min(minX, boundaryPinnedX(child) ? parseFloat(child.boundary.metadata!.x!) : origin.x);
+        minY = Math.min(minY, boundaryPinnedY(child) ? parseFloat(child.boundary.metadata!.y!) : origin.y);
+      }
+      if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+        return { x: b.x, y: b.y };
+      }
+      return {
+        x: minX - DagreLayoutEngine.boundaryPaddingX,
+        y: minY - DagreLayoutEngine.boundaryPaddingTop,
+      };
+    };
+
     for (const b of boundaries) {
       const metadata = b.boundary.metadata;
       if (!metadata) {
         continue;
       }
+      const origin = wrappedOrigin(b);
 
       if (metadata.x !== undefined) {
         const x = parseFloat(metadata.x);
         if (Number.isFinite(x)) {
-          const dx = x - b.x;
+          const dx = x - origin.x;
           b.x = x;
           b.manualX = true;
           for (const el of childElements.get(b.id) ?? []) {
@@ -687,7 +961,7 @@ export class DagreLayoutEngine {
       if (metadata.y !== undefined) {
         const y = parseFloat(metadata.y);
         if (Number.isFinite(y)) {
-          const dy = y - b.y;
+          const dy = y - origin.y;
           b.y = y;
           b.manualY = true;
           for (const el of childElements.get(b.id) ?? []) {
@@ -721,7 +995,7 @@ export class DagreLayoutEngine {
     }
   }
 
-  private adjustBoundariesToContainChildren(elements: PositionedElement[], boundaries: PositionedBoundary[]): void {
+  private adjustBoundariesToContainChildren(elements: PositionedElement[], boundaries: PositionedBoundary[], theme: C4Theme): void {
     const boundaryById = new Map(boundaries.map(b => [b.id, b]));
 
     // Process child-first: a parent frame must measure its nested child frames
@@ -774,12 +1048,19 @@ export class DagreLayoutEngine {
         if (b.manualHeight !== undefined) {
           b.height = b.manualHeight;
         }
+        // An empty frame still has to hold a bottom-left label (#324).
+        const labelMinWidth = boundaryLabelMinWidth(theme, b.boundary.label, b.boundary.boundaryType);
+        if (labelMinWidth > 0) {
+          b.width = Math.max(b.width, labelMinWidth);
+          b.height = Math.max(b.height, boundaryBottomPadding(theme, b.boundary.boundaryType));
+        }
         return;
       }
 
-      const paddingX = 40;
-      const paddingTop = 60; // Space for label/header
-      const paddingBottom = 40;
+      const paddingX = DagreLayoutEngine.boundaryPaddingX;
+      const paddingTop = DagreLayoutEngine.boundaryPaddingTop; // Space for label/header
+      // Room under the children for a bottom-left label (#324); 40 otherwise.
+      const paddingBottom = boundaryBottomPadding(theme, b.boundary.boundaryType);
 
       // Compute the bounding box of the children in the boundary's coordinate
       // space. If the boundary has a manual position, b.x/b.y are already fixed
@@ -823,6 +1104,8 @@ export class DagreLayoutEngine {
       b.width = b.manualWidth !== undefined
         ? Math.max(b.manualWidth, requiredWidth)
         : requiredWidth;
+      // A bottom-left label is never wider than its frame (#324); 0 for every other theme.
+      b.width = Math.max(b.width, boundaryLabelMinWidth(theme, b.boundary.label, b.boundary.boundaryType));
       b.height = b.manualHeight !== undefined
         ? Math.max(b.manualHeight, requiredHeight)
         : requiredHeight;
@@ -849,7 +1132,7 @@ export class DagreLayoutEngine {
     return topLevelCount <= 4 ? 'LR' : 'TB';
   }
 
-  private buildHierarchy(view: C4View): HierarchyNode {
+  private buildHierarchy(view: C4View, sizeOf: (element: C4Element) => { width: number; height: number }): HierarchyNode {
     const rootDirection = this.autoDetectDirection(view);
 
     // Root Node
@@ -873,8 +1156,8 @@ export class DagreLayoutEngine {
         isGroup: !!(elem.children && elem.children.length > 0),
         width: 0, height: 0
       };
-      // Apply standard size
-      const size = this.getStandardElementSize(elem);
+      // Standard size, raised to the shape's minimum, taller for wrapped text (#340, #323)
+      const size = sizeOf(elem);
       node.width = size.width;
       node.height = size.height;
 
@@ -961,11 +1244,11 @@ export class DagreLayoutEngine {
     return root;
   }
 
-  private layoutRecursive(node: HierarchyNode, allRelationships: C4Rel[], spacing: LayoutSpacing) {
+  private layoutRecursive(node: HierarchyNode, allRelationships: C4Rel[], spacing: LayoutSpacing, theme: C4Theme) {
     // 1. Layout Children First (Bottom-Up)
     node.children.forEach(child => {
       if (child.isGroup) {
-        this.layoutRecursive(child, allRelationships, spacing);
+        this.layoutRecursive(child, allRelationships, spacing, theme);
       }
     });
 
@@ -1034,6 +1317,25 @@ export class DagreLayoutEngine {
       const details = g.graph();
       node.width = (details.width || 0); // + padding? Dagre includes margins
       node.height = (details.height || 0);
+      // A bottom-left boundary label is never wider than its frame (#324): the
+      // parent places siblings by this width, so it must already include the label.
+      if (node.boundary) {
+        node.width = Math.max(node.width, boundaryLabelMinWidth(theme, node.boundary.label, node.boundary.boundaryType));
+      }
+
+      // Deployment notation (#326): a nested node's label row sits under its
+      // children. The node is at least as wide as the row on one line (children
+      // centred), and its bottom margin becomes the row's reserve.
+      const row = node.element ? this.deploymentRows.get(node.id) : undefined;
+      let rowShiftX = 0;
+      if (row) {
+        const minWidth = deploymentLabelMinWidth(theme, row.text, row.iconSlot);
+        if (minWidth > node.width) {
+          rowShiftX = (minWidth - node.width) / 2;
+          node.width = minWidth;
+        }
+        row.reserve = deploymentLabelReserve(deploymentLabelLineCount(theme, row.text, row.iconSlot, node.width), row.iconSlot);
+      }
 
       node.children.forEach(child => {
         const n = g.node(child.id);
@@ -1048,13 +1350,17 @@ export class DagreLayoutEngine {
 
         // If the group has a Label (Boundary/Node), we might need to offset content?
         // The graph margins handle some, but if we render a Label text, we need space.
-        if (node.boundary || node.element) {
+        if (row) {
+          child.relX += rowShiftX;
+        } else if (node.boundary || node.element) {
           // Add Header space
           child.relY += 40;
         }
       });
 
-      if (node.boundary || node.element) {
+      if (row) {
+        node.height = node.height - DEPLOYMENT_GROUP_MARGIN + row.reserve;
+      } else if (node.boundary || node.element) {
         node.height += 40; // Expand for Label
       }
     }
@@ -1113,25 +1419,76 @@ export class DagreLayoutEngine {
     });
   }
 
-  private routeEdges(rels: C4Rel[], elements: PositionedElement[]): RoutedRelationship[] {
-    // Simple direct routing for v1 of Recursive Layout
-    // Ideally we would do orthogonal routing here.
+  /**
+   * Route every relationship (#419). The obstacles of an edge are the leaf
+   * elements other than its endpoints and their descendants: a line may cross
+   * a boundary or a parent frame (deployment node, container with
+   * components) to reach a nested element, but never an unrelated box.
+   * Bidirectional pairs are routed with their lane offset, so `points` is
+   * exactly the polyline SvgBuilder draws.
+   */
+  private routeEdges(rels: C4Rel[], elements: PositionedElement[], bounds: { width: number; height: number }, boundaries: PositionedBoundary[], theme: C4Theme): RoutedRelationship[] {
     const elMap = new Map<string, PositionedElement>();
     elements.forEach(e => elMap.set(e.id, e));
+
+    // Positioned descendants of every element, from the model hierarchy.
+    const descendants = new Map<string, Set<string>>();
+    const collect = (element: C4Element): Set<string> => {
+      const cached = descendants.get(element.id);
+      if (cached) { return cached; }
+      const set = new Set<string>();
+      descendants.set(element.id, set);
+      for (const child of element.children ?? []) {
+        if (elMap.has(child.id)) { set.add(child.id); }
+        collect(child).forEach(id => set.add(id));
+      }
+      return set;
+    };
+    elements.forEach(e => collect(e.element));
+    const leaves = elements.filter(e => (descendants.get(e.id)?.size ?? 0) === 0);
+    const box = (e: PositionedElement): Box => ({ x: e.x, y: e.y, width: e.width, height: e.height });
+    // A bottom-left boundary label is ink no line may cross (#324); a top-left
+    // label has no box, so those themes route exactly as before.
+    const labelBoxes: Box[] = [];
+    for (const b of boundaries) {
+      const ink = boundaryLabelInkBox(theme, { x: b.x, y: b.y, width: b.width, height: b.height, label: b.boundary.label, boundaryType: b.boundary.boundaryType });
+      if (ink) { labelBoxes.push(ink); }
+    }
+    // A nested deployment node's label row (#326) is ink too, except for an
+    // edge that starts or ends at that node.
+    const rowBoxes: Array<{ id: string; box: Box }> = [];
+    for (const e of elements) {
+      const row = this.deploymentRows.get(e.id);
+      if (row && (descendants.get(e.id)?.size ?? 0) > 0) {
+        rowBoxes.push({ id: e.id, box: deploymentLabelInkBox(theme, box(e), row.text, row.iconSlot) });
+      }
+    }
+
+    // Bidirectional pairs (#140): each direction is routed with its lane
+    // offset, so the offset line is what is checked against boxes and canvas.
+    const pairs = findReversePairIds(rels.map(rel => ({ id: rel.id, relationship: rel })));
 
     return rels.map(rel => {
       const src = elMap.get(rel.from);
       const dst = elMap.get(rel.to);
       if (!src || !dst) { return { id: rel.id, relationship: rel, points: [] }; }
 
-      // Center-to-Center
-      const p1 = { x: src.x + src.width / 2, y: src.y + src.height / 2 };
-      const p2 = { x: dst.x + dst.width / 2, y: dst.y + dst.height / 2 };
+      const excluded = new Set<string>([src.id, dst.id]);
+      descendants.get(src.id)?.forEach(id => excluded.add(id));
+      descendants.get(dst.id)?.forEach(id => excluded.add(id));
+      const obstacles = [
+        ...leaves.filter(e => !excluded.has(e.id)).map(box),
+        ...labelBoxes,
+        ...rowBoxes.filter(r => r.id !== src.id && r.id !== dst.id).map(r => r.box),
+      ];
 
       return {
         id: rel.id,
         relationship: rel,
-        points: [p1, p2]
+        points: src === dst ? [] : routeAroundObstacles(box(src), box(dst), obstacles, {
+          bounds,
+          laneOffset: pairs.has(rel.id) ? BIDIRECTIONAL_EDGE_OFFSET : 0,
+        })
       };
     });
   }
@@ -1140,8 +1497,8 @@ export class DagreLayoutEngine {
    * Async layout wrapper for compatibility with existing code
    * Dagre layout is actually synchronous, this just wraps it in a Promise
    */
-  async layout(view: C4View): Promise<LayoutResult> {
-    return this.layoutSync(view);
+  async layout(view: C4View, options: LayoutOptions = {}): Promise<LayoutResult> {
+    return this.layoutSync(view, options);
   }
 }
 

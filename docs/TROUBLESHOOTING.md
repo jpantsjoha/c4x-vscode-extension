@@ -1,7 +1,7 @@
 # Troubleshooting Guide
 
-**Version**: 1.4.0
-**Last Updated**: 2026-05-03
+**Version**: 1.8.0
+**Last Updated**: 2026-11-13
 
 This guide helps you resolve common issues with the C4X extension.
 
@@ -93,9 +93,10 @@ This guide helps you resolve common issues with the C4X extension.
 **Solution**:
 
 ```bash
-brew install pnpm || true
-sudo chown -R "$USER:staff" ~/.npm
-pnpm install
+nvm use                          # Node version from .nvmrc
+corepack enable
+corepack prepare pnpm@10.18.3 --activate
+pnpm install --frozen-lockfile
 make build
 ```
 
@@ -105,7 +106,7 @@ make build
 
 - Ensure dev dependencies are installed: `pnpm install`
 - Run: `make test` (activates VS Code test runner)  
-- For E2E/visual tests, see `docs/ROADMAP.md` quality gates.
+- For the browser (Playwright) suite run `make test-e2e`; `make quick-check` and `make check` are the gates to pass before a pull request (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ---
 
@@ -115,9 +116,10 @@ make build
 
 **Solution**:
 
-1. **Open Developer Tools**: Use the **Help > Toggle Developer Tools** menu in VS Code to open the console.
-2. **Check for Errors**: Look for any red error messages in the console that might indicate what went wrong.
-3. **Report the Issue**: Please [file an issue on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension/issues) and include the error message and steps to reproduce it.
+1. **Check the C4X Output channel**: open **View > Output** and choose **C4X** in the dropdown. C4X logs preview and AI errors there, and it sends no telemetry.
+2. **Open Developer Tools**: Use the **Help > Toggle Developer Tools** menu in VS Code to open the console.
+3. **Check for Errors**: Look for any red error messages in the console that might indicate what went wrong.
+4. **Report the Issue**: Please [file an issue on GitHub](https://github.com/jpantsjoha/c4x-vscode-extension/issues) and include the error message and steps to reproduce it.
 
 ---
 

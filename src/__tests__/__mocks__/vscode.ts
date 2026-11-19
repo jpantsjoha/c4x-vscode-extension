@@ -22,8 +22,23 @@ export function setConfigurationValueForTests(key: string, value: unknown): void
     }
 }
 
+type ConfigurationListener = (event: { affectsConfiguration: (section: string) => boolean }) => void;
+const configurationListeners = new Set<ConfigurationListener>();
+
+/** Fire a configuration change that affects the given sections. */
+export function fireConfigurationChangeForTests(...sections: string[]): void {
+    for (const listener of [...configurationListeners]) {
+        listener({ affectsConfiguration: (section: string) => sections.some(s => s === section || s.startsWith(section + '.')) });
+    }
+}
+
 export const workspace = {
+    onDidChangeConfiguration: (listener: ConfigurationListener) => {
+        configurationListeners.add(listener);
+        return { dispose: () => { configurationListeners.delete(listener); } };
+    },
     workspaceFolders: undefined as unknown,
+    workspaceFile: undefined as unknown,
     getConfiguration: (_section?: string, _scope?: unknown) => ({
         get: (key: string, defaultValue?: unknown) => {
             if (key === 'markdown.previewScale' && markdownPreviewScale !== undefined) {
@@ -58,7 +73,17 @@ export function clearRecordedInformationMessages(): void {
     informationMessages.length = 0;
 }
 
+export enum ColorThemeKind {
+    Light = 1,
+    Dark = 2,
+    HighContrast = 3,
+    HighContrastLight = 4,
+}
+
 export const window = {
+    activeColorTheme: { kind: ColorThemeKind.Light } as { kind: ColorThemeKind },
+    onDidChangeActiveColorTheme: (_listener: unknown) => ({ dispose: () => undefined }),
+    showQuickPick: async (_items: unknown, _options?: unknown): Promise<unknown> => undefined,
     showWarningMessage: () => undefined,
     showErrorMessage: () => undefined,
     showInformationMessage: (message?: string) => {
@@ -117,4 +142,34 @@ export class Diagnostic {
     public source?: string;
 
     constructor(public range: Range, public message: string, public severity: DiagnosticSeverity = DiagnosticSeverity.Error) {}
+}
+
+export enum CompletionItemKind {
+    Property = 9,
+    Module = 8,
+    Value = 11,
+    EnumMember = 19,
+    File = 16,
+    Folder = 18,
+}
+
+export class MarkdownString {
+    constructor(public value: string = '') {}
+}
+
+export class SnippetString {
+    constructor(public value: string = '') {}
+}
+
+export class CompletionItem {
+    public detail?: string;
+    public documentation?: MarkdownString | string;
+    public insertText?: string | SnippetString;
+    public range?: Range;
+    public filterText?: string;
+    public sortText?: string;
+    public commitCharacters?: string[];
+    public command?: { title: string; command: string };
+
+    constructor(public label: string, public kind?: CompletionItemKind) {}
 }

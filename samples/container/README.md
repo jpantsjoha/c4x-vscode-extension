@@ -88,3 +88,9 @@ graph TB
     ContentAgent -->|Uses| LLMProvider
     SchedulingAgent -->|Publishes to| SocialMedia
 ```
+
+## Long text
+
+[`long-text-wrapping.c4x`](long-text-wrapping.c4x) uses the full sentences from the c4model.com
+Internet Banking System example. Text wider than its box wraps inside it and the box grows
+taller; see [long text](../../docs/c4x-syntax.md#long-text-wraps-inside-the-element) in the syntax guide.

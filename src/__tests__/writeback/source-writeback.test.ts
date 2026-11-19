@@ -568,25 +568,47 @@ describe('Round-trip preservation and deterministic multi-element edits', () => 
             assert.strictEqual(parser.parse(mutated).elements[0].description, 'New Description');
         });
 
-        it('adds description and initializes technology empty string if missing', () => {
+        it('adds a Person description as its third argument, with no empty technology slot (#420)', () => {
             const source = 'graph TB\nPerson(User, "User Name")';
             const ref = elementRef(source, 'User');
             const edits = planElementDescriptionUpdate(source, ref, 'Added Description');
             assert.strictEqual(edits.length, 1);
             const mutated = applyBoundedEdits(source, edits);
-            assert.ok(mutated.includes('Person(User, "User Name", "", "Added Description")'));
+            assert.ok(mutated.includes('Person(User, "User Name", "Added Description")'));
+            assert.strictEqual(parser.parse(mutated).elements[0].description, 'Added Description');
+            assert.strictEqual(parser.parse(mutated).elements[0].technology, undefined);
+        });
+
+        it('adds a Container description and initializes technology empty string if missing', () => {
+            const source = 'graph TB\nContainer(Api, "API")';
+            const ref = elementRef(source, 'Api');
+            const edits = planElementDescriptionUpdate(source, ref, 'Added Description');
+            assert.strictEqual(edits.length, 1);
+            const mutated = applyBoundedEdits(source, edits);
+            assert.ok(mutated.includes('Container(Api, "API", "", "Added Description")'));
             assert.strictEqual(parser.parse(mutated).elements[0].description, 'Added Description');
             assert.strictEqual(parser.parse(mutated).elements[0].technology, '');
         });
 
-        it('adds description when technology is already present', () => {
-            const source = 'graph TB\nPerson(User, "User Name", "Tech Stack")';
-            const ref = elementRef(source, 'User');
+        it('adds description when a Container technology is already present', () => {
+            const source = 'graph TB\nContainer(Api, "API", "Tech Stack")';
+            const ref = elementRef(source, 'Api');
             const edits = planElementDescriptionUpdate(source, ref, 'Added Description');
             assert.strictEqual(edits.length, 1);
             const mutated = applyBoundedEdits(source, edits);
-            assert.ok(mutated.includes('Person(User, "User Name", "Tech Stack", "Added Description")'));
+            assert.ok(mutated.includes('Container(Api, "API", "Tech Stack", "Added Description")'));
             assert.strictEqual(parser.parse(mutated).elements[0].description, 'Added Description');
+        });
+
+        it('replaces a Person description written as its third argument (#420)', () => {
+            const source = 'graph TB\nPerson(User, "User Name", "Old Description")';
+            const ref = elementRef(source, 'User');
+            const edits = planElementDescriptionUpdate(source, ref, 'New Description');
+            assert.strictEqual(edits.length, 1);
+            const mutated = applyBoundedEdits(source, edits);
+            assert.ok(mutated.includes('Person(User, "User Name", "New Description")'));
+            assert.strictEqual(parser.parse(mutated).elements[0].description, 'New Description');
+            assert.strictEqual(parser.parse(mutated).elements[0].technology, undefined);
         });
 
         it('rejects bracket syntax elements since they do not support description parameters', () => {

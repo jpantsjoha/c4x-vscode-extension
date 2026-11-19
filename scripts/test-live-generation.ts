@@ -225,6 +225,35 @@ async function checkTextModel(key: string, model: string, role: string): Promise
     }
 }
 
+/**
+ * Generation follows the notation (#330): ask for a container view with a data
+ * store through the real prompt builder; the answer must parse, lint clean and
+ * hold at least one element with a data store `$shape`. One attempt, as above.
+ */
+async function checkShapedDataStore(key: string, model: string, role: string): Promise<void> {
+    try {
+        const { buildGenerationPrompt } = await import('../src/ai/PromptBuilder');
+        const { shapedDataStoreProblems } = await import('../src/ai/shapedStoreCheck');
+        const prompt = await buildGenerationPrompt(
+            [],
+            'A container view of an online shop: a React web app, an order API in Java and a PostgreSQL database that stores orders.',
+            { guidance: 'built-in' },
+        );
+        const executeWithRetry = loadExecuteWithRetry();
+        const call = await withTimeout(
+            clientWithDeadline(key).then(client => executeWithRetry(client, model, prompt, 1, 1, new C4XParser())),
+        );
+        if (!call.ok) {
+            results.push({ model, role, ok: false, detail: call.detail });
+            return;
+        }
+        const problems = shapedDataStoreProblems(call.value);
+        results.push({ model, role, ok: problems.length === 0, detail: problems.length === 0 ? 'shaped data store, parses and lints clean' : problems[0].slice(0, 90) });
+    } catch (error) {
+        results.push({ model, role, ok: false, detail: error instanceof Error ? error.message.slice(0, 90) : String(error) });
+    }
+}
+
 /** An image model must return actual image bytes, not a text apology. */
 async function checkImageModel(key: string, model: string, role: string): Promise<void> {
     try {
@@ -278,6 +307,7 @@ async function main(): Promise<void> {
     await checkTextModel(key, DEFAULT_MODEL, 'default text');
     await checkTextModel(key, PRO_MODEL, 'failover text');
     await checkTextModel(key, LITE_MODEL, 'budget text');
+    await checkShapedDataStore(key, DEFAULT_MODEL, 'shaped store');
     await checkImageModel(key, DEFAULT_IMAGE_MODEL, 'default image');
     await checkImageModel(key, PRO_IMAGE_MODEL, 'pro image');
     await checkImageModel(key, LITE_IMAGE_MODEL, 'lite image');

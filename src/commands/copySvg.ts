@@ -9,7 +9,7 @@ import { ClipboardExporter } from '../export/ClipboardExporter';
 
 export async function copySvgCommand(): Promise<void> {
     // Get current SVG from preview panel
-    const svg = PreviewPanel.getCurrentSvg?.();
+    const svg = PreviewPanel.getCurrentExportSvg?.();
 
     if (!svg) {
         const action = await vscode.window.showErrorMessage(

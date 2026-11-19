@@ -12,6 +12,7 @@ import * as os from 'os';
 import { HtmlExporter } from './HtmlExporter';
 import MarkdownIt from 'markdown-it';
 import { c4xPlugin } from '../markdown/c4xPlugin';
+import { themeManager } from '../themes/ThemeManager';
 
 export class PdfExporter {
     private htmlExporter: HtmlExporter;
@@ -80,7 +81,7 @@ export class PdfExporter {
         });
         // Keep diagrams at intrinsic size for print — c4x.markdown.previewScale
         // is preview-only (#128).
-        c4xPlugin(md, { applyPreviewScale: false });
+        c4xPlugin(md, { applyPreviewScale: false, theme: () => themeManager.getExportTheme() });
 
         const bodyHtml = md.render(markdown);
 

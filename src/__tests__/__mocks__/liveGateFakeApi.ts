@@ -43,6 +43,9 @@ const PNG = Buffer.concat([
 
 const C4X = '```c4x\n%%{ c4: system-context }%%\ngraph TB\n    User[Customer<br/>Person]\n    App[Banking System<br/>Software System]\n    User -->|Uses| App\n```';
 
+/** The answer to the notation case (#330): a container view with a shaped data store. */
+const C4X_SHAPED = '```c4x\n%%{ c4: container }%%\ngraph TB\n    Person(shopper, "Shopper", "Buys goods")\n    Container(api, "Order API", "Java", "Takes orders")\n    ContainerDb(db, "Orders", "PostgreSQL", "Stores orders", $shape="Cylinder")\n    shopper -->|Orders through| "HTTPS" api\n    api -->|Reads and writes orders in| "JDBC" db\n```';
+
 globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     const headers = new Headers(init?.headers);
@@ -94,7 +97,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
             });
         });
     }
-    const part = model.includes('-image') ? { inlineData: { mimeType: 'image/png', data: PNG } } : { text: C4X };
+    const part = model.includes('-image') ? { inlineData: { mimeType: 'image/png', data: PNG } } : { text: String(init?.body ?? '').includes('container view of an online shop') ? C4X_SHAPED : C4X };
     return json(200, { candidates: [{ content: { role: 'model', parts: [part] }, finishReason: 'STOP' }] });
 }) as typeof fetch;
 

@@ -1,0 +1,18 @@
+%%{ c4: container }%%
+graph TB
+    Container(arabic, "نظام إدارة المدفوعات للعملاء", "Java", "يعالج المدفوعات")
+    Container(hebrew, "מערכת ניהול תשלומים ללקוחות", "Java", "מעבד תשלומים")
+    Container(thai, "ระบบจัดการการชำระเงิน", "Java", "ประมวลผลการชำระเงิน")
+    Container(devanagari, "भुगतान प्रबंधन प्रणाली", "Java", "भुगतान संसाधित करता है")
+    Container(greek, "Σύστημα πληρωμών", "Java", "Επεξεργάζεται πληρωμές")
+    Container(cyrillic, "Платёжная система", "Java", "Обрабатывает платежи")
+    Container(cjk, "支付管理系统", "Java", "处理客户的付款")
+    Container(hangul, "결제 관리 시스템", "Java", "고객 결제를 처리합니다")
+    Container(vietnamese, "Hệ thống thanh toán", "Java", "Xử lý các khoản thanh toán")
+    Container(romanian, "Sistem de plăți și facturări", "Java", "Procesează plățile")
+    Container(emoji, "Payments 🚀 👩🏽‍💻 🇬🇧", "Java", "Ships ✅ every day")
+    arabic -->|Calls| hebrew
+    thai -->|Calls| devanagari
+    greek -->|Calls| cyrillic
+    cjk -->|Calls| hangul
+    vietnamese -->|Calls| romanian

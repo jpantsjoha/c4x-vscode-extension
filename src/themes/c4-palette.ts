@@ -76,3 +76,63 @@ export const C4_ARROW_TEXT = '#707070';
 
 /** Default diagram background */
 export const C4_BACKGROUND = '#FFFFFF';
+
+// ===========================================================================
+// c4-model theme palette (#321, notation decision #320)
+//
+// Sampled 2026-11-14 from the example diagrams and keys on c4model.com
+// (CC BY 4.0). c4model.com states the C4 model is notation independent; these
+// values match its published examples, not a standard. White fills; outline
+// and text share one colour per element.
+// ===========================================================================
+
+/** White fill used for every c4-model element. */
+export const C4_MODEL_FILL = '#FFFFFF';
+/** Person outline and text - green. 5.15:1 on white. */
+export const C4_MODEL_PERSON = '#297E06';
+/** In-scope software system, container and component outline and text - blue. 5.62:1 on white. */
+export const C4_MODEL_INTERNAL = '#1168BD';
+/** Relationship line, relationship label, title and caption text - dark grey. 9.74:1 on white. */
+export const C4_MODEL_NEUTRAL = '#444444';
+/** System boundary outline and label - the in-scope blue, solid. */
+export const C4_MODEL_BOUNDARY = C4_MODEL_INTERNAL;
+/** Diagram background. */
+export const C4_MODEL_BACKGROUND = '#FFFFFF';
+
+/**
+ * Ordered external-system accents: red, orange, teal, purple.
+ * `text` is omitted where the stroke reads at WCAG AA (4.5:1) on white and set
+ * to a darker tone of the same hue where it does not:
+ *   - #ED8609 is 2.62:1 on white -> text #B35F00 (4.61:1)
+ *   - #1A849C is 4.35:1 on white -> text #197F96 (4.65:1), same hue scaled
+ * Full contrast work is #329.
+ */
+export const C4_MODEL_EXTERNAL_ACCENTS: ReadonlyArray<{ readonly stroke: string; readonly text?: string }> = [
+    { stroke: '#BF101D' },                    // 6.35:1 on white
+    { stroke: '#ED8609', text: '#B35F00' },
+    { stroke: '#1A849C', text: '#197F96' },
+    { stroke: '#8411BD' },                    // 7.51:1 on white
+];
+
+// ---------------------------------------------------------------------------
+// c4-model dark variant. Chosen for this repository, not sampled: the same
+// hues mixed toward white until each clears about 6:1 on #1E1E1E (VS Code's
+// dark editor background), so text reads at AA with margin. Fill equals the
+// background ("no fill"). Contrast figures are against #1E1E1E.
+// ---------------------------------------------------------------------------
+
+/** Dark background and element fill. */
+export const C4_MODEL_DARK_BACKGROUND = '#1E1E1E';
+/** Person, dark. 6.05:1. */
+export const C4_MODEL_DARK_PERSON = '#72AA5B';
+/** In-scope system, container, component and boundary, dark. 6.03:1. */
+export const C4_MODEL_DARK_INTERNAL = '#69A0D5';
+/** Relationship, title and caption text, dark. 6.07:1. */
+export const C4_MODEL_DARK_NEUTRAL = '#9C9C9C';
+/** Ordered external accents, dark: 6.12:1, 6.36:1, 6.02:1, 6.11:1. */
+export const C4_MODEL_DARK_EXTERNAL_ACCENTS: ReadonlyArray<{ readonly stroke: string; readonly text?: string }> = [
+    { stroke: '#DE8389' },
+    { stroke: '#ED8609' },
+    { stroke: '#5AA6B8' },
+    { stroke: '#C086DD' },
+];

@@ -210,3 +210,34 @@ describe('Markdown preview edit links', () => {
         assert.deepStrictEqual(links(new MarkdownIt().use(c4xPlugin, { editLinkScheme: 'vscode' }).render(fence)), []);
     });
 });
+
+describe('c4xPlugin theme option (#329)', () => {
+    const fence = '```c4x\n' + DSL + '\n```\n';
+    const render = (options: C4xPluginOptions): string => {
+        const md = new MarkdownIt();
+        c4xPlugin(md, options);
+        return md.render(fence);
+    };
+
+    it('draws with the theme the caller supplies, resolved on each render', () => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { C4ModelDarkTheme, C4ModelTheme } = require('../../themes/C4ModelTheme');
+        let theme = C4ModelTheme;
+        const md = new MarkdownIt();
+        c4xPlugin(md, { theme: () => theme });
+        assert.ok(md.render(fence).includes('fill="#FFFFFF" />'), 'light background');
+        theme = C4ModelDarkTheme;
+        assert.ok(md.render(fence).includes('fill="#1E1E1E"'), 'dark background after the caller changes it');
+    });
+
+    it('HTML and PDF exporters pass the export theme, not the editor theme', () => {
+        for (const file of ['HtmlExporter.ts', 'PdfExporter.ts']) {
+            const src = fs.readFileSync(path.join(__dirname, '..', '..', 'export', file), 'utf-8');
+            assert.ok(/theme:\s*\(\)\s*=>\s*themeManager\.getExportTheme\(\)/.test(src), `${file} must pass getExportTheme`);
+        }
+    });
+
+    it('the live preview omits it and follows the editor', () => {
+        assert.ok(render({}).includes('<svg'));
+    });
+});

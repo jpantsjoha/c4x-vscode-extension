@@ -1,0 +1,39 @@
+name: Publish approved VSIX to Open VSX
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      sha256:
+        description: SHA-256 from the approved release receipt
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: open-vsx-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'jpantsjoha/c4x-vscode-extension' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: marketplace-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+      - name: Download and verify approved release; publish without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+        run: python3 scripts/publish-approved-vsix.py

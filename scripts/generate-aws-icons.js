@@ -4,7 +4,8 @@ const glob = require('glob');
 
 // Correct path relative to CWD
 const rootDir = 'assets/cloud/AWS/Resource-Icons_07312025';
-const outPath = 'src/assets/aws-icons.ts';
+const { writeCloudIconData, DATA_FILE } = require('./cloud-icon-data');
+const outPath = DATA_FILE;
 
 console.log(`Scanning ${rootDir}...`);
 
@@ -34,9 +35,6 @@ files.forEach(file => {
         // Remove newlines and trim
         body = body.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').replace(/> </g, '><').trim();
         
-        // Escape single quotes
-        body = body.replace(/'/g, "'\'");
-
         // Generate key
         const filename = path.basename(file, '.svg');
         // Original: Res_Amazon-Simple-Storage-Service_S3_48
@@ -65,17 +63,5 @@ files.forEach(file => {
     }
 });
 
-let output = `import { Sprite } from './icons';\n\nexport const AWS_SPRITES: Record<string, Sprite> = {\n`;
-
-sprites.forEach((sprite, key) => {
-    output += `    '${key}': {\n`;
-    output += `        body: '${sprite.body}',\n`;
-    output += `        viewBox: '${sprite.viewBox}',\n`;
-    output += `        preserveColor: true\n`;
-    output += `    },\n`;
-});
-
-output += `};\n`;
-
-fs.writeFileSync(outPath, output);
-console.log(`Generated ${outPath} with ${sprites.size} unique icons from ${files.length} source files.`);
+writeCloudIconData('aws', Object.fromEntries(sprites));
+console.log(`Generated ${outPath} (aws section) with ${sprites.size} unique icons from ${files.length} source files.`);

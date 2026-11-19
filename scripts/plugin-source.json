@@ -1,0 +1,19 @@
+{
+  "$comment": "Single source for the C4X plugin manifests (#358, #359, #377). Run `pnpm run generate:plugin` after editing; `node scripts/generate-plugin-manifests.js --check` fails when a generated file is stale. Version, licence and author come from package.json.",
+  "name": "c4x",
+  "displayName": "C4X",
+  "description": "Write C4 model diagrams in C4X that a parser has checked: the c4x skill, the C4X MCP server (validate_c4x, lint_c4x) and /c4x commands.",
+  "keywords": ["c4", "c4model", "architecture", "diagrams", "diagrams-as-code", "architecture-as-code", "mcp", "skill"],
+  "homepage": "https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x",
+  "repository": "https://github.com/jpantsjoha/c4x-vscode-extension",
+  "category": "development",
+  "pluginRoot": "plugins/c4x",
+  "server": {
+    "name": "c4x",
+    "bundle": "mcp/c4x-mcp-server.bundle.cjs",
+    "notices": "mcp/THIRD_PARTY_NOTICES.txt",
+    "data": "data/cloud-icons.json",
+    "target": "server/c4x-mcp.cjs"
+  },
+  "skills": ["skills/c4x"]
+}

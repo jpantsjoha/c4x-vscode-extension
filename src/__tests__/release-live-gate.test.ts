@@ -75,6 +75,7 @@ describe('Live generation gate, dry-run against a fake Gemini API', function () 
         const output = result.stdout + result.stderr;
         assert.equal(result.status, 0, output);
         assert.match(result.stdout, /All \d+ shipped models generate and parse\./);
+        assert.match(result.stdout, /PASS {2}shaped store/, 'the notation case (#330) runs and passes');
 
         const generated = result.sent.filter(request => request.kind === 'generate');
         for (const model of shipped) {

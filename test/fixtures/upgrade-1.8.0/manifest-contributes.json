@@ -1,0 +1,164 @@
+{
+  "source": "git show v1.8.0:package.json",
+  "version": "1.8.0",
+  "commands": [
+    "c4x.ai.generateFromMarkdown",
+    "c4x.ai.generateFromSelection",
+    "c4x.ai.generateVisualDiagram",
+    "c4x.changeTheme",
+    "c4x.clearApiKey",
+    "c4x.conformFromDependencyCruiser",
+    "c4x.copySvg",
+    "c4x.editMarkdownBlock",
+    "c4x.exportConformance",
+    "c4x.exportHtml",
+    "c4x.exportPdf",
+    "c4x.exportPng",
+    "c4x.exportSvg",
+    "c4x.openPreview",
+    "c4x.refreshPreview",
+    "c4x.resetLayout",
+    "c4x.selectImageModel",
+    "c4x.selectModel",
+    "c4x.setApiKey"
+  ],
+  "registeredCommands": [
+    "c4x.ai.generateFromMarkdown",
+    "c4x.ai.generateFromSelection",
+    "c4x.ai.generateVisualDiagram",
+    "c4x.changeTheme",
+    "c4x.clearApiKey",
+    "c4x.conformFromDependencyCruiser",
+    "c4x.copySvg",
+    "c4x.editMarkdownBlock",
+    "c4x.exportConformance",
+    "c4x.exportHtml",
+    "c4x.exportPdf",
+    "c4x.exportPng",
+    "c4x.exportSvg",
+    "c4x.openPreview",
+    "c4x.refreshPreview",
+    "c4x.resetLayout",
+    "c4x.selectImageModel",
+    "c4x.selectModel",
+    "c4x.setApiKey"
+  ],
+  "registeredCommandCount": 19,
+  "keybindings": [
+    {
+      "command": "c4x.openPreview",
+      "key": "ctrl+k v",
+      "mac": "cmd+k v",
+      "when": "editorLangId == c4x || resourceExtname == .dsl || resourceExtname == .puml"
+    }
+  ],
+  "languages": [
+    "c4x"
+  ],
+  "grammars": [
+    "source.c4x"
+  ],
+  "activationEvents": [
+    "onUri"
+  ],
+  "settings": {
+    "c4x.ai.apiKey": {
+      "type": "string",
+      "default": ""
+    },
+    "c4x.ai.imageModel": {
+      "type": "string",
+      "default": "gemini-3.1-flash-image"
+    },
+    "c4x.ai.layoutPreference": {
+      "type": "string",
+      "default": "balanced",
+      "enum": [
+        "balanced",
+        "compact",
+        "spacious"
+      ]
+    },
+    "c4x.ai.model": {
+      "type": "string",
+      "default": "gemini-3.8-flash"
+    },
+    "c4x.ai.modelStrategy": {
+      "type": "string",
+      "default": "pinned",
+      "enum": [
+        "pinned",
+        "auto-ga"
+      ]
+    },
+    "c4x.ai.visualGroundingContext": {
+      "type": "string",
+      "default": ""
+    },
+    "c4x.ai.visualPreset": {
+      "type": "string",
+      "default": "default",
+      "enum": [
+        "default",
+        "dark",
+        "light",
+        "pastel",
+        "corporate"
+      ]
+    },
+    "c4x.canvas.autoFitOnOpen": {
+      "type": "boolean",
+      "default": true
+    },
+    "c4x.edgesOnTop": {
+      "type": "boolean",
+      "default": true
+    },
+    "c4x.layout.persistence": {
+      "type": "string",
+      "default": "native",
+      "enum": [
+        "native",
+        "sidecar"
+      ]
+    },
+    "c4x.layout.spacing": {
+      "type": "string",
+      "default": "balanced",
+      "enum": [
+        "compact",
+        "balanced",
+        "spacious"
+      ]
+    },
+    "c4x.legend.show": {
+      "type": "boolean",
+      "default": true
+    },
+    "c4x.lint.enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "c4x.lint.rules": {
+      "type": "object",
+      "default": {}
+    },
+    "c4x.markdown.previewScale": {
+      "type": "number",
+      "default": 0.5,
+      "minimum": 0.2,
+      "maximum": 1
+    },
+    "c4x.theme": {
+      "type": "string",
+      "default": "classic",
+      "enum": [
+        "classic",
+        "modern",
+        "muted",
+        "high-contrast",
+        "auto"
+      ]
+    }
+  }
+}

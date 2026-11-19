@@ -2,10 +2,10 @@
 
 > [!NOTE]
 > **Can't see the diagrams?**
-> You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x-vscode-extension)** to view the live visualizations below. Otherwise, you'll only see the source code.
+> You need the **[C4X VS Code Extension](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x)** to view the live visualizations below. Otherwise, you'll only see the source code.
 
-**Version**: 1.4.0
-**Last Updated**: 2026-05-03
+**Version**: 1.9.2
+**Last Updated**: 2026-11-16
 
 This document provides a gallery of C4 diagrams created with C4X. These examples demonstrate the core capabilities of the extension, including filled-box C4 styling, auto-scaling text, and support for complex architectures.
 
@@ -18,6 +18,7 @@ All examples use the `.c4x` DSL format unless otherwise noted.
 - [Layout Guide](./EXAMPLES-LAYOUT.md) -- Direction control, manual positioning, nested layouts
 - [Ordering Guide](./EXAMPLES-ORDERING.md) -- Controlling horizontal and vertical element placement
 - [Icons & AI](./EXAMPLES-with-ICONS.md) -- Cloud provider sprites, AI generation scenarios
+- [Shapes, tag styles and the key](#6-the-c4-notation-shapes-boundary-relationship-technology-and-key-190) -- the 1.9.0 notation, below
 
 ---
 
@@ -29,7 +30,7 @@ A classic, multi-tier financial application demonstrating the core C4 model laye
 
 Shows the big picture: users and external dependencies.
 
-**Source**: [banking-system.c4x](../samples/system-context/banking-system.c4x)
+**Source**: shown below. More worked files are in [samples/](../samples/).
 
 ```c4x
 %%{ c4: system-context }%%
@@ -221,7 +222,7 @@ graph TB
 
 C4X also natively supports standard PlantUML C4 syntax. This allows you to use existing diagrams without conversion.
 
-**Source**: [banking-plantuml.puml](../docs/examples/banking-plantuml.puml)
+**Source**: shown below. See also [PlantUML C4 examples](./EXAMPLES-PLANTUML.md).
 
 ```plantuml
 @startuml
@@ -318,3 +319,60 @@ graph TB
     Reviewer -->|Approved content| SocialAgent
     SocialAgent ==>|Publish| Internet
 ```
+
+---
+
+## 6. The C4 notation: shapes, boundary, relationship technology and key (1.9.0)
+
+A web shop in the `c4-model` theme (**C4X: Change Theme**, or `c4x.theme`). It uses `$shape` for a browser, a terminal, a database and an object store; a `System_Boundary` that prints `[Software System]` on its frame; the technology of every relationship (`"HTTPS"`, `"SQL"`); a Person, which the theme draws with a head; and an external system in red. Each element prints its C4 type under its name.
+
+```c4x
+%%{ c4: container }%%
+graph TB
+Person(customer, "Customer", "Buys products online")
+System_Boundary(shop, "Web Shop") {
+    Container(web, "Storefront", "React", "Product catalogue and checkout", $shape="WebBrowser")
+    Container(api, "Order API", "Node.js", "Takes and tracks orders")
+    Container(db, "Order Database", "PostgreSQL", "Orders and customers", $shape="Cylinder")
+    Container(receipts, "Receipt Store", "Amazon S3", "PDF receipts", $shape="Bucket")
+    Container(admin, "Admin Tool", "Node.js", "Reports from a shell", $shape="Terminal")
+}
+System_Ext(pay, "Payment Provider", "Takes card payments")
+customer -->|Browses and orders using| "HTTPS" web
+web -->|Sends orders to| "JSON/HTTPS" api
+api -->|Reads and writes| "SQL" db
+api -->|Stores receipts in| "HTTPS" receipts
+admin -->|Runs reports through| "JSON/HTTPS" api
+api -->|Charges cards using| "HTTPS" pay
+```
+
+![The web shop container view in the c4-model theme](../assets/marketplace/images/c4-model-container.png)
+
+### Tag styles
+
+`elementStyle` styles every element that carries a tag, and `$legend` names the style in the key. Here every queue is a dashed red cylinder:
+
+```c4x
+%%{ c4: container }%%
+graph TB
+    elementStyle Queue $shape="Cylinder", $stroke="#BF101D", $color="#BF101D", $border="dashed", $legend="Message queue"
+    Container(orders, "Order Queue", "RabbitMQ", "Holds orders until they are picked up", $tags="Queue")
+    Container(mail, "Mail Queue", "RabbitMQ", "Holds receipts until they are sent", $tags="Queue")
+    Container(worker, "Worker", "Node.js", "Processes both queues")
+    worker -->|Reads from| "AMQP" orders
+    worker -->|Reads from| "AMQP" mail
+```
+
+![Two queues drawn as dashed red cylinders by one tag style, and a worker with the theme's default look](../assets/marketplace/images/c4-model-tag-style.png)
+
+### The key
+
+With the key on, the preview shows an overlay that lists each style the diagram draws, in the element's own shape. Set `c4x.export.includeKey` to put it below the diagram in exports.
+
+![The web shop view with its key: Person, Software System, five container styles, the boundary and the relationship](../assets/marketplace/images/c4-model-key.png)
+
+### Deployment
+
+A deployment view in the same theme, with the AWS icons at the bottom left of their nodes:
+
+![A deployment view in the c4-model theme](../assets/marketplace/images/c4-model-deployment.png)

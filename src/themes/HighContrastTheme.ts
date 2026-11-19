@@ -1,16 +1,18 @@
 /**
- * High-Contrast Theme - WCAG AAA Compliant
- * Designed for accessibility with maximum contrast ratios
- * White boxes with thick black borders for maximum visibility
- * @see https://www.w3.org/WAI/WCAG2AAA-Conformance
+ * High-Contrast Theme - meets WCAG AA text contrast (4.5:1) on every token
+ * Designed for accessibility with strong contrast ratios: white boxes with
+ * thick dark borders. The lowest label ratio is the external system text,
+ * #666666 on white, at 5.74:1; black text is 21:1. Several tokens are below the
+ * AAA text threshold (7:1), so this theme does not claim AAA.
+ * @see https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html
  */
 
-import { C4Theme } from './Theme';
+import { C4Theme, legacyThemeTokens } from './Theme';
 
 export const HighContrastTheme: C4Theme = {
     name: 'high-contrast',
     displayName: 'High Contrast',
-    description: 'WCAG AAA compliant - maximum visibility',
+    description: 'Black and saturated outlines on white, 3px borders - maximum visibility',
     colors: {
         person: {
             fill: '#FFFFFF',      // White background
@@ -55,4 +57,5 @@ export const HighContrastTheme: C4Theme = {
         fontFamily: 'Arial, sans-serif',
         shadowEnabled: false,     // No shadows
     },
+    ...legacyThemeTokens({ stroke: '#000000', text: '#000000' }),
 };

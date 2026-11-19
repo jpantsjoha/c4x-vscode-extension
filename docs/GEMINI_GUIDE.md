@@ -2,7 +2,7 @@
 
 > Your AI pair programmer for C4 architecture diagrams.
 
-C4X integrates Google Gemini to analyze your code and generate accurate C4 models. This guide covers setup, commands, AI behaviour, visual customization, and troubleshooting.
+C4X integrates Google Gemini to analyze your code and generate accurate C4 models. This guide covers setup, commands, AI behaviour, visual customization, and troubleshooting. To generate without a Gemini key, using a chat model you already have in VS Code, see [Without a Gemini key: use a VS Code model](#without-a-gemini-key-use-a-vs-code-model).
 
 ---
 
@@ -41,7 +41,7 @@ short notice, so C4X does not ship one as a default.
 
 ### Choosing from what your key can actually use
 
-Run **`C4X: Select Gemini Model`** (or **`C4X: Select Gemini Image Model`**). It
+Run **`C4X: Select AI Model`** (or **`C4X: Select Gemini Image Model`**). It
 asks the API which models your key can reach and lists them, newest first, with
 preview and retired ones marked. Free-tier and paid keys see different lists,
 which is why this beats typing an id into a setting.
@@ -72,6 +72,77 @@ own model registry and its release checks, not by discovery.
 
 The image tier has no Pro/Flash failover. After a failed heal, it retries with
 the corrective prompt as before.
+
+---
+
+## Without a Gemini key: use a VS Code model
+
+> In 1.9.2 (published 2026-11-19). Opt-in through a setting. Checked 2026-11-15.
+
+C4X can draft a C4 model with a chat model you already have in VS Code, such as one from GitHub Copilot, instead of a Gemini API key. VS Code supplies the model through its Language Model API; C4X never sees a key or a token, and it reads no other tool's credentials. The draft goes through the same parser check as Gemini output before anything is inserted.
+
+Gemini stays the default. Nothing changes until you switch the setting.
+
+### Switch it on
+
+1. Open Settings (user settings) and set **C4X › AI: Provider** (`c4x.ai.provider`) to `vscode-lm`.
+2. Optional: run **`C4X: Select AI Model`**. It lists every chat model VS Code offers C4X, with its vendor and a tier guessed from its name, and saves your choice in `c4x.ai.vscodeLm.model`. The list refreshes if your models change while it is open.
+3. Run **`C4X: Generate Diagram Here (Gemini)`** or **`C4X: Diagram from Selection`** as usual. The commands keep their names; with `vscode-lm` they use your VS Code model and never ask for a Gemini key.
+
+This route needs VS Code 1.91 or later, the first Stable release with the Language Model API; the rest of C4X supports VS Code 1.90. On an older version, or an editor built on VS Code that does not offer the API, C4X says which version is needed and sends nothing. `c4x.ai.provider` is a user setting: a workspace's `.vscode/settings.json` cannot switch it.
+
+### What happens when you generate
+
+1. You choose the diagram type from the list.
+2. C4X builds the request once, then asks you to confirm the model before sending anything. The dialog names the model, its vendor and its guessed tier, lists every workspace input in the request with its size in bytes (the selected text, or each file read from the folder, and any guideline file), lists files it left out and why, and gives the size of the whole request. Choose **Generate**, **Choose Another Model**, or close it to send nothing. The request sent is the one the dialog described: changing a setting while the dialog is open does not change it.
+3. The first time, VS Code may ask whether C4X may use the model. That is VS Code's own consent dialog; C4X shows it as VS Code designed it and never works around a refusal.
+4. C4X sends one request, checks the answer with its parser, and re-prompts with the parser's error at most twice. A notification shows progress and has a **Cancel** button; cancelling at any point, even as the answer arrives, inserts nothing.
+5. The checked diagram is inserted as a fenced `c4x` block after your selection or at the cursor.
+
+### Model choice
+
+- With no model chosen, C4X proposes one from the middle tier, judged only from words such as "mini" or "pro" in the model's name. The guess says nothing about price, so you confirm the actual model every time.
+- A model you chose is used while VS Code offers it. If it disappears, generation stops and asks you to choose another. C4X never switches models, or providers, on its own.
+- Requests count against your plan with that model's provider, as any other use of the model does.
+
+### What C4X sends, and what it does not
+
+- **From a selection:** the selected text, the instruction and C4X's built-in guidance.
+- **From a folder:** the files the folder scan reads, as for Gemini (see [What a folder scan sends](#what-a-folder-scan-sends)).
+- **Workspace guidelines:** by default C4X sends its built-in guidance and reads no guideline file. Turn on `c4x.ai.vscodeLm.sendWorkspaceGuidelines` to send your workspace's `docs/C4X-GENERATION-GUIDELINES.md` (or `GEMINI.md`) and `EXAMPLES.md` in place of the built-in guidance; the confirmation lists them with their sizes.
+
+Gemini generation reads the workspace guideline files into its guidance section, as before.
+
+### Messages and what to do
+
+| Message starts with | Cause | Fix |
+|---|---|---|
+| This editor does not offer the VS Code Language Model API | VS Code older than 1.91, or an editor built on VS Code that does not offer the API | Update to VS Code 1.91 or later, or set `c4x.ai.provider` to `gemini` |
+| VS Code offered no chat model to C4X | No model provider installed or signed in | Sign in to GitHub Copilot or another model provider, or use Gemini |
+| C4X was not given access to … | You declined VS Code's consent dialog | Run the command again and allow access |
+| … refused the request, usually because a quota or rate limit was reached | Your plan's limit | Wait and retry, or choose another model |
+| … is no longer available / is not offered by VS Code any more | The model was withdrawn or you signed out | Run `C4X: Select AI Model` |
+| … did not produce valid C4X after 3 attempts | Three answers failed the parser | Retry, or choose another model |
+| Generation cancelled | You pressed Cancel | Nothing was inserted |
+
+### Not covered
+
+- Visual (PNG) diagrams always use Gemini.
+- Assistants outside VS Code (Claude Code, Codex and others) generate through the C4X skill and MCP tools instead; C4X does not start another vendor's command-line tool.
+- Which plans let other extensions use which models, and how an organisation turns this route off, are still being checked on real hosts (issue #394).
+
+---
+
+## What a folder scan sends
+
+`C4X: Generate Diagram Here (Gemini)` reads files around the current document: up to 20 files of at most 50 KB each, a few folder levels deep depending on the diagram type, skipping tests, build output and dependencies. Whichever provider you use, two kinds of file are never sent:
+
+- **Guideline documents** named `C4X-GENERATION-GUIDELINES.md`, `GEMINI.md` or `EXAMPLES.md`. Guidance reaches the model only through the guidance section: Gemini reads `docs/C4X-GENERATION-GUIDELINES.md` (or `GEMINI.md`) and `EXAMPLES.md` from the workspace root; the VS Code model route does so only with `c4x.ai.vscodeLm.sendWorkspaceGuidelines` on.
+- **Credentials.** Files named like credential stores are not even read: `.env` and `.env.*`, `*.env`, `.npmrc`, `.netrc`, `.pypirc`, `.pgpass`, `.git-credentials`, `id_rsa` and similar SSH keys, `credentials` files, `secrets.json`/`.yaml`/`.toml`, and `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore`, `*.ppk`, `*.kdbx`. Any other file is dropped if it contains a private key block or a token in a common provider format (AWS, Google, GitHub, Slack and similar API keys).
+
+Before anything is sent, C4X builds the request once and shows it in a confirmation: every file sent with its size in bytes, the guideline files used, every file left out and why, and the size of the whole request. Only that request is sent; for Gemini, a model replacement or failover resends the same request. Close the dialog to send nothing.
+
+`C4X: Diagram from Selection` shows the same confirmation for its generation request. With Gemini, it first sends the selected text once, before the confirmation, to suggest a diagram type; the VS Code model route skips that step.
 
 ---
 

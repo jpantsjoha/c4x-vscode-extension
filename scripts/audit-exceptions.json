@@ -2,10 +2,20 @@
   "comment": "Accepted dependency-advisory exceptions. Each id here must match package.json pnpm.auditConfig.ignoreGhsas exactly, and make cve-scan fails once `expires` has passed: renew with a new dated entry (new decision date, new expiry) or delete the exception and its ignoreGhsas id.",
   "exceptions": [
     {
-      "id": "GHSA-vfj7-8cjw-p6xm",
-      "package": "braces",
-      "accepted": "2026-10-08",
-      "expires": "2026-11-07"
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "vulnerableRange": "<=4.0.7",
+      "severity": "high",
+      "accepted": "2026-11-18",
+      "expires": "2026-12-18",
+      "decidedBy": "maintainer (JP), 2026-11-18",
+      "issue": "#537",
+      "reason": "ReDoS in picomatch extglob matching. Build tooling only: reached through dev-time dependencies, never bundled in the VSIX, the MCP bundle or the npm package. No patched version exists (latest 4.0.7; advisory first_patched_version is null).",
+      "paths": [
+        ".>@vscode/vsce>secretlint>globby>fast-glob>micromatch>picomatch",
+        ".>markdownlint-cli>tinyglobby>picomatch"
+      ],
+      "removalCondition": "Delete this entry and the ignoreGhsas id, and pin a patched picomatch with a pnpm.overrides entry, as soon as a version above 4.0.7 is published. Otherwise renew with a new dated entry before expiry."
     }
   ]
 }

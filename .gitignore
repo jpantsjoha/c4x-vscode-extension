@@ -17,6 +17,9 @@ test-output*
 *.svg
 !src/__tests__/snapshots/golden/*.svg
 *.html
+# Pre-#327 export goldens: the setting-off byte-identity proof (export-off-golden.test.ts).
+!src/__tests__/export/golden-off/*.svg
+!src/__tests__/export/golden-off/*.html
 
 # Build artifacts (packaged extensions)
 *.vsix
@@ -59,6 +62,8 @@ logs/
 
 # Test results
 test-results/
+# `claude plugin eval` writes per-run results here; they are not committed
+plugins/c4x/evals/results/
 playwright-report/
 .archive/
 
@@ -68,3 +73,7 @@ playwright-report/
 * [0-9].js
 * [0-9].json
 * [0-9].vsix
+
+# Written at the root of the extension-host test workspace by test/suite/sidecar-save.test.ts and
+# removed afterwards; an interrupted run must not leave it to be committed.
+/.c4x-layout.json

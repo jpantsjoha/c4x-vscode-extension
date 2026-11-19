@@ -6,33 +6,50 @@ import { parseStructurizrDSL, StructurizrLexerError, StructurizrParserError } fr
 import { takeUnseenWarnings } from '../model/modelWarnings';
 import { parsePlantUMLtoC4Model } from '../parser/plantuml';
 import { c4ModelBuilder } from '../model/C4ModelBuilder';
+import { buildNodeSnapshots } from './nodeSnapshots';
+import { positionalIdentityOf, rebaseRefusal, type PositionalIdentity } from './positionalIdentity';
 import { C4Element } from '../model/C4Model';
 import { isRelationshipLegal } from '../model/c4Legality';
-import { dagreLayoutEngine } from '../layout/DagreLayoutEngine';
-import { svgBuilder } from '../render/SvgBuilder';
+import { dagreLayoutEngine, resolveLayoutSpacing, type LayoutOptions } from '../layout/DagreLayoutEngine';
+import { defaultLayoutWorker, layoutWithDeadline, needsLayoutWorker } from '../layout/layoutDeadline';
+import { elementStyleContextFor, svgBuilder } from '../render/SvgBuilder';
 import { themeManager } from '../themes/ThemeManager';
-import { computePresentElementTypes } from './legendCatalog';
+import { computeLegendEntries, computeLegendSwatchColors, computePresentElementTypes, type LegendEntry } from './legendCatalog';
+import { appendKeyToSvg, computeKeyEntries, keySwatchTheme, readExportIncludeKey, type KeySwatchTheme } from '../render/KeyRenderer';
+import type { LayoutResult } from '../layout/DagreLayoutEngine';
+import type { C4Theme } from '../themes/Theme';
+import type { C4View } from '../model/C4Model';
+import { elementStyleClientInputs, type ElementStyleClientInputs } from './elementStyleClient';
 import {
     isVisualLayoutMessage,
     isRequestSourceDiffMessage,
     isResolveConflictMessage,
     isAddRelationshipMessage,
+    isDirtyStateChangedMessage,
+    isLayoutModeMessage,
+    isRefreshDeclinedMessage,
     MoveAcceptedMessage,
     BatchAcceptedMessage,
     MoveRejectionCode,
     MoveRejectedMessage,
     SourceDiffMessage,
     ExternalChangeConflictMessage,
+    RefreshDeferredMessage,
     VisualLayoutSnapshot,
     VISUAL_LAYOUT_PROTOCOL_VERSION,
+    SOURCE_CHANGED_SAVE_REFUSAL,
+    rebaseAcceptedNotice,
 } from './visualLayoutProtocol';
 import { buildBoundarySnapshots } from './boundarySnapshots';
+import { type AnchorCheck, decideRenderCompletion, decideSourceEvent, NonSourceRenderGate, type RenderCause } from './nonSourceRenderGate';
 import { materialiseDraft } from '../writeback/draftMaterialiser';
 import { computeLineDiff } from '../writeback/lineDiff';
-import { PREVIEW_CLIENT_SCRIPT } from './previewClientScript';
+import { buildPreviewClientScript } from './previewClientScript';
+import { sanitiseSmokeNodes, type SmokeRenderResult } from './smokeTypes';
 import { executeWritebackTransaction, WritebackTransactionError } from '../writeback/WritebackTransaction';
 import { applySidecarLayoutOverrides } from '../writeback/SidecarPersistence';
-import { captureAnchor, createNativeDocumentBlock, findC4xFencedBlocks, resolveAnchor, SaveAnchor } from '../writeback/SaveAnchor';
+import { captureAnchor, computeFenceDraftScope, computeNativeDraftScope, createNativeDocumentBlock, findC4xFencedBlocks, findC4xFencedBlocksInSource, resolveAnchor, SaveAnchor, type SaveAnchorResolution } from '../writeback/SaveAnchor';
+import { isSameDiagramEdit } from './sameDiagramEdit';
 import { readMarkdownPreviewScale } from '../markdown/c4xPlugin';
 import { createMarkdownFenceWritebackBoundary } from '../writeback/MarkdownFenceWritebackBoundary';
 import { createDefaultVscodeWritebackTransactionBoundary } from '../writeback/VscodeWritebackBoundary';
@@ -75,6 +92,83 @@ interface RenderPayload {
      * C4 theme at render time so they track `c4x.theme` changes.
      */
     legendSwatchColors: Record<string, string>;
+    /**
+     * The key derived from the drawn view (#327): one entry per distinct
+     * style, with a shape swatch. The overlay lists these instead of the
+     * fixed catalogue; exports draw the same list when c4x.export.includeKey is on.
+     */
+    legendEntries: LegendEntry[];
+    /** Swatch colours and widths, so the client redraws key swatches after a staged tag edit (#327). */
+    legendKeyTheme: KeySwatchTheme;
+    /**
+     * Inputs for the client's copy of the style resolver (#322), so a staged
+     * tag edit repaints the canvas exactly as the host draws it after Save.
+     */
+    elementStyleInputs: ElementStyleClientInputs;
+    /**
+     * Layout mode of this render (#340): `edit` lays the diagram out at the
+     * standard box sizes, as a Save of the first move will; `view` lets boxes
+     * grow for wrapped text in a diagram with no saved geometry.
+     */
+    layoutMode: 'edit' | 'view';
+    /** True when the view-mode layout of this diagram has boxes taller than standard. */
+    textGrown: boolean;
+    /**
+     * Which diagram this render shows, independent of its source text (#340):
+     * the document, and the fence for a Markdown-bound panel. The webview keeps
+     * edit mode across re-renders of the same diagram, including after a source
+     * edit; the draft scope, which includes the source fingerprint, still
+     * decides whether a persisted draft belongs to this source.
+     */
+    diagramIdentity: string;
+    /** C4 view type of the render, with diagramIdentity used to tell diagrams apart (#340). */
+    viewType: string;
+    /**
+     * Whether every source change since the render with token `since` provably
+     * stayed inside this diagram (#340 review 9, isSameDiagramEdit). The webview
+     * keeps edit mode only with `value: true` for the render it last showed.
+     * Set when the render is posted.
+     */
+    sameDiagramEdit?: { since: number | null; value: boolean };
+    /**
+     * Identity of the diagram being rendered: the URI plus exact source identity
+     * for a standalone panel; for a Markdown-bound panel the URI plus the fence's
+     * content identity (model identity + body hash — NOT the block ordinal,
+     * which shifts when fences are inserted or reordered). The webview persists
+     * it with the draft state and refuses to restore a draft whose scope
+     * differs — the panel is reused across documents, and vscode.setState is
+     * panel-scoped (#167 review).
+     */
+    scope: string;
+}
+
+/**
+ * The conflict reason when a declined refresh does not say which result the
+ * webview shows, so the host cannot tell which canvas the draft was made on.
+ */
+export const UNMATCHED_DECLINE_REASON =
+    'The preview could not confirm which version of the diagram your draft was made on. Your draft is preserved.';
+
+/**
+ * Lay a view out without blocking the extension host (#454): a large view
+ * runs in the layout worker and is stopped at the preview budget, with the
+ * message shown in the preview. Small views, and runs with no bundled
+ * worker (source runs), lay out in-process as before.
+ */
+export async function layoutBounded(view: C4View, options: LayoutOptions, signal?: AbortSignal): Promise<{ layout: LayoutResult; grewText: boolean } | undefined> {
+    const spec = needsLayoutWorker(view) ? defaultLayoutWorker() : undefined;
+    if (!spec) {
+        const layout = await dagreLayoutEngine.layout(view, options);
+        return { layout, grewText: dagreLayoutEngine.layoutGrewText(layout) };
+    }
+    const outcome = await layoutWithDeadline(view, { ...options, spacing: options.spacing ?? resolveLayoutSpacing() }, spec, undefined, signal);
+    if (outcome.status === 'cancelled') {
+        return undefined;
+    }
+    if (outcome.status !== 'ok') {
+        throw new Error(outcome.message);
+    }
+    return { layout: outcome.layout, grewText: outcome.grewText };
 }
 
 export class PreviewPanel {
@@ -83,30 +177,6 @@ export class PreviewPanel {
     private static readonly shownImportWarnings = new Set<string>();
     /** Separate instance for Markdown block editing (one at a time). */
     private static markdownInstance: PreviewPanel | undefined;
-
-    /** Read-only installed-VSIX probe. Never exposed in ordinary activation. */
-    public static whenPreviewRendered(uri: string, timeoutMs: number): Promise<{ nodeCount: number; text: string }> {
-        const panel = PreviewPanel.instance;
-        if (process.env.C4X_VSIX_SMOKE !== '1' || !panel || panel.activeDocument?.uri.toString() !== uri) {
-            return Promise.reject(new Error('Packaged webview probe requires the matching open document'));
-        }
-        if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000 || panel.smokeWaiter) {
-            return Promise.reject(new Error('Invalid or overlapping packaged webview probe'));
-        }
-        return new Promise((resolve, reject) => {
-            let finished = false;
-            const timer = setTimeout(() => finish(undefined, new Error('Packaged webview did not acknowledge a rendered SVG before timeout')), timeoutMs);
-            const finish = (result?: { nodeCount: number; text: string }, error?: Error): void => {
-                if (finished) { return; }
-                finished = true;
-                clearTimeout(timer);
-                panel.smokeWaiter = undefined;
-                if (error) { reject(error); } else if (result) { resolve(result); }
-            };
-            panel.smokeWaiter = { token: randomUUID(), uri, revision: panel.activeDocument!.version, finish };
-            void panel.render();
-        });
-    }
 
     public static createOrShow(context: vscode.ExtensionContext): void {
         if (PreviewPanel.instance) {
@@ -210,17 +280,71 @@ export class PreviewPanel {
     private debounceTimer: NodeJS.Timeout | undefined;
     private disposed = false;
     private currentSvg: string | undefined;
+    /** The same diagram in the export theme (light variant); differs from currentSvg only in a dark editor. */
+    private currentExportSvg: string | undefined;
+    /** What the export SVG was drawn from, to redraw it with the key when c4x.export.includeKey is on (#327). */
+    private currentExportInputs: { layout: LayoutResult; theme: C4Theme; view: C4View } | undefined;
     private currentLayoutSnapshot: VisualLayoutSnapshot | undefined;
     /** Tracks whether the webview has reported unsaved staged edits. */
     private hasDirtyState = false;
+    /**
+     * Last layout mode the webview reported (#340). In `edit` the diagram is
+     * laid out at the standard sizes, so a drag starts from the layout the
+     * first Save produces.
+     */
+    private layoutMode: 'edit' | 'view' = 'view';
+    /** Whether the last render's view-mode layout grew boxes for text. */
+    private lastRenderTextGrown = false;
+    /** Every source change since the last posted render stayed inside the diagram (#340 review 9). */
+    private sameDiagramSinceRender = true;
+    /** The watched document's text after the last change the panel saw, to locate fences before a change. */
+    private lastKnownText: string | undefined;
+    /**
+     * Set only when the host runs under C4X_VSIX_SMOKE=1. It is the per-panel
+     * secret the test-only client block compares, and the gate for every
+     * smoke message type: undefined in a normal session, where those types are
+     * rejected like any other unknown message.
+     */
+    private readonly smokeSession: string | undefined = process.env.C4X_VSIX_SMOKE === '1' ? randomUUID() : undefined;
+    private smokeActWaiter: {
+        token: string;
+        finish: (result: { staged: number; editMode: boolean; nodes: SmokeRenderResult['nodes'] }) => void;
+    } | undefined;
     private smokeWaiter: {
         token: string;
         uri: string;
         revision: number;
-        finish: (result?: { nodeCount: number; text: string }, error?: Error) => void;
+        finish: (result?: SmokeRenderResult, error?: Error) => void;
     } | undefined;
     /** Tracks whether we are in a conflict state (external change while dirty). */
     private inConflictState = false;
+    /**
+     * The layout snapshot taken at document version `from` still matches the
+     * document at version `to`: only text outside the anchored block changed
+     * while the preview was dirty (#439). See writebackRevision().
+     */
+    private snapshotRevisionCarry: { from: string; to: string; fingerprint: string } | undefined;
+    /** Token of the last result posted to the webview (see rememberShown). */
+    private renderTokenSeq = 0;
+    private shownStates: Map<number, {
+        snapshot: VisualLayoutSnapshot | undefined;
+        anchor: SaveAnchor | undefined;
+        positionalIdentity: PositionalIdentity | undefined;
+    }> | undefined;
+    private static readonly SHOWN_STATES_KEPT = 16;
+    /** Newest token the webview is known to have shown (see rememberShown). */
+    private shownFloorToken: number | undefined;
+    /** Newest marked (declinable) result posted. */
+    private lastMarkedToken: number | undefined;
+    /**
+     * Holds back a theme or refresh render while staged edits are unsaved
+     * (#408): every render clears the webview's draft.
+     */
+    private readonly refreshGate = new NonSourceRenderGate();
+    /** Counts conflicts entered, so an in-flight render can tell one began during its awaits (#408). */
+    private conflictEpoch = 0;
+    /** Positional relationship and boundary ids of the diagram last rendered, for Rebase (#261). */
+    private renderedPositionalIdentity: PositionalIdentity | undefined;
 
     /**
      * When set, this panel is "locked" to a specific Markdown fenced block.
@@ -342,35 +466,30 @@ export class PreviewPanel {
 
     private registerEventListeners(): void {
         this.disposables.push(
+            // A theme with a dark variant is drawn differently when the editor
+            // changes colour theme. A render clears the webview's staged
+            // edits, so it waits while the preview is dirty (#408).
+            vscode.window.onDidChangeActiveColorTheme(() => {
+                this.requestNonSourceRender();
+            }),
+            // A changed c4x.theme setting restyles the open preview (#390),
+            // deferred the same way while staged edits are unsaved (#408).
+            vscode.workspace.onDidChangeConfiguration((event) => {
+                if (event.affectsConfiguration('c4x.theme')) {
+                    this.requestNonSourceRender();
+                }
+            }),
+            // A save, or an autosave, changes no text. While the preview is
+            // dirty it is not a reason to replace the draft (#439).
             vscode.workspace.onDidSaveTextDocument((document) => {
                 if (this.isWatchedDocument(document)) {
-                    this.currentLayoutSnapshot = undefined;
-                    // If we are in conflict state already, do not trigger another
-                    // conflict notification — the user must resolve first.
-                    if (!this.inConflictState) {
-                        this.scheduleRender();
-                    }
+                    this.handleSourceEvent(document, 100);
                 }
             }),
             vscode.workspace.onDidChangeTextDocument((event) => {
-                if (!this.isWatchedDocument(event.document)) {
-                    return;
-                }
-                // Reject moves immediately while a newer document revision is awaiting render.
-                this.currentLayoutSnapshot = undefined;
-
-                // If the editor has an unsaved draft, check whether the anchored
-                // block changed.  If so, enter conflict state instead of silently
-                // discarding the draft with a re-render.
-                if (this.hasDirtyState && !this.inConflictState) {
-                    if (this.hasAnchoredBlockChanged(event.document)) {
-                        this.enterConflictState(event.document);
-                        return;
-                    }
-                }
-
-                if (!this.inConflictState) {
-                    this.scheduleRender(250);
+                if (this.isWatchedDocument(event.document)) {
+                    this.noteSourceChange(event.document, event.contentChanges);
+                    this.handleSourceEvent(event.document, 250);
                 }
             }),
             vscode.window.onDidChangeActiveTextEditor(() => {
@@ -379,16 +498,267 @@ export class PreviewPanel {
         );
     }
 
-    private hasAnchoredBlockChanged(document: vscode.TextDocument): boolean {
-        const anchor = this.activeSaveAnchor;
-        if (!anchor) {
-            return false;
-        }
-        return !resolveAnchor(document, anchor).valid;
+    /**
+     * Track whether the changes since the last posted render stayed inside the
+     * diagram the panel shows (#340 review 9): the webview keeps edit mode only
+     * when they did. An empty change list, a change outside the fence body or
+     * its delimiters, a fence added, removed or moved, or a whole-document
+     * replacement ends it.
+     */
+    private noteSourceChange(document: vscode.TextDocument, reported: ReadonlyArray<vscode.TextDocumentContentChangeEvent> | undefined): void {
+        // An event with no ranges reported counts as an external change.
+        const changes = reported ?? [];
+        const after = document.getText();
+        const before = this.lastKnownText;
+        const native = !this.markdownBlock;
+        const same = before !== undefined && isSameDiagramEdit({
+            native,
+            beforeLength: before.length,
+            fencesBefore: native ? undefined : findC4xFencedBlocksInSource(before).map(block => block.bodyRange),
+            fencesAfter: native ? undefined : findC4xFencedBlocksInSource(after).map(block => block.bodyRange),
+            ordinal: this.markdownBlock?.blockOrdinal,
+            changes: changes.map(change => ({ rangeOffset: change.rangeOffset, rangeLength: change.rangeLength, text: change.text })),
+        });
+        this.sameDiagramSinceRender = this.sameDiagramSinceRender && same;
+        this.lastKnownText = after;
     }
 
-    private enterConflictState(document: vscode.TextDocument): void {
+    /**
+     * A text change to, or a save of, the watched document (see
+     * decideSourceEvent in nonSourceRenderGate.ts). Only a render the user
+     * authorised reaches a dirty preview unmarked; the automatic render a
+     * source event queues is decided again when it fires and completes, and a
+     * real change under a draft opens the conflict instead (#439).
+     */
+    private handleSourceEvent(document: vscode.TextDocument, delay: number): void {
+        const check = this.checkDiagramSource(document);
+        const decision = decideSourceEvent({
+            dirty: this.hasDirtyState,
+            conflict: this.inConflictState,
+            anchor: check.anchor,
+        });
+        switch (decision) {
+            case 'owe-source':
+                // Suppressed while the conflict is open: owed (#408). Do not
+                // notify again; the user must resolve first.
+                this.currentLayoutSnapshot = undefined;
+                this.refreshGate.held('source');
+                return;
+            case 'enter-conflict':
+                // The anchored block changed under an unsaved draft: keep the
+                // draft and offer Rebase or Reload instead of a re-render.
+                this.currentLayoutSnapshot = undefined;
+                this.enterConflictState(document);
+                return;
+            case 'schedule-auto':
+                if (check.anchor === 'unchanged') {
+                    // The layout the preview shows is still the one Save
+                    // validates against, at this document version too (#439).
+                    this.noteUnchangedSource(document, check.resolution);
+                } else {
+                    // Reject moves immediately while a newer document revision is awaiting render.
+                    this.currentLayoutSnapshot = undefined;
+                }
+                // Automatic: decided again when the timer fires and when the
+                // render completes, so a draft staged meanwhile is not cleared.
+                this.scheduleRender(delay, 'auto');
+                return;
+        }
+    }
+
+    /**
+     * Whether the diagram source differs from what the last posted render
+     * showed. Only the content decides: the block is found by its ordinal and
+     * compared by identity and fingerprint. The stored offsets go stale when
+     * text above a fence is removed, and that alone is not a change to the
+     * diagram (#439); a write is still checked against the offsets as they
+     * are then.
+     */
+    private checkDiagramSource(document: vscode.TextDocument | undefined): { anchor: AnchorCheck; resolution?: SaveAnchorResolution } {
+        const anchorNow = this.activeSaveAnchor;
+        if (!anchorNow || !document) {
+            return { anchor: 'unknown' };
+        }
+        const resolution = resolveAnchor(document, { ...anchorNow, blockRange: { start: 0, end: 0 } });
+        return { anchor: resolution.valid ? 'unchanged' : 'changed', resolution };
+    }
+
+    /** The diagram source is unchanged: keep the layout for Save and re-anchor at the block's current offsets. */
+    private noteUnchangedSource(document: vscode.TextDocument, resolution: SaveAnchorResolution | undefined): void {
+        this.carryLayoutSnapshot(document);
+        if (resolution?.valid) {
+            this.activeSaveAnchor = captureAnchor(document, resolution.block);
+        }
+    }
+
+    /**
+     * An automatic render met a dirty preview whose diagram source changed
+     * since the canvas was drawn: the draft was made against that canvas, so
+     * open the conflict rather than replace it (#439).
+     */
+    private autoRenderMetChangedSource(): void {
+        this.currentLayoutSnapshot = undefined;
+        if (this.activeDocument) {
+            this.enterConflictState(this.activeDocument);
+        } else {
+            this.refreshGate.held('source');
+        }
+    }
+
+    /**
+     * Record that the current layout snapshot, taken at `from`, still matches
+     * the document at its new version: the diagram source the anchor covers
+     * is byte-identical (#439). Save then translates the webview's revision.
+     */
+    private carryLayoutSnapshot(document: vscode.TextDocument): void {
+        const snapshot = this.currentLayoutSnapshot;
+        const anchor = this.activeSaveAnchor;
+        if (!snapshot || !anchor) {
+            return;
+        }
+        const version = String(document.version);
+        if (version === snapshot.revision) {
+            return;
+        }
+        this.snapshotRevisionCarry = { from: snapshot.revision, to: version, fingerprint: anchor.sourceFingerprint };
+    }
+
+    /**
+     * Record what the webview will show once it accepts the result being
+     * posted now, and return the token the result carries. The host updates
+     * its state at post time; a marked result the webview declines was never
+     * shown, so refreshDeclined names the token it still shows and
+     * restoreShown() puts that state back (#439).
+     *
+     * Eviction. The FLOOR is the newest token the webview is known to have
+     * shown: the newest unmarked result (the webview never declines one) or
+     * the newest token a decline named. The webview never goes back to an
+     * older result, so every token below the floor can be evicted. Above it,
+     * the newest SHOWN_STATES_KEPT tokens are kept, and the floor itself is
+     * always kept whatever its age. A token between the floor and that window
+     * is evicted; the webview can still be showing it only if it declined
+     * every later result, and if such a decline names it, restoreShown()
+     * cannot match it and opens the conflict instead (fail safe).
+     */
+    private rememberShown(marked: boolean): number {
+        const token = (this.renderTokenSeq ?? 0) + 1;
+        this.renderTokenSeq = token;
+        this.shownStates ??= new Map();
+        this.shownStates.set(token, {
+            snapshot: this.currentLayoutSnapshot,
+            anchor: this.activeSaveAnchor,
+            positionalIdentity: this.renderedPositionalIdentity,
+        });
+        if (marked) {
+            this.lastMarkedToken = token;
+        } else {
+            this.shownFloorToken = token;
+        }
+        this.evictShownStates(token);
+        return token;
+    }
+
+    private evictShownStates(newest: number): void {
+        const floor = this.shownFloorToken;
+        for (const key of [...(this.shownStates?.keys() ?? [])]) {
+            const belowFloor = floor !== undefined && key < floor;
+            const outsideWindow = key <= newest - PreviewPanel.SHOWN_STATES_KEPT && key !== floor;
+            if (belowFloor || outsideWindow) {
+                this.shownStates?.delete(key);
+            }
+        }
+    }
+
+    /** Forget every recorded result: the panel closed or now shows another document. */
+    private forgetShownStates(): void {
+        this.shownStates?.clear();
+        this.shownFloorToken = undefined;
+        this.lastMarkedToken = undefined;
+    }
+
+    /**
+     * The webview declined a marked result and still shows the result with
+     * `token` (undefined when the decline did not say): put back the state
+     * that describes it. If the diagram source is unchanged since, the layout
+     * still validates Save at the current version; if it changed, the draft
+     * was made against the older canvas, so the conflict opens. If the token
+     * is missing, unknown or evicted and a marked result was posted after the
+     * floor, the host cannot tell which canvas the draft was made on, so the
+     * conflict opens too: the draft stays on screen and the user chooses,
+     * rather than Save failing and discarding it.
+     */
+    private restoreShown(token: number | undefined): void {
+        // The webview kept an older render: the chain of changes since the one it
+        // shows is no longer known, so the next render ends edit mode (#340).
+        this.sameDiagramSinceRender = false;
+        const shown = token === undefined ? undefined : this.shownStates?.get(token);
+        if (!shown || token === undefined) {
+            // Only a marked result posted after the floor can leave the host
+            // describing something the webview does not show. With none, the
+            // host's state already is what the webview shows.
+            const marked = this.lastMarkedToken;
+            if (marked !== undefined && (this.shownFloorToken === undefined || marked > this.shownFloorToken)) {
+                this.declineUnmatched();
+            }
+            return;
+        }
+        this.shownFloorToken = token;
+        this.evictShownStates(this.renderTokenSeq ?? token);
+        this.currentLayoutSnapshot = shown.snapshot;
+        this.activeSaveAnchor = shown.anchor;
+        this.renderedPositionalIdentity = shown.positionalIdentity;
+        this.snapshotRevisionCarry = undefined;
+        if (this.inConflictState || !this.activeDocument) {
+            return;
+        }
+        const check = this.checkDiagramSource(this.activeDocument);
+        if (check.anchor === 'unchanged') {
+            this.noteUnchangedSource(this.activeDocument, check.resolution);
+        } else if (check.anchor === 'changed') {
+            this.autoRenderMetChangedSource();
+        }
+    }
+
+    private declineUnmatched(): void {
+        if (this.inConflictState) {
+            return;
+        }
+        this.currentLayoutSnapshot = undefined;
+        this.snapshotRevisionCarry = undefined;
+        if (this.activeDocument) {
+            this.enterConflictState(this.activeDocument, UNMATCHED_DECLINE_REASON);
+        } else {
+            this.refreshGate.held('source');
+        }
+    }
+
+    /**
+     * The revision a writeback is checked against. The webview holds the
+     * revision of the render it shows; when only text outside the anchored
+     * block changed since (#439), the same diagram source is now at a newer
+     * document version, and every condition is checked again here.
+     */
+    private writebackRevision(message: { revision: string }, activeDoc: vscode.TextDocument): string {
+        const carry = this.snapshotRevisionCarry;
+        const anchor = this.activeSaveAnchor;
+        if (!carry || !anchor ||
+            this.currentLayoutSnapshot?.revision !== carry.from ||
+            String(message.revision) !== carry.from ||
+            String(activeDoc.version) !== carry.to ||
+            anchor.sourceFingerprint !== carry.fingerprint ||
+            !resolveAnchor(activeDoc, anchor).valid) {
+            return message.revision;
+        }
+        return carry.to;
+    }
+
+    private enterConflictState(document: vscode.TextDocument, reasonOverride?: string): void {
         this.inConflictState = true;
+        this.conflictEpoch++;
+        // The source change that opened the conflict is not rendered now; it
+        // is owed, so every exit from the conflict (Discard, Save, Reload,
+        // Rebase then a clean report) renders the current source (#408).
+        this.refreshGate.held('source');
         const codeLabels: Record<string, string> = {
             fingerprint_mismatch: 'The block content changed.',
             block_ordinal_drift: 'The block was moved or deleted.',
@@ -404,6 +774,9 @@ export class PreviewPanel {
                 reason = `Source changed elsewhere. Your draft is preserved. (${codeLabels[resolution.reason] ?? resolution.reason})`;
             }
         }
+        if (reasonOverride) {
+            reason = reasonOverride;
+        }
         const conflictMsg: ExternalChangeConflictMessage = {
             type: 'visualLayout.externalChangeConflict',
             protocolVersion: VISUAL_LAYOUT_PROTOCOL_VERSION,
@@ -413,14 +786,26 @@ export class PreviewPanel {
     }
 
     private async handleWebviewMessage(message: unknown): Promise<void> {
-        if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'smoke.renderFailed') {
+        // Smoke message types exist only in a C4X_VSIX_SMOKE=1 host and only with
+        // this panel's session secret; otherwise they are ordinary unknown messages
+        // and fall through to protocol validation below.
+        const isSmoke = this.smokeSession !== undefined && typeof message === 'object' && message !== null &&
+            (message as { session?: unknown }).session === this.smokeSession;
+        if (isSmoke && (message as { type?: unknown }).type === 'smoke.renderFailed') {
             const report = message as Record<string, unknown>;
             if (this.smokeWaiter && report.token === this.smokeWaiter.token) {
                 this.smokeWaiter.finish(undefined, new Error('Packaged webview DOM has no visible SVG'));
             }
             return;
         }
-        if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'smoke.rendered') {
+        if (isSmoke && (message as { type?: unknown }).type === 'smoke.acted') {
+            const report = message as Record<string, unknown>;
+            if (this.smokeActWaiter && report.token === this.smokeActWaiter.token && typeof report.staged === 'number') {
+                this.smokeActWaiter.finish({ staged: report.staged, editMode: report.editMode === true, nodes: sanitiseSmokeNodes(report.nodes) });
+            }
+            return;
+        }
+        if (isSmoke && (message as { type?: unknown }).type === 'smoke.rendered') {
             const report = message as Record<string, unknown>;
             const waiting = this.smokeWaiter;
             if (waiting && report.token === waiting.token &&
@@ -432,7 +817,13 @@ export class PreviewPanel {
                 this.activeDocument?.uri.toString() === waiting.uri && this.activeDocument.version === waiting.revision &&
                 typeof report.nodeCount === 'number' && Number.isInteger(report.nodeCount) && report.nodeCount > 0 && report.nodeCount <= 10000 &&
                 typeof report.text === 'string' && report.text.length <= 20000) {
-                waiting.finish({ nodeCount: report.nodeCount, text: report.text });
+                waiting.finish({
+                    nodeCount: report.nodeCount,
+                    text: report.text,
+                    nodes: sanitiseSmokeNodes(report.nodes),
+                    theme: themeManager.getCurrentTheme().name,
+                    revision: String(waiting.revision),
+                });
             }
             return;
         }
@@ -446,12 +837,45 @@ export class PreviewPanel {
             return;
         }
 
-        if (this.isDirtyStateChangedMessage(message)) {
+        // Edit mode entered or left (#340): re-lay the diagram out in that mode
+        // when the two layouts differ. A non-source render: held while the
+        // webview holds a draft, like a theme change (nonSourceRenderGate.ts).
+        if (isLayoutModeMessage(message)) {
+            const changed = message.mode !== this.layoutMode;
+            this.layoutMode = message.mode;
+            if (changed && this.lastRenderTextGrown) {
+                this.requestNonSourceRender();
+            }
+            return;
+        }
+
+        if (isDirtyStateChangedMessage(message)) {
             this.hasDirtyState = message.dirty;
             // If all staged edits were discarded, exit conflict state automatically.
             if (!message.dirty && this.inConflictState) {
                 this.inConflictState = false;
             }
+            // The draft was saved or discarded (or its last edit removed, or
+            // Save refused, or Reload chosen): schedule the render it held
+            // back (#408). A post-Save render already scheduled merges into
+            // this one through the debounce.
+            const owed = this.refreshGate.dirtyChanged(message.dirty);
+            if (owed) {
+                this.scheduleRender(100, owed);
+            }
+            return;
+        }
+
+        // A theme or refresh render reached a webview that had just staged
+        // an edit: it kept the draft, so apply the render after Save or
+        // Discard instead (#408).
+        if (isRefreshDeclinedMessage(message)) {
+            this.hasDirtyState = true;
+            this.refreshGate.declined();
+            // What the webview still shows, not what was last posted (#439).
+            this.restoreShown(typeof message.shownRenderToken === 'number' && Number.isInteger(message.shownRenderToken)
+                ? message.shownRenderToken
+                : undefined);
             return;
         }
 
@@ -476,7 +900,7 @@ export class PreviewPanel {
             this.log('writeback rejected: no current layout snapshot (layout_unavailable)');
             this.rejectVisualLayout(
                 'layout_unavailable',
-                'The diagram changed while it was being edited. Refresh and try again.'
+                SOURCE_CHANGED_SAVE_REFUSAL
             );
             return;
         }
@@ -573,7 +997,9 @@ export class PreviewPanel {
             }
 
             const writebackStart = Date.now();
-            const success = await executeWritebackTransaction(writebackDoc, message, transactionAnchor, boundary);
+            const revision = this.writebackRevision(message, activeDoc);
+            const writebackMessage = revision === message.revision ? message : { ...message, revision };
+            const success = await executeWritebackTransaction(writebackDoc, writebackMessage, transactionAnchor, boundary);
             const editCount = message.type === 'visualLayout.applySemanticEdits' ? message.edits.length : 1;
             this.log(`writeback transaction took ${Date.now() - writebackStart}ms (${editCount} edits)`);
             if (success) {
@@ -745,12 +1171,27 @@ export class PreviewPanel {
                         return;
                     }
 
+                    const refusal = this.positionalRebaseRefusal(activeDoc, message.stagedKeys);
+                    if (refusal) {
+                        void this.panel.webview.postMessage({
+                            type: 'visualLayout.conflictActionAcknowledged',
+                            protocolVersion: VISUAL_LAYOUT_PROTOCOL_VERSION,
+                            action: 'rebaseFailed',
+                            reason: refusal,
+                        });
+                        return;
+                    }
+
+                    const notice = rebaseAcceptedNotice(this.currentLayoutSnapshot !== undefined);
                     this.activeSaveAnchor = rebasedAnchor;
                     this.inConflictState = false;
                     void this.panel.webview.postMessage({
                         type: 'visualLayout.conflictActionAcknowledged',
                         protocolVersion: VISUAL_LAYOUT_PROTOCOL_VERSION,
                         action: 'rebaseAccepted',
+                        // No render follows a Rebase (it would reset the draft), so
+                        // Save has no current layout: say so now, not at Save (#293).
+                        ...(notice ? { reason: notice } : {}),
                     });
                     return;
                 }
@@ -763,6 +1204,37 @@ export class PreviewPanel {
                 reason: 'Cannot rebase: no active document. Choose Reload and discard draft to continue.',
             });
         }
+    }
+
+    /**
+     * Rebase keeps the staged edits against the changed source. A relationship
+     * or boundary edit is keyed by position, so refuse when the change moved
+     * the statement one of them names (#261). Formats without positional ids
+     * in C4X source (Structurizr, PlantUML) are left to the Save checks.
+     */
+    private positionalRebaseRefusal(activeDoc: vscode.TextDocument, stagedKeys: readonly string[] | undefined): string | undefined {
+        const fileName = activeDoc.fileName.toLowerCase();
+        if (activeDoc.languageId === 'structurizr-dsl' || activeDoc.languageId === 'plantuml' ||
+            fileName.endsWith('.dsl') || fileName.endsWith('.puml')) {
+            return undefined;
+        }
+        const text = this.markdownBlock
+            ? (() => {
+                const block = findC4xFencedBlocks(activeDoc)[this.markdownBlock.blockOrdinal];
+                return block ? activeDoc.getText().slice(block.bodyRange.start, block.bodyRange.end) : undefined;
+            })()
+            : activeDoc.getText();
+        if (text === undefined) {
+            return 'Cannot rebase: the diagram block was not found after the external change. Choose Reload and discard draft to continue.';
+        }
+        let after: PositionalIdentity;
+        try {
+            const view = c4ModelBuilder.build(c4xParser.parse(text), this.getWorkspaceName(activeDoc)).views[0];
+            after = view ? positionalIdentityOf(view) : new Map();
+        } catch {
+            return 'Cannot rebase: the changed source could not be parsed, so the staged edits cannot be checked against it. Choose Reload and discard draft to continue.';
+        }
+        return rebaseRefusal(this.renderedPositionalIdentity, after, stagedKeys);
     }
 
     private rejectVisualLayout(code: MoveRejectionCode, reason: string, revision?: string): void {
@@ -834,14 +1306,6 @@ export class PreviewPanel {
             'type' in message && message.type === 'ready';
     }
 
-    private isDirtyStateChangedMessage(
-        message: unknown,
-    ): message is { type: 'dirtyStateChanged'; dirty: boolean } {
-        return typeof message === 'object' && message !== null &&
-            'type' in message && (message as { type: unknown }).type === 'dirtyStateChanged' &&
-            'dirty' in message && typeof (message as { dirty: unknown }).dirty === 'boolean';
-    }
-
     private tryUpdateActiveDocument(): void {
         // Markdown-block panels are permanently locked; never follow editor focus.
         if (this.markdownBlock) {
@@ -856,7 +1320,14 @@ export class PreviewPanel {
         if (newDocument?.uri.toString() !== this.activeDocument?.uri.toString()) {
             this.activeDocument = newDocument;
             this.activeSaveAnchor = newDocument ? this.captureDocumentAnchor(newDocument) : undefined;
+            // Another document is another diagram: edit mode ends (#340 review 9).
+            this.sameDiagramSinceRender = false;
+            this.lastKnownText = typeof newDocument?.getText === 'function' ? newDocument.getText() : undefined;
             this.currentLayoutSnapshot = undefined;
+            this.snapshotRevisionCarry = undefined;
+            // Results recorded for the previous document describe nothing the
+            // new one shows (#439).
+            this.forgetShownStates();
             this.scheduleRender();
         }
     }
@@ -884,22 +1355,175 @@ export class PreviewPanel {
         return document.uri.toString() === this.activeDocument.uri.toString();
     }
 
-    private scheduleRender(delay = 100): void {
+    /**
+     * Re-render for a reason other than a source change: a colour-theme or
+     * `c4x.theme` change, or Refresh Preview. While the webview holds unsaved
+     * staged edits the render is deferred until they are saved or discarded,
+     * because a render clears them (#408).
+     */
+    private requestNonSourceRender(): void {
+        if (this.refreshGate.request(this.hasDirtyState || this.inConflictState) === 'schedule') {
+            this.scheduleRender(100, 'theme');
+            return;
+        }
+        if (!this.inConflictState) {
+            this.notifyRefreshDeferred();
+        }
+    }
+
+    private notifyRefreshDeferred(): void {
+        const notice: RefreshDeferredMessage = {
+            type: 'visualLayout.refreshDeferred',
+            protocolVersion: VISUAL_LAYOUT_PROTOCOL_VERSION,
+        };
+        void this.panel.webview.postMessage(notice);
+    }
+
+    /**
+     * @param cause why the render is wanted (see nonSourceRenderGate.ts):
+     *   'source' renders (authorised by the user) are never held; 'auto'
+     *   renders (triggered by a source event) are decided on the dirty,
+     *   conflict and anchor state when the timer fires; 'theme' and 'retry'
+     *   renders are held while blocked. Requests merge to the stronger cause.
+     */
+    private scheduleRender(delay = 100, cause: RenderCause = 'source'): void {
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
+        this.refreshGate.scheduled(cause);
         this.debounceTimer = setTimeout(() => {
-            void this.render();
+            this.debounceTimer = undefined;
+            let check: ReturnType<PreviewPanel['checkDiagramSource']> | undefined;
+            const fired = this.refreshGate.fire(this.hasDirtyState, this.inConflictState, () => {
+                check = this.checkDiagramSource(this.activeDocument);
+                return check.anchor;
+            });
+            if (fired.decision === 'conflict') {
+                this.autoRenderMetChangedSource();
+                return;
+            }
+            if (fired.decision === 'hold') {
+                if (fired.cause === 'auto' && check?.anchor === 'unchanged' && this.activeDocument) {
+                    this.noteUnchangedSource(this.activeDocument, check.resolution);
+                }
+                this.noticeHeld(fired.cause);
+                return;
+            }
+            void this.render(fired.cause);
         }, delay);
     }
 
-    private async render(): Promise<void> {
+    /**
+     * Tell the webview a theme change is waiting. Only for a theme render held
+     * by a dirty draft: a held retry stays silent so it does not overwrite the
+     * Rebase notice, and the conflict banner already speaks for itself.
+     */
+    private noticeHeld(cause: RenderCause): void {
+        if (cause === 'theme' && this.hasDirtyState && !this.inConflictState) {
+            this.notifyRefreshDeferred();
+        }
+    }
+
+    /** Renders started and not yet finished; the smoke quiet probe waits for zero. */
+    private renderInFlight = 0;
+
+    /**
+     * @param cause a render that is not 'source' is sent with refresh: true,
+     *   and a webview holding staged edits declines it rather than lose them
+     *   (#408).
+     */
+    private async render(cause: RenderCause = 'source'): Promise<void> {
+        // This render reads the current theme, so it makes a queued
+        // theme-only render redundant; the deferred flag is cleared only when
+        // the render is actually posted (#408).
+        if (this.debounceTimer && this.refreshGate.supersedeScheduled()) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = undefined;
+        }
+        this.renderInFlight++;
+        try {
+            await this.renderBody(cause);
+        } finally {
+            this.renderInFlight--;
+        }
+    }
+
+    /**
+     * The decision a render takes after its awaits, on the panel state as it
+     * is now, not as it was when the render started (#408). Returns true when
+     * the render may be posted.
+     */
+    private completeRender(cause: RenderCause, documentUri: string, documentRevision: string, conflictEpochAtStart: number): boolean {
+        if (this.disposed) {
+            // The panel closed while this render awaited: post nothing,
+            // record nothing, schedule nothing (#439).
+            return false;
+        }
+        const stale = !this.activeDocument ||
+            this.activeDocument.uri.toString() !== documentUri ||
+            String(this.activeDocument.version) !== documentRevision;
+        const check = cause === 'auto' && !stale ? this.checkDiagramSource(this.activeDocument) : undefined;
+        const decision = decideRenderCompletion({
+            stale,
+            conflictBegan: this.conflictEpoch !== conflictEpochAtStart,
+            dirty: this.hasDirtyState,
+            conflict: this.inConflictState,
+            cause,
+            anchor: check?.anchor,
+        });
+        if (decision === 'post') {
+            return true;
+        }
+        if (decision === 'conflict') {
+            // An automatic render finished after a draft was staged on a
+            // canvas whose diagram source has since changed (#439).
+            this.autoRenderMetChangedSource();
+            return false;
+        }
+        if (decision === 'hold' && check?.anchor === 'unchanged' && this.activeDocument) {
+            this.noteUnchangedSource(this.activeDocument, check.resolution);
+        }
+        // A render that is not posted changes nothing the webview shows: the
+        // layout snapshot (and any revision carry) stays as the source-event
+        // listener left it, which already clears it for a real change (#439).
+        if (decision === 'retry') {
+            // Nobody chose a retry: it is held like a theme render if the
+            // draft or a conflict blocks it when its timer fires.
+            // An automatic render stays automatic, so its timer decides again.
+            this.scheduleRender(100, cause === 'auto' ? 'auto' : cause === 'theme' && !stale ? 'theme' : 'retry');
+            return false;
+        }
+        // Held: owed until the draft is saved or discarded or the conflict
+        // resolved; the clean report schedules it.
+        this.refreshGate.held(stale ? 'retry' : cause);
+        this.noticeHeld(cause);
+        return false;
+    }
+
+    /** Bumped by every render body; a render whose number is stale never posts (#454 review). */
+    private renderGeneration = 0;
+    private layoutAbort: AbortController | undefined;
+
+    private async renderBody(cause: RenderCause): Promise<void> {
+        const generation = ++this.renderGeneration;
+        // A newer render supersedes the one still laying out: stop its worker.
+        this.layoutAbort?.abort();
+        const abort = new AbortController();
+        this.layoutAbort = abort;
+        // Only a render that lays out in the worker is cancelled and dropped
+        // when superseded (set below): in-process renders are short, and the
+        // overlap rules of completeRender (#408, #439) already judge them.
+        let heavy = false;
+        const superseded = (): boolean => heavy && (generation !== this.renderGeneration || abort.signal.aborted || this.disposed);
+        const refresh = cause !== 'source';
+        const conflictEpochAtStart = this.conflictEpoch;
         const smokeWaiter = this.smokeWaiter;
         const activeDocument = this.activeDocument;
         if (!activeDocument) {
             this.currentLayoutSnapshot = undefined;
+            this.refreshGate.rendered();
             void this.panel.webview.postMessage({
-                type: 'error',
+                type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh),
                 message: 'No active diagram document selected.',
             });
             return;
@@ -907,6 +1531,12 @@ export class PreviewPanel {
 
         const documentRevision = String(activeDocument.version);
         const documentUri = activeDocument.uri.toString();
+        // Draft-state identity (#167 review): a standalone panel is scoped to
+        // the document; a Markdown-bound panel is scoped to its fence's
+        // CONTENT, resolved against the fences present right now, so a fence
+        // inserted or reordered above it cannot steal or orphan its draft.
+        let draftScope = computeNativeDraftScope(activeDocument);
+        let fenceAnchor: SaveAnchor | undefined;
 
         // For Markdown-block panels extract only the fenced body for parsing.
         let text: string;
@@ -914,30 +1544,37 @@ export class PreviewPanel {
             const fullText = activeDocument.getText();
             if (!fullText || fullText.trim().length === 0) {
                 this.currentLayoutSnapshot = undefined;
-                void this.panel.webview.postMessage({ type: 'error', message: 'Document is empty.' });
+                this.refreshGate.rendered();
+                void this.panel.webview.postMessage({ type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh), message: 'Document is empty.' });
                 return;
             }
             const blocks = findC4xFencedBlocks(activeDocument);
             const block = blocks[this.markdownBlock.blockOrdinal];
             if (!block) {
                 this.currentLayoutSnapshot = undefined;
+                this.refreshGate.rendered();
                 void this.panel.webview.postMessage({
-                    type: 'error',
+                    type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh),
                     message: `C4X fence block ${this.markdownBlock.blockOrdinal} not found in the document. It may have been deleted or moved.`,
                 });
                 return;
             }
             text = fullText.slice(block.bodyRange.start, block.bodyRange.end);
-            // Refresh the anchor whenever we re-render so the next save
-            // resolves against the latest fence state.
-            this.activeSaveAnchor = captureAnchor(activeDocument, block);
+            // The anchor of the fence state this render reads. It replaces
+            // the panel's anchor only when the render is posted, so until
+            // then the anchor still describes the canvas the user sees (#439).
+            fenceAnchor = captureAnchor(activeDocument, block);
+            // Missing is impossible here (checked above); fall back to the
+            // document scope rather than sending no scope at all.
+            draftScope = computeFenceDraftScope(activeDocument, this.markdownBlock.blockOrdinal) ?? documentUri;
         } else {
             text = activeDocument.getText();
         }
 
         if (!text || text.trim().length === 0) {
             this.currentLayoutSnapshot = undefined;
-            void this.panel.webview.postMessage({ type: 'error', message: 'Document is empty.' });
+            this.refreshGate.rendered();
+            void this.panel.webview.postMessage({ type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh), message: 'Document is empty.' });
             return;
         }
 
@@ -994,33 +1631,40 @@ export class PreviewPanel {
 
             const view = model.views[0];
 
+            // Resolve the theme once so the layout, the SVG and the legend
+            // overlay swatch colours (#98) always come from the same snapshot.
+            // The layout needs it because element text wraps in the theme's
+            // font and boxes grow to fit (#340).
+            const theme = themeManager.getCurrentTheme();
+            const exportTheme = themeManager.getExportTheme();
+
+            heavy = needsLayoutWorker(view) && defaultLayoutWorker() !== undefined;
             const layoutStart = performance.now();
-            const layout = await dagreLayoutEngine.layout(view);
+            // Edit mode lays out at the standard sizes (#340): the layout a Save
+            // of the first move produces, so a drag moves only what it moves.
+            const layoutMode = this.layoutMode;
+            const growText = layoutMode !== 'edit';
+            const bounded = await layoutBounded(view, { theme, growText }, abort.signal);
+            if (!bounded || superseded()) { return; }
+            const layout = bounded.layout;
+            // In view mode read growth off the layout; in edit mode ask without laying out.
+            const textGrown = growText ? bounded.grewText : dagreLayoutEngine.wouldGrowText(view, { theme });
+            // Exports are read off-editor and always use the view-mode layout.
+            // Same font and mode: reuse the preview layout.
+            const exportLayout = exportTheme.styles.fontFamily === theme.styles.fontFamily && growText
+                ? layout
+                : (await layoutBounded(view, { theme: exportTheme }, abort.signal))?.layout;
+            if (!exportLayout || superseded()) { return; }
             const layoutTime = performance.now() - layoutStart;
 
             const renderStart = performance.now();
-            // Resolve the theme once so the SVG and the legend overlay swatch
-            // colours (#98) always come from the same snapshot.
-            const theme = themeManager.getCurrentTheme();
-            const svg = svgBuilder.build(layout, { theme });
+            const svg = svgBuilder.build(layout, { theme, view });
+            const exportSvg = exportTheme === theme && exportLayout === layout ? svg : svgBuilder.build(exportLayout, { theme: exportTheme, view });
             const renderTime = performance.now() - renderStart;
 
             const visualLayout: VisualLayoutSnapshot = {
                 revision: documentRevision,
-                nodes: layout.elements.map(element => ({
-                    id: element.id,
-                    label: element.element.label,
-                    type: element.element.type,
-                    x: element.x,
-                    y: element.y,
-                    width: element.width,
-                    height: element.height,
-                    locked: element.element.metadata?.locked === 'true',
-                    description: element.element.description,
-                    technology: element.element.technology,
-                    tags: element.element.tags,
-                    sprite: element.element.sprite,
-                })),
+                nodes: buildNodeSnapshots(layout),
                 boundaries: buildBoundarySnapshots(layout),
                 edges: layout.relationships.map(relationship => ({
                     id: relationship.id,
@@ -1057,53 +1701,82 @@ export class PreviewPanel {
                     initialZoom: this.markdownBlock ? readMarkdownPreviewScale() : undefined,
                 },
                 presentElementTypes: computePresentElementTypes(view),
-                legendSwatchColors: {
-                    person: theme.colors.person.fill,
-                    softwareSystem: theme.colors.softwareSystem.fill,
-                    container: theme.colors.container.fill,
-                    component: theme.colors.component.fill,
-                    deploymentNode: theme.colors.deploymentNode.fill,
-                    external: theme.colors.externalSystem.fill,
-                },
+                legendSwatchColors: computeLegendSwatchColors(view, theme),
+                legendEntries: computeLegendEntries(layout, theme, elementStyleContextFor(layout, view, theme)),
+                legendKeyTheme: keySwatchTheme(theme),
+                elementStyleInputs: elementStyleClientInputs(view, theme),
+                layoutMode,
+                textGrown,
+                diagramIdentity: this.markdownBlock ? `${documentUri}#c4x-block:${this.markdownBlock.blockOrdinal}` : documentUri,
+                viewType: String(view.type),
+                // Draft-state identity (#167 review): a Markdown-bound panel is
+                // scoped to its fence's content, a standalone panel to the
+                // document and exact source content.
+                scope: draftScope,
             };
 
-            if (!this.activeDocument ||
-                this.activeDocument.uri.toString() !== documentUri ||
-                String(this.activeDocument.version) !== documentRevision) {
-                this.currentLayoutSnapshot = undefined;
-                this.scheduleRender();
+            if (!this.completeRender(cause, documentUri, documentRevision, conflictEpochAtStart)) {
                 return;
             }
 
+            this.refreshGate.rendered();
+            // Written only for a render that is posted: Rebase compares the
+            // changed source with the diagram the webview actually shows.
+            this.renderedPositionalIdentity = view ? positionalIdentityOf(view) : undefined;
+            this.currentSvg = svg;
+            this.currentExportSvg = exportSvg;
+            this.currentExportInputs = { layout: exportLayout, theme: exportTheme, view };
+            this.currentLayoutSnapshot = visualLayout;
+            this.lastRenderTextGrown = textGrown;
+            // Refresh the anchor on every posted render: the next save, and
+            // the next source event, resolve against what is now shown.
+            this.activeSaveAnchor = fenceAnchor ?? this.captureDocumentAnchor(activeDocument);
+            this.snapshotRevisionCarry = undefined;
+            // Recorded so a decline can restore what the webview still shows.
+            payload.sameDiagramEdit = { since: this.renderTokenSeq ?? null, value: this.sameDiagramSinceRender };
+            this.sameDiagramSinceRender = true;
+            this.lastKnownText = activeDocument.getText();
+            const renderToken = this.rememberShown(refresh);
             void this.panel.webview.postMessage({
                 type: 'render', payload,
+                ...(refresh ? { refresh: true } : {}),
+                renderToken,
                 ...(smokeWaiter && smokeWaiter === this.smokeWaiter ? { smokeRequest: smokeWaiter.token } : {}),
             });
-            this.currentSvg = svg;
-            this.currentLayoutSnapshot = visualLayout;
-            if (!this.markdownBlock) {
-                // For native docs, refresh anchor on every render.
-                this.activeSaveAnchor = this.captureDocumentAnchor(activeDocument);
-            }
-            // For Markdown blocks the anchor is refreshed at the top of render().
         } catch (error) {
+            if (superseded()) { return; }
+            // A layout failure surfaces after the awaits: the same rule applies
+            // before an error replaces the preview (#408).
+            if (!this.completeRender(cause, documentUri, documentRevision, conflictEpochAtStart)) {
+                return;
+            }
+            if (fenceAnchor) {
+                // As before for a fence: the error is now what is shown.
+                this.activeSaveAnchor = fenceAnchor;
+            }
             smokeWaiter?.finish(undefined, new Error('Packaged webview render failed: ' + (error instanceof Error ? error.message : String(error))));
+            // The error is the current result: posting it retires any owed
+            // render, as the early error paths do, so a persistent failure
+            // is reported once and then waits for the next real event (#408).
+            this.refreshGate.rendered();
             this.currentSvg = undefined;
+            this.currentExportSvg = undefined;
+            this.currentExportInputs = undefined;
             this.currentLayoutSnapshot = undefined;
             if (error instanceof C4XParseError) {
                 this.panel.webview.postMessage({
-                    type: 'error',
+                    type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh),
                     message: `${error.message} (Line ${error.location.line}, Column ${error.location.column})`,
                 });
             } else if (error instanceof StructurizrLexerError || error instanceof StructurizrParserError) {
                 this.panel.webview.postMessage({
-                    type: 'error',
+                    type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh),
                     message: error.message,
                 });
             } else if (error instanceof Error) {
-                this.panel.webview.postMessage({ type: 'error', message: error.message });
+                this.panel.webview.postMessage({ type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh), message: error.message });
             } else {
-                this.panel.webview.postMessage({ type: 'error', message: 'Unknown error while rendering preview.' });
+                this.panel.webview.postMessage({ type: 'error', ...(refresh ? { refresh: true } : {}), renderToken: this.rememberShown(refresh), message: 'Unknown error while rendering preview.' });
             }
         }
     }
@@ -1529,6 +2202,18 @@ export class PreviewPanel {
     #legend-items .legend-swatch-dashed-box {
       background: transparent;
       border: 1px dashed var(--vscode-foreground);
+    }
+    /* Derived key entries (#327): the swatch is a small SVG of the element's
+       shape, drawn by the host with the diagram's own geometry and colours. */
+    #legend-items .legend-swatch-shape {
+      width: 32px;
+      height: 22px;
+      background: transparent;
+      border-radius: 0;
+      display: inline-flex;
+    }
+    #legend-items .legend-swatch-shape svg {
+      display: block;
     }
     #legend-items .legend-swatch-dashed-line {
       height: 0;
@@ -2173,7 +2858,7 @@ export class PreviewPanel {
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
 
-    ${PREVIEW_CLIENT_SCRIPT}
+    ${buildPreviewClientScript(this.smokeSession)}
   </script>
 </body>
 </html>`;
@@ -2189,10 +2874,13 @@ export class PreviewPanel {
     }
 
     private dispose(): void {
+        this.layoutAbort?.abort();
         if (this.disposed) {
             return;
         }
         this.disposed = true;
+        this.refreshGate.reset();
+        this.forgetShownStates();
         this.smokeWaiter?.finish(undefined, new Error('Packaged webview closed before rendering'));
         void clearBinding(this.context.workspaceState);
         if (this.debounceTimer) {
@@ -2210,12 +2898,33 @@ export class PreviewPanel {
         return this.instance?.currentSvg;
     }
 
-    public static refresh(): boolean {
-        if (!PreviewPanel.instance) {
-            return false;
+    /** The current diagram drawn in the export theme (light variant of the selected theme). */
+    public static getCurrentExportSvg(): string | undefined {
+        const instance = this.instance;
+        // c4x.export.includeKey (#327) is read when the export runs, so turning it
+        // on or off applies to the next export without a re-render. Off returns
+        // the SVG as before, byte for byte.
+        if (instance?.currentExportInputs && instance.currentExportSvg && readExportIncludeKey()) {
+            const { layout, theme, view } = instance.currentExportInputs;
+            const entries = computeKeyEntries(layout, theme, elementStyleContextFor(layout, view, theme));
+            return appendKeyToSvg(instance.currentExportSvg, entries, theme, layout.width);
         }
+        return instance?.currentExportSvg ?? instance?.currentSvg;
+    }
 
-        PreviewPanel.instance.scheduleRender();
-        return true;
+    /**
+     * Refresh Preview (also run by Change Theme) acts on every open panel: the
+     * standalone preview and the Markdown fence editor (#429). Each goes
+     * through its own gate, so a panel with unsaved staged edits defers the
+     * refresh until Save or Discard (#408). True when any panel was refreshed
+     * or deferred.
+     */
+    public static refresh(): boolean {
+        const panels = [PreviewPanel.instance, PreviewPanel.markdownInstance]
+            .filter((panel): panel is PreviewPanel => panel !== undefined);
+        for (const panel of panels) {
+            panel.requestNonSourceRender();
+        }
+        return panels.length > 0;
     }
 }

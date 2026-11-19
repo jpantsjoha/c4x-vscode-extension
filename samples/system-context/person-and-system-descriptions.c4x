@@ -1,0 +1,12 @@
+%%{ c4: system-context }%%
+graph TB
+    %% Person and System take (id, "Label", "Description"): the third argument
+    %% is drawn as plain description text under the name.
+    Person(customer, "Personal Banking Customer", "Views balances and pays bills")
+    System(banking, "Internet Banking System", "Shows accounts and takes payments")
+    System_Ext(mainframe, "Mainframe Banking System", "Holds customer accounts")
+    System_Ext(email, "E-mail System", "Sends payment receipts")
+
+    customer -->|Views balances and pays bills using| banking
+    banking -->|Gets account details from| mainframe
+    banking -->|Sends receipts using| email

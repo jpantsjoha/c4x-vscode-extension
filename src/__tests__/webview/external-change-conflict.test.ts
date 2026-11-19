@@ -25,7 +25,8 @@ import {
     createNativeDocumentBlock,
     type SaveAnchor,
 } from '../../writeback/SaveAnchor';
-import { formatConflictBannerMessage } from '../../webview/previewClientScript';
+import * as vm from 'vm';
+import { formatConflictBannerMessage, PREVIEW_CLIENT_SCRIPT } from '../../webview/previewClientScript';
 
 // ── Minimal vscode.TextDocument stub ─────────────────────────────────────────
 
@@ -87,6 +88,49 @@ describe('isResolveConflictMessage — protocol guard', () => {
 
     it('accepts viewDiff', () => {
         assert.strictEqual(isResolveConflictMessage(makeMsg('viewDiff')), true);
+    });
+
+    it('accepts a rebase that names its staged keys (#261)', () => {
+        assert.strictEqual(isResolveConflictMessage({ ...(makeMsg('rebase') as object), stagedKeys: ['rel-0', 'api'] }), true);
+    });
+
+    it('rejects staged keys that are not a bounded list of non-empty strings (#261)', () => {
+        assert.strictEqual(isResolveConflictMessage({ ...(makeMsg('rebase') as object), stagedKeys: 'rel-0' }), false);
+        assert.strictEqual(isResolveConflictMessage({ ...(makeMsg('rebase') as object), stagedKeys: [1] }), false);
+        assert.strictEqual(isResolveConflictMessage({ ...(makeMsg('rebase') as object), stagedKeys: [''] }), false);
+        assert.strictEqual(isResolveConflictMessage({ ...(makeMsg('rebase') as object), stagedKeys: ['x'.repeat(513)] }), false);
+        assert.strictEqual(isResolveConflictMessage({ ...(makeMsg('rebase') as object), stagedKeys: Array(1001).fill('a') }), false);
+    });
+
+    describe('the rebase request the webview sends (#261)', () => {
+        function sendRebase(stagedEdits: Record<string, unknown>): Record<string, unknown> {
+            const match = /function sendConflictResolution\(action\) \{[\s\S]*?\n {4}\}\n/.exec(PREVIEW_CLIENT_SCRIPT);
+            assert.ok(match, 'sendConflictResolution is in the client script');
+            const posted: Record<string, unknown>[] = [];
+            const context = vm.createContext({
+                stagedEdits,
+                PROTOCOL_VERSION: VISUAL_LAYOUT_PROTOCOL_VERSION,
+                vscode: { postMessage: (message: Record<string, unknown>) => posted.push(message) },
+            });
+            vm.runInContext(`${match[0]}\nsendConflictResolution('rebase');`, context);
+            assert.strictEqual(posted.length, 1);
+            return posted[0];
+        }
+
+        it('names the staged keys', () => {
+            assert.deepStrictEqual(JSON.parse(JSON.stringify(sendRebase({ 'rel-0': {}, api: {} }).stagedKeys)), ['rel-0', 'api']);
+        });
+
+        it('leaves the list out, rather than truncating it, when it is more than the host accepts', () => {
+            const many: Record<string, unknown> = {};
+            for (let i = 0; i < 1000; i++) { many[`element-${i}`] = {}; }
+            many['rel-0'] = {};
+            assert.strictEqual(sendRebase(many).stagedKeys, undefined);
+        });
+
+        it('leaves the list out when a key is longer than the host accepts', () => {
+            assert.strictEqual(sendRebase({ ['x'.repeat(513)]: {} }).stagedKeys, undefined);
+        });
     });
 
     it('accepts rebase', () => {
