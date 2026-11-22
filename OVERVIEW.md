@@ -26,10 +26,10 @@ Key features:
 
 Stage: public. The extension is published on two registries.
 
-| Registry | Link | Checked 2026-11-18, before the 1.9.2 publish |
+| Registry | Link | Checked 2026-11-19 |
 |---|---|---|
-| VS Code Marketplace | <https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x> | Lists version 1.8.0. |
-| Open VSX | <https://open-vsx.org/extension/jpantsjoha/c4x> | HTTP 200; lists version 1.8.0. |
+| VS Code Marketplace | <https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x> | Lists version 1.9.2. |
+| Open VSX | <https://open-vsx.org/extension/jpantsjoha/c4x> | HTTP 200; lists version 1.9.2. |
 
 The published version is 1.9.2 (released 2026-11-19). Versions 1.8.1 to 1.9.0 were tagged and not published; 1.9.2 carries their changes. Install with `code --install-extension jpantsjoha.c4x`.
 
