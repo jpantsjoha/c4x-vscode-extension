@@ -1,6 +1,17 @@
-# C4X — C4 Architecture Diagrams for VS Code
+# C4X — Diagrams for humans
 
-C4 architecture diagrams as version-controlled text in your repository, edited visually by dragging.
+**Diagrams for humans.** C4 architecture diagrams for VS Code, kept as version-controlled text in your repository and edited visually by dragging.
+
+> **C4X: diagrams for humans.** AI can generate a system in an afternoon. People still have to understand it, approve it and be accountable for it. C4X turns complex and agentic systems into C4 diagrams your team can read, review and sign off, from context to containers to components. Drafted with AI, owned by the people.
+
+**AI features:**
+
+- **Gemini generation** — draft a C4 model from the surrounding code with your own Gemini key, or with a chat model already in VS Code such as GitHub Copilot's.
+- **Assistant skills for Claude Code, Codex, Gemini CLI and Antigravity** — the c4x skill and plugins let a coding assistant write C4X ([install](#install-for-an-ai-coding-assistant)).
+- **The MCP validator** — the C4X MCP server checks, lints and renders a diagram (`validate_c4x`, `lint_c4x`, `render_c4x`).
+- **Lint, export and offline preview** — C4 notation checks in the Problems panel, SVG and PNG export, and a preview that renders on your machine with no network call.
+
+Built on the C4 model by Simon Brown ([c4model.com](https://c4model.com/)). C4X is independent and not affiliated.
 
 **Who it is for:** two audiences. People — software architects, technical writers and engineering managers who want C4 diagrams reviewed in the pull request that changes the code — use the VS Code extension. AI coding assistants use the c4x skill, its syntax-validation scripts and the C4X MCP server, packaged as a plugin ([install for an assistant](#install-for-an-ai-coding-assistant)).
 **State:** C4X is on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jpantsjoha.c4x) and [Open VSX](https://open-vsx.org/extension/jpantsjoha/c4x); the published version is 1.9.2, released on 2026-11-19. Versions 1.8.1 to 1.9.0 were tagged and not published; 1.9.2 carries their changes, which are in the [changelog](./CHANGELOG.md).
@@ -16,6 +27,13 @@ Product summary: [OVERVIEW.md](./OVERVIEW.md). Build, run and test: see [run_ins
 ```bash
 code --install-extension jpantsjoha.c4x
 ```
+
+## Why diagrams for humans
+
+- **People stay accountable.** AI can draft a system faster than a team can read it. Someone still has to understand the design, approve it and answer for it.
+- **AI drafts, people approve.** Gemini or your coding assistant writes the first draft, and the C4X parser checks it: in-editor generation is checked before it reaches your file, and an assistant checks its work with `validate_c4x`. Visual changes are staged as a diff for you to review, and the diagram goes through the pull request like any other change.
+- **The C4 levels help a team agree.** Context, containers and components give each audience the level of detail it needs, so the team can align on one picture before it builds.
+- **The goal is value delivered.** A diagram earns its place when it helps a team ship the right system, not when it looks finished.
 
 ## What's new in 1.9.2
 

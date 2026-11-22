@@ -4,6 +4,10 @@ All notable changes to the "c4x" extension will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Docs: 'Diagrams for humans' positioning. The README opens with the new tagline, a lead paragraph, the AI features and the C4 model attribution, and gains a "Why diagrams for humans" section. The extension description and keywords (`ai`, `gemini`, `mcp`) match; the Marketplace and Open VSX listings pick them up with the next release.
+
 ## [1.9.2] - 2026-11-19
 
 The first release since 1.8.0 to be published. It carries everything in 1.8.1 to 1.9.0, which were tagged and not published (see those sections), and the changes below.

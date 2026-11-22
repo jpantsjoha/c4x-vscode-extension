@@ -1,7 +1,7 @@
 {
   "name": "c4x",
   "displayName": "C4X - C4 Model Diagrams",
-  "description": "Visual C4 Model diagrams with instant preview. Support for C4X DSL.",
+  "description": "Diagrams for humans: C4 architecture diagrams as code, drafted with AI and owned by the people. Offline preview, lint, export, an MCP validator and Gemini or assistant generation.",
   "galleryBanner": {
     "color": "#08427B",
     "theme": "dark"
@@ -55,7 +55,10 @@
     "architecture-as-code",
     "puml",
     "plantuml",
-    "structurizr"
+    "structurizr",
+    "ai",
+    "gemini",
+    "mcp"
   ],
   "activationEvents": [
     "onUri"
